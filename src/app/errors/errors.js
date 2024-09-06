@@ -53,10 +53,10 @@ class UnprocessableEntityError extends AppError {
     }
 }
 
-// 500: Internal Server Error
-class InternalServerError extends AppError {
-    constructor(message = 'Something went wrong!') {
-        super(message, StatusCodes.INTERNAL_SERVER_ERROR)
+// 500 : Internal Server Error
+class Internal extends AppError {
+    constructor(message = 'Internal Server Error') {
+        super(message, 500)
     }
 }
 
@@ -64,8 +64,8 @@ module.exports = {
     UnauthorizedError,
     ForBiddenError,
     NotFoundError,
-    InternalServerError,
     BadRequest,
     ConflictError,
     UnprocessableEntityError,
+    Internal,
 }

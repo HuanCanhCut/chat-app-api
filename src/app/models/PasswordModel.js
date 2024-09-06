@@ -2,14 +2,6 @@ require('dotenv').config()
 
 const { DataTypes } = require('sequelize')
 const { sequelize } = require('../../config/db')
-const bcrypt = require('bcrypt')
-const SALT_ROUND = process.env.SALT_ROUND
-
-const hashPassword = async (password) => {
-    const salt = await bcrypt.genSalt(SALT_ROUND)
-    const hash = await bcrypt.hash(password, salt)
-    return hash
-}
 
 const Password = sequelize.define(
     'Password',
@@ -22,9 +14,6 @@ const Password = sequelize.define(
         password: {
             type: DataTypes.STRING,
             allowNull: false,
-            set(value) {
-                this.setDataValue('password', hashPassword(value))
-            },
         },
         user_id: {
             type: DataTypes.INTEGER,

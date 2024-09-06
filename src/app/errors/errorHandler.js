@@ -11,8 +11,6 @@ const errorHandler = (err, req, res, next) => {
                 req.body
             )} \n Response: ${JSON.stringify(res.body)} \n Error code: ${err.statusCode}`
         )
-
-        return
     }
 
     return res.status(err.statusCode).json({
