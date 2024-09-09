@@ -1,5 +1,6 @@
 require('dotenv').config()
-const { BadRequest, ConflictError, Internal, NotFoundError, UnauthorizedError } = require('../errors/errors')
+const { BadRequest, ConflictError, InternalServerError, NotFoundError, UnauthorizedError } = require('../errors/errors')
+const admin = require('firebase-admin')
 const { User, Password } = require('../models')
 const { v4: uuidv4 } = require('uuid')
 const { hashValue, createToken } = require('../project')
@@ -7,6 +8,12 @@ const bcrypt = require('bcrypt')
 const { Sequelize } = require('sequelize')
 
 class AuthController {
+    generateToken(payload) {
+        const token = createToken({ payload }).token
+
+        return { token }
+    }
+
     // [POST] /auth/register
     async register(req, res, next) {
         try {
@@ -41,7 +48,7 @@ class AuthController {
                 sub: user.id,
             }
 
-            const token = createToken({ payload }).token
+            const { token } = this.generateToken(payload)
 
             return res
                 .setHeader('Set-Cookie', `token=${token}; httpOnly; path=/; sameSite=None; secure; Partitioned`)
@@ -89,7 +96,7 @@ class AuthController {
                 sub: user.id,
             }
 
-            const token = createToken({ payload }).token
+            const { token } = this.generateToken(payload)
 
             delete user.dataValues.Password
 
@@ -97,7 +104,7 @@ class AuthController {
                 .setHeader('Set-Cookie', `token=${token}; httpOnly; path=/; sameSite=None; secure; Partitioned`)
                 .json({ data: user })
         } catch (error) {
-            return next(new Internal(error))
+            return next(new InternalServerError(error))
         }
     }
 
@@ -122,6 +129,51 @@ class AuthController {
             }
 
             return res.json({ data: user })
+        } catch (error) {
+            return next(new InternalServerError(error))
+        }
+    }
+
+    // [POST] /auth/loginwithtoken
+
+    async loginWithToken(req, res, next) {
+        try {
+            const { token } = req.body
+
+            if (!token) {
+                return next(new UnauthorizedError('Authorization token is required'))
+            }
+
+            const decodedToken = await admin.auth().verifyIdToken(token)
+
+            const { email, name, picture } = decodedToken
+
+            const splitName = name.split(' ')
+            const middle = Math.ceil(splitName.length / 2)
+
+            const firstName = splitName.slice(0, middle).join(' ')
+            const lastName = splitName.slice(middle).join(' ')
+
+            const [user] = await User.findOrCreate({
+                where: {
+                    email,
+                },
+                defaults: {
+                    email,
+                    first_name: firstName,
+                    last_name: lastName,
+                    full_name: name,
+                    uuid: uuidv4(),
+                    avatar: picture,
+                },
+            })
+
+            const { token: AccessToken } = this.generateToken({ sub: user.id })
+
+            res.setHeader(
+                'Set-Cookie',
+                `token=${AccessToken}; httpOnly; path=/; sameSite=None; secure; Partitioned`
+            ).json({ data: user })
         } catch (error) {
             return next(new InternalServerError(error))
         }

@@ -10,6 +10,14 @@ const db = require('./src/config/db/index')
 const cors = require('cors')
 const errorHandler = require('./src/app/errors/errorHandler.js')
 
+const admin = require('firebase-admin')
+
+const serviceAccount = require('./src/config/firebase/serviceAccount.js')
+
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+})
+
 // connect to db
 db.connect()
 

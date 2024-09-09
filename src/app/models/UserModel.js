@@ -34,6 +34,10 @@ const User = sequelize.define(
             allowNull: false,
             unique: true,
         },
+        avartar: {
+            type: DataTypes.STRING,
+            allowNull: true,
+        },
     },
     {
         tableName: 'users',
