@@ -1,5 +1,5 @@
 require('dotenv').config()
-const { BadRequest, ConflictError, Internal, NotFoundError } = require('../errors/errors')
+const { BadRequest, ConflictError, Internal, NotFoundError, UnauthorizedError } = require('../errors/errors')
 const { User, Password } = require('../models')
 const { v4: uuidv4 } = require('uuid')
 const { hashValue, createToken } = require('../project')
@@ -73,12 +73,16 @@ class AuthController {
                 },
             })
 
+            if (!user) {
+                return next(new UnauthorizedError('Invalid email or password'))
+            }
+
             const passwordHashed = user.dataValues.Password.dataValues.password
 
             const isPasswordValid = bcrypt.compareSync(password, passwordHashed)
 
             if (!isPasswordValid) {
-                return next(new BadRequest('Invalid email or password'))
+                return next(new UnauthorizedError('Invalid email or password'))
             }
 
             const payload = {
@@ -93,7 +97,33 @@ class AuthController {
                 .setHeader('Set-Cookie', `token=${token}; httpOnly; path=/; sameSite=None; secure; Partitioned`)
                 .json({ data: user })
         } catch (error) {
-            return next(new Internal('Invalid email or password'))
+            return next(new Internal(error))
+        }
+    }
+
+    // [GET] /auth/me
+
+    async getCurrentUser(req, res, next) {
+        try {
+            const decoded = req.decoded
+
+            if (!decoded) {
+                return next(new NotFoundError('User not found'))
+            }
+
+            const user = await User.findOne({
+                where: {
+                    id: decoded.sub,
+                },
+            })
+
+            if (!user) {
+                return next(new NotFoundError('User not found'))
+            }
+
+            return res.json({ data: user })
+        } catch (error) {
+            return next(new InternalServerError(error))
         }
     }
 }
