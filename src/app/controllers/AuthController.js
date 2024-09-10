@@ -1,17 +1,44 @@
 require('dotenv').config()
-const { BadRequest, ConflictError, InternalServerError, NotFoundError, UnauthorizedError } = require('../errors/errors')
+
 const admin = require('firebase-admin')
-const { User, Password } = require('../models')
 const { v4: uuidv4 } = require('uuid')
-const { hashValue, createToken } = require('../project')
 const bcrypt = require('bcrypt')
-const { Sequelize } = require('sequelize')
+const { Sequelize, Op } = require('sequelize')
+const jwt = require('jsonwebtoken')
+
+const { BadRequest, ConflictError, InternalServerError, NotFoundError, UnauthorizedError } = require('../errors/errors')
+const { User, Password, BlacklistToken, RefreshToken } = require('../models')
+const { hashValue, createToken, clearCookie } = require('../project')
 
 class AuthController {
+    generateExpire() {
+        return Math.floor(Date.now() / 1000) + Number(process.env.EXPIRED_TOKEN)
+    }
+
     generateToken(payload) {
         const token = createToken({ payload }).token
+        const refreshToken = createToken({ payload }).refreshToken
 
-        return { token }
+        return { token, refreshToken }
+    }
+
+    async sendToClient({ res, user, token, refreshToken }) {
+        await RefreshToken.create({
+            user_id: user.id,
+            refresh_token: refreshToken,
+        })
+
+        res.setHeader('Set-Cookie', [
+            `token=${token}; httpOnly; path=/; sameSite=None; secure; Partitioned`,
+            `refreshToken=${refreshToken}; httpOnly; path=/; sameSite=None; secure; Partitioned`,
+        ]).json({
+            data: user,
+            meta: {
+                pagination: {
+                    exp: this.generateExpire(),
+                },
+            },
+        })
     }
 
     // [POST] /auth/register
@@ -48,11 +75,9 @@ class AuthController {
                 sub: user.id,
             }
 
-            const { token } = this.generateToken(payload)
+            const { token, refreshToken } = this.generateToken(payload)
 
-            return res
-                .setHeader('Set-Cookie', `token=${token}; httpOnly; path=/; sameSite=None; secure; Partitioned`)
-                .json({ data: user })
+            this.sendToClient({ res, user, token, refreshToken })
         } catch (error) {
             return next(new InternalServerError('error'))
         }
@@ -96,20 +121,17 @@ class AuthController {
                 sub: user.id,
             }
 
-            const { token } = this.generateToken(payload)
+            const { token, refreshToken } = this.generateToken(payload)
 
             delete user.dataValues.Password
 
-            return res
-                .setHeader('Set-Cookie', `token=${token}; httpOnly; path=/; sameSite=None; secure; Partitioned`)
-                .json({ data: user })
+            this.sendToClient({ res, user, token, refreshToken })
         } catch (error) {
             return next(new InternalServerError(error))
         }
     }
 
     // [GET] /auth/me
-
     async getCurrentUser(req, res, next) {
         try {
             const decoded = req.decoded
@@ -135,7 +157,6 @@ class AuthController {
     }
 
     // [POST] /auth/loginwithtoken
-
     async loginWithToken(req, res, next) {
         try {
             const { token } = req.body
@@ -168,12 +189,97 @@ class AuthController {
                 },
             })
 
-            const { token: AccessToken } = this.generateToken({ sub: user.id })
+            const { token: AccessToken, refreshToken } = this.generateToken({ sub: user.id })
 
-            res.setHeader(
-                'Set-Cookie',
-                `token=${AccessToken}; httpOnly; path=/; sameSite=None; secure; Partitioned`
-            ).json({ data: user })
+            this.sendToClient({ res, user, token: AccessToken, refreshToken })
+        } catch (error) {
+            return next(new InternalServerError(error))
+        }
+    }
+
+    // [GET] /auth/refresh
+    async refreshToken(req, res, next) {
+        try {
+            const { token, refreshToken } = req.cookies
+
+            if (!token || !refreshToken) {
+                return next(new UnauthorizedError('Authorization token is required'))
+            }
+
+            const inBlackList = await BlacklistToken.findOne({
+                where: { [Op.or]: [{ token }, { refresh_token: refreshToken }] },
+            })
+
+            if (inBlackList) {
+                return next(new UnauthorizedError('Authorization token is invalid'))
+            }
+
+            let decoded = null
+
+            try {
+                decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET)
+            } catch (error) {
+                if (error.message === 'jwt expired') {
+                    await Promise.all([
+                        BlacklistToken.create({ token: token, refresh_token: refreshToken }),
+                        RefreshToken.destroy({ where: { refresh_token: refreshToken } }),
+                    ])
+
+                    clearCookie({ res, cookies: ['refreshToken', 'token'] })
+
+                    return next(new UnauthorizedError('Refresh token expired'))
+                }
+
+                return next(new BadRequest(error.message))
+            }
+
+            if (!decoded) {
+                return next(new UnauthorizedError('Invalid or expired token .........'))
+            }
+
+            // Remove old refresh token
+            await RefreshToken.destroy({
+                where: { [Op.and]: [{ refresh_token: { [Op.ne]: refreshToken } }, { user_id: decoded.sub }] },
+            })
+
+            const hasRefreshToken = await RefreshToken.findOne({
+                where: { user_id: decoded.sub },
+                limit: 1,
+                order: [['createdAt', 'DESC']],
+            })
+            // if have'nt refreshToken in database
+            if (hasRefreshToken?.refresh_token !== refreshToken) {
+                return next(new UnauthorizedError('Invalid or expired token'))
+            }
+
+            const payload = { sub: decoded.sub }
+
+            // Giữ giá trị exp token cũ gắn vào token mới
+            const exp = Math.floor((decoded.exp * 1000 - Date.now()) / 1000)
+
+            const newToken = createToken({ payload }).token
+            const newRefreshToken = createToken({ payload, expRefresh: exp }).refreshToken
+
+            await RefreshToken.update(
+                {
+                    refresh_token: newRefreshToken,
+                },
+                {
+                    where: {
+                        user_id: decoded.sub,
+                    },
+                }
+            )
+
+            res.setHeader('Set-Cookie', [
+                `token=${newToken}; path=/; sameSite=None; secure; Partitioned`,
+                `refreshToken=${newRefreshToken}; path=/; sameSite=None; secure; Partitioned`,
+            ])
+                .status(200)
+                .json({
+                    // access token expire
+                    exp: Math.floor(Date.now() / 1000) + Number(process.env.EXPIRED_TOKEN),
+                })
         } catch (error) {
             return next(new InternalServerError(error))
         }

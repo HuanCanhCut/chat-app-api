@@ -7,7 +7,7 @@ const verifyToken = async (req, res, next) => {
         const { token } = req.cookies
 
         if (!token) {
-            clearCookie({ res, cookies: ['token'] })
+            clearCookie({ res, cookies: ['token', 'refreshToken'] })
             res.status(401).json({
                 message: 'Failed to authenticate because of bad credentials or an invalid authorization header.',
                 status: 401,
@@ -20,7 +20,7 @@ const verifyToken = async (req, res, next) => {
         req.decoded = decoded
         next()
     } catch (error) {
-        clearCookie({ res, cookies: ['token'] })
+        clearCookie({ res, cookies: ['token', 'refreshToken'] })
         return res.status(401).json({
             message: 'Token signature could not be verified.',
             status: 401,
