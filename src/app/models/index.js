@@ -4,10 +4,17 @@ const User = require('./UserModel')
 const Password = require('./PasswordModel')
 const RefreshToken = require('./RefreshTokenModel')
 const BlacklistToken = require('./BlacklistTokenModel')
+const ResetCode = require('./ResetCodeModel')
 
 // define relations
 User.hasOne(Password, { foreignKey: 'user_id' })
 Password.belongsTo(User, { foreignKey: 'user_id' })
+
+User.hasMany(RefreshToken, { foreignKey: 'user_id' })
+RefreshToken.belongsTo(User, { foreignKey: 'user_id' })
+
+User.hasMany(ResetCode, { foreignKey: 'email' })
+ResetCode.belongsTo(User, { foreignKey: 'email' })
 
 // Sync all models with the database
 sequelize
@@ -23,4 +30,5 @@ module.exports = {
     Password,
     RefreshToken,
     BlacklistToken,
+    ResetCode,
 }

@@ -5,12 +5,18 @@ const { v4: uuidv4 } = require('uuid')
 const bcrypt = require('bcrypt')
 const { Sequelize, Op } = require('sequelize')
 const jwt = require('jsonwebtoken')
+const moment = require('moment')
+const clearCookie = require('../utils/clearCookies')
 
 const { BadRequest, ConflictError, InternalServerError, NotFoundError, UnauthorizedError } = require('../errors/errors')
-const { User, Password, BlacklistToken, RefreshToken } = require('../models')
-const { hashValue, createToken, clearCookie } = require('../project')
+const { User, Password, BlacklistToken, RefreshToken, ResetCode } = require('../models')
+const createToken = require('../utils/createToken')
+const hashValue = require('../utils/hashValue')
+const sendVerificationCode = require('../helper/sendVerificationCode')
 
 class AuthController {
+    resetCodeExpired = 60
+
     generateExpire() {
         return Math.floor(Date.now() / 1000) + Number(process.env.EXPIRED_TOKEN)
     }
@@ -22,30 +28,31 @@ class AuthController {
         return { token, refreshToken }
     }
 
-    async sendToClient({ res, user, token, refreshToken }) {
+    async sendToClient({ res, user, token, refreshToken, status = 200 }) {
         await RefreshToken.create({
             user_id: user.id,
             refresh_token: refreshToken,
         })
 
-        res.setHeader('Set-Cookie', [
-            `token=${token}; httpOnly; path=/; sameSite=None; secure; Partitioned`,
-            `refreshToken=${refreshToken}; httpOnly; path=/; sameSite=None; secure; Partitioned`,
-        ]).json({
-            data: user,
-            meta: {
-                pagination: {
-                    exp: this.generateExpire(),
+        res.status(status)
+            .setHeader('Set-Cookie', [
+                `token=${token}; httpOnly; path=/; sameSite=None; secure; Partitioned`,
+                `refreshToken=${refreshToken}; httpOnly; path=/; sameSite=None; secure; Partitioned`,
+            ])
+            .json({
+                data: user,
+                meta: {
+                    pagination: {
+                        exp: this.generateExpire(),
+                    },
                 },
-            },
-        })
+            })
     }
 
     // [POST] /auth/register
     async register(req, res, next) {
+        const { email, password } = req.body
         try {
-            const { email, password } = req.body
-
             if (!email || !password) {
                 return next(new BadRequest('Email and password are required'))
             }
@@ -77,14 +84,14 @@ class AuthController {
 
             const { token, refreshToken } = this.generateToken(payload)
 
-            this.sendToClient({ res, user, token, refreshToken })
+            this.sendToClient({ res, user, token, refreshToken, status: 201 })
         } catch (error) {
-            return next(new InternalServerError('error'))
+            await User.destroy({ where: { email } })
+            return next(new InternalServerError(error))
         }
     }
 
     // [POST] /auth/login
-
     async login(req, res, next) {
         try {
             const { email, password } = req.body
@@ -280,6 +287,93 @@ class AuthController {
                     // access token expire
                     exp: Math.floor(Date.now() / 1000) + Number(process.env.EXPIRED_TOKEN),
                 })
+        } catch (error) {
+            return next(new InternalServerError(error))
+        }
+    }
+
+    // [GET] /auth/verify
+    async sendVerifyCode(req, res, next) {
+        try {
+            const { email } = req.body
+
+            if (!email) {
+                return next(new BadRequest('Email is required'))
+            }
+
+            // 6 number
+            let resetCode = Math.floor(100000 + Math.random() * 900000)
+
+            const hasAccount = await ResetCode.findOne({
+                where: {
+                    email,
+                },
+            })
+
+            if (hasAccount) {
+                await ResetCode.destroy({
+                    where: {
+                        email,
+                    },
+                })
+            }
+
+            await Promise.all([
+                await ResetCode.create({
+                    email,
+                    code: resetCode,
+                }),
+
+                // Delete all records if expired
+                await ResetCode.destroy({
+                    where: {
+                        email,
+                        createdAt: {
+                            [Op.lt]: moment().subtract(this.resetCodeExpired, 'seconds').toISOString(),
+                        },
+                    },
+                }),
+            ])
+
+            sendVerificationCode({ email, code: resetCode })
+
+            res.sendStatus(204)
+        } catch (error) {
+            return next(new InternalServerError(error))
+        }
+    }
+
+    // [POST] /auth/forgot
+    async forgotPassword(req, res, next) {
+        try {
+            const { email, code, password } = req.body
+
+            if (!email || !code || !password) {
+                return next(new BadRequest('Email, code and password are required'))
+            }
+
+            // 60s trước hiện tại
+            const sixtySecondsAgo = moment(
+                moment().subtract(this.resetCodeExpired, 'seconds').toDate(),
+                'YYYY-MM-DD HH:mm:ss'
+            ).toISOString()
+
+            // chỉ lấy những code còn hạn (createdAt >= 60s trước hiện tại)
+            const hasCode = await ResetCode.findOne({
+                where: {
+                    email,
+                    code,
+                    createdAt: {
+                        [Op.gte]: sixtySecondsAgo,
+                    },
+                },
+            })
+
+            if (!hasCode) {
+                return next(new UnauthorizedError('Invalid code'))
+            }
+
+            res.sendStatus(204)
         } catch (error) {
             return next(new InternalServerError(error))
         }

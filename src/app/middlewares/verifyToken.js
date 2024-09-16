@@ -1,6 +1,6 @@
 require('dotenv').config
 const jwt = require('jsonwebtoken')
-const { clearCookie } = require('../project/index')
+const clearCookie = require('../utils/clearCookies')
 
 const verifyToken = async (req, res, next) => {
     try {
