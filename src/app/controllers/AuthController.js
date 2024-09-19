@@ -339,12 +339,15 @@ class AuthController {
 
             res.sendStatus(204)
         } catch (error) {
+            if (error.parent.errno === 1452) {
+                return next(new NotFoundError('Email not found'))
+            }
             return next(new InternalServerError(error))
         }
     }
 
-    // [POST] /auth/forgot
-    async forgotPassword(req, res, next) {
+    // [POST] /auth/reset-password
+    async resetPassword(req, res, next) {
         try {
             const { email, code, password } = req.body
 
@@ -372,6 +375,18 @@ class AuthController {
             if (!hasCode) {
                 return next(new UnauthorizedError('Invalid code'))
             }
+
+            // Update password
+
+            const user = await User.findOne({
+                where: {
+                    email,
+                },
+            })
+
+            const passwordHashed = await hashValue(password)
+
+            await Password.update({ password: passwordHashed }, { where: { user_id: user.id } })
 
             res.sendStatus(204)
         } catch (error) {

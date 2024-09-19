@@ -9,7 +9,7 @@ router.post('/login', AuthController.login.bind(AuthController))
 router.get('/me', verifyToken, AuthController.getCurrentUser.bind(AuthController))
 router.post('/loginwithtoken', AuthController.loginWithToken.bind(AuthController))
 router.get('/refresh', AuthController.refreshToken.bind(AuthController))
-router.get('/verify', AuthController.sendVerifyCode.bind(AuthController))
-router.post('/forgot', AuthController.forgotPassword.bind(AuthController))
+router.post('/verify', AuthController.sendVerifyCode.bind(AuthController))
+router.post('/reset-password', AuthController.resetPassword.bind(AuthController))
 
 module.exports = router
