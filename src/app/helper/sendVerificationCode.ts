@@ -1,5 +1,7 @@
-const nodemailer = require('nodemailer')
-require('dotenv').config()
+import nodemailer from 'nodemailer'
+import dotenv from 'dotenv'
+
+dotenv.config()
 
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
@@ -11,7 +13,7 @@ const transporter = nodemailer.createTransport({
     },
 })
 
-const sendVerificationCode = ({ email, code }) => {
+const sendVerificationCode = ({ email, code }: { email: string; code: number }) => {
     const mailOptions = {
         from: process.env.NODE_MAILER_EMAIL,
         to: email,
@@ -50,4 +52,4 @@ const sendVerificationCode = ({ email, code }) => {
     return transporter.sendMail(mailOptions)
 }
 
-module.exports = sendVerificationCode
+export default sendVerificationCode

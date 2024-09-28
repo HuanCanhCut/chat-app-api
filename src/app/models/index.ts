@@ -1,10 +1,10 @@
-const { sequelize } = require('../../config/db')
+import { sequelize } from '../../config/db'
 // Import models
-const User = require('./UserModel')
-const Password = require('./PasswordModel')
-const RefreshToken = require('./RefreshTokenModel')
-const BlacklistToken = require('./BlacklistTokenModel')
-const ResetCode = require('./ResetCodeModel')
+import User from './UserModel'
+import Password from './PasswordModel'
+import RefreshToken from './RefreshTokenModel'
+import BlacklistToken from './BlacklistTokenModel'
+import ResetCode from './ResetCodeModel'
 
 // define relations
 User.hasOne(Password, { foreignKey: 'user_id' })
@@ -25,10 +25,4 @@ sequelize
     .catch((err) => console.error('Sync failed:', err))
 
 // Export all models
-module.exports = {
-    User,
-    Password,
-    RefreshToken,
-    BlacklistToken,
-    ResetCode,
-}
+export { User, Password, RefreshToken, BlacklistToken, ResetCode }

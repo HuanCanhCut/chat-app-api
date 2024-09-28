@@ -1,7 +1,5 @@
-require('dotenv').config()
-
-const { DataTypes } = require('sequelize')
-const { sequelize } = require('../../config/db')
+import { DataTypes } from 'sequelize'
+import { sequelize } from '../../config/db'
 
 const BlacklistToken = sequelize.define(
     'BlacklistToken',
@@ -23,7 +21,7 @@ const BlacklistToken = sequelize.define(
     {
         tableName: 'blacklist_tokens',
         timestamps: true,
-    }
+    },
 )
 
-module.exports = BlacklistToken
+export default BlacklistToken

@@ -1,19 +1,13 @@
-require('dotenv').config()
+import { DataTypes } from 'sequelize'
+import { sequelize } from '../../config/db'
 
-const { DataTypes } = require('sequelize')
-const { sequelize } = require('../../config/db')
-
-const Password = sequelize.define(
-    'Password',
+const RefreshToken = sequelize.define(
+    'RefreshToken',
     {
         id: {
             type: DataTypes.INTEGER,
             primaryKey: true,
             autoIncrement: true,
-        },
-        password: {
-            type: DataTypes.STRING,
-            allowNull: false,
         },
         user_id: {
             type: DataTypes.INTEGER,
@@ -23,11 +17,15 @@ const Password = sequelize.define(
                 key: 'id',
             },
         },
+        refresh_token: {
+            type: DataTypes.TEXT,
+            allowNull: false,
+        },
     },
     {
-        tableName: 'passwords',
+        tableName: 'refresh_tokens',
         timestamps: true,
-    }
+    },
 )
 
-module.exports = Password
+export default RefreshToken

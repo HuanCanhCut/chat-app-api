@@ -1,6 +1,13 @@
-const logger = require('../../logger/logger')
+import { NextFunction, Request } from 'express'
+import logger from '../../logger/logger'
 
-const errorHandler = (err, req, res, next) => {
+interface CustomError extends Error {
+    statusCode: number
+    status: string
+    error: any
+}
+
+const errorHandler = (err: CustomError, req: Request, res: any, next: NextFunction) => {
     err.statusCode = err.statusCode || 500
     err.status = err.status || 'error'
     err.error = err.error || {}
@@ -8,8 +15,8 @@ const errorHandler = (err, req, res, next) => {
     if (err.statusCode.toString().startsWith('5')) {
         logger.error(
             `Error occurred: ${err.message}\nStack trace: ${err.stack}\n Request: ${JSON.stringify(
-                req.body
-            )} \n Response: ${JSON.stringify(res.body)} \n Error code: ${err.statusCode}`
+                req.body,
+            )} \n Error code: ${err.statusCode}`,
         )
     }
 
@@ -20,4 +27,4 @@ const errorHandler = (err, req, res, next) => {
     })
 }
 
-module.exports = errorHandler
+export default errorHandler

@@ -1,6 +1,5 @@
-const { DataTypes } = require('sequelize')
-
-const { sequelize } = require('../../config/db')
+import { DataTypes } from 'sequelize'
+import { sequelize } from '../../config/db'
 
 const ResetCode = sequelize.define(
     'ResetCode',
@@ -30,7 +29,7 @@ const ResetCode = sequelize.define(
     {
         tableName: 'reset_code',
         timestamps: true,
-    }
+    },
 )
 
-module.exports = ResetCode
+export default ResetCode

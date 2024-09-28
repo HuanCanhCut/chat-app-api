@@ -1,8 +1,11 @@
-require('dotenv').config
-const jwt = require('jsonwebtoken')
-const clearCookie = require('../utils/clearCookies')
+import { NextFunction, Request } from 'express'
+import jwt from 'jsonwebtoken'
+import clearCookie from '../utils/clearCookies'
+import dotenv from 'dotenv'
 
-const verifyToken = async (req, res, next) => {
+dotenv.config()
+
+const verifyToken = async (req: Request, res: any, next: NextFunction) => {
     try {
         const { token } = req.cookies
 
@@ -15,11 +18,12 @@ const verifyToken = async (req, res, next) => {
             return
         }
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET)
+        const decoded = jwt.verify(token, process.env.JWT_SECRET as string)
 
         req.decoded = decoded
         next()
-    } catch (error) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (e) {
         clearCookie({ res, cookies: ['token', 'refreshToken'] })
         return res.status(401).json({
             message: 'Token signature could not be verified.',
@@ -28,4 +32,4 @@ const verifyToken = async (req, res, next) => {
     }
 }
 
-module.exports = verifyToken
+export default verifyToken

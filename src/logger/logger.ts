@@ -1,6 +1,7 @@
-const winston = require('winston')
+import winston from 'winston'
+import moment from 'moment-timezone'
+
 const { combine, timestamp, printf } = winston.format
-const moment = require('moment-timezone') // Thêm thư viện moment-timezone
 
 const customFormat = printf(({ level, message, timestamp }) => {
     const vietnamTime = moment(timestamp).tz('Asia/Ho_Chi_Minh').format('YYYY-MM-DD HH:mm:ss.SSS')
@@ -17,4 +18,4 @@ const logger = winston.createLogger({
     transports: [new winston.transports.File({ filename: 'error.log', level: 'error' })],
 })
 
-module.exports = logger
+export default logger

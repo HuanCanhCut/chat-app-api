@@ -1,9 +1,9 @@
-const bcrypt = require('bcrypt')
+import bcrypt from 'bcrypt'
 const SALT_ROUND = Number(process.env.SALT_ROUND)
 
-const hashValue = async (value) => {
+const hashValue = async (value: string) => {
     const salt = await bcrypt.genSalt(SALT_ROUND)
     return await bcrypt.hash(value, salt)
 }
 
-module.exports = hashValue
+export default hashValue
