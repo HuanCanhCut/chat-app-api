@@ -25,6 +25,11 @@ const User = sequelize.define(
             allowNull: false,
             defaultValue: '',
         },
+        nickname: {
+            type: DataTypes.STRING,
+            allowNull: false,
+            unique: true,
+        },
         uuid: {
             type: DataTypes.STRING,
             allowNull: false,

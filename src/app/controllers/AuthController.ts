@@ -13,6 +13,7 @@ import createToken from '../utils/createToken'
 import hashValue from '../utils/hashValue'
 import sendVerificationCode from '../helper/sendVerificationCode'
 import { UserModel } from '~/type'
+import cloudinary from '~/config/cloudinary'
 
 class AuthController {
     resetCodeExpired = 60
@@ -76,6 +77,7 @@ class AuthController {
                 defaults: {
                     email,
                     uuid: uuidv4(),
+                    nickname: email.split('@')[0],
                 },
             })
 
@@ -194,7 +196,68 @@ class AuthController {
         }
     }
 
-    // // [POST] /auth/loginwithtoken
+    // [POST] /auth/me/update
+    async updateCurrentUser(req: Request, res: Response, next: NextFunction) {
+        try {
+            const file = req.file
+
+            const { first_name, last_name, nickname } = req.body
+
+            if (!first_name || !last_name || !nickname) {
+                return next(new BadRequest({ message: 'First name, last name, nickname are required' }))
+            }
+
+            if (nickname.trim().split(' ').length > 2) {
+                return next(new BadRequest({ message: 'Nickname must be in the format: first last' }))
+            }
+
+            if (!file) {
+                try {
+                    await User.update({ first_name, last_name, nickname }, { where: { id: req.decoded.sub } })
+
+                    const user = await User.findOne({
+                        where: { id: req.decoded.sub },
+                    })
+
+                    res.json({ data: user })
+                    return
+                } catch (error: any) {
+                    return next(new InternalServerError({ message: error.message }))
+                }
+            }
+
+            cloudinary.v2.uploader
+                .upload_stream(
+                    { resource_type: 'image', folder: 'chat-app', public_id: nickname },
+                    async (error, resolve) => {
+                        if (error) {
+                            console.error(error)
+                            return next(new InternalServerError({ message: error.message }))
+                        }
+
+                        try {
+                            await User.update(
+                                { first_name, last_name, nickname, avatar: resolve?.secure_url },
+                                { where: { id: req.decoded.sub } },
+                            )
+
+                            const user = await User.findOne({
+                                where: { id: req.decoded.sub },
+                            })
+
+                            return res.json({ data: user })
+                        } catch (error: any) {
+                            return next(new InternalServerError({ message: error.message }))
+                        }
+                    },
+                )
+                .end(file.buffer)
+        } catch (error: any) {
+            return next(new InternalServerError({ message: error.message }))
+        }
+    }
+
+    // [POST] /auth/loginwithtoken
     async loginWithToken(req: Request, res: Response, next: NextFunction) {
         try {
             const { token } = req.body
@@ -224,6 +287,7 @@ class AuthController {
                     full_name: name,
                     uuid: uuidv4(),
                     avatar: picture,
+                    nickname: email?.split('@')[0],
                 },
             })
 
