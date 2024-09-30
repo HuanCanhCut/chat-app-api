@@ -215,11 +215,7 @@ class AuthController {
                 try {
                     await User.update({ first_name, last_name, nickname }, { where: { id: req.decoded.sub } })
 
-                    const user = await User.findOne({
-                        where: { id: req.decoded.sub },
-                    })
-
-                    res.json({ data: user })
+                    res.sendStatus(200)
                     return
                 } catch (error: any) {
                     return next(new InternalServerError({ message: error.message }))
@@ -228,7 +224,7 @@ class AuthController {
 
             cloudinary.v2.uploader
                 .upload_stream(
-                    { resource_type: 'image', folder: 'chat-app', public_id: nickname },
+                    { resource_type: 'image', folder: 'chat-app', public_id: req.decoded.sub },
                     async (error, resolve) => {
                         if (error) {
                             console.error(error)
@@ -241,11 +237,7 @@ class AuthController {
                                 { where: { id: req.decoded.sub } },
                             )
 
-                            const user = await User.findOne({
-                                where: { id: req.decoded.sub },
-                            })
-
-                            return res.json({ data: user })
+                            res.sendStatus(200)
                         } catch (error: any) {
                             return next(new InternalServerError({ message: error.message }))
                         }
