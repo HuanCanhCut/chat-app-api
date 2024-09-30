@@ -5,6 +5,7 @@ import Password from './PasswordModel'
 import RefreshToken from './RefreshTokenModel'
 import BlacklistToken from './BlacklistTokenModel'
 import ResetCode from './ResetCodeModel'
+import Friendships from './Friendships'
 
 // define relations
 User.hasOne(Password, { foreignKey: 'user_id' })
@@ -16,6 +17,12 @@ RefreshToken.belongsTo(User, { foreignKey: 'user_id' })
 User.hasMany(ResetCode, { foreignKey: 'email' })
 ResetCode.belongsTo(User, { foreignKey: 'email' })
 
+User.hasMany(Friendships, { foreignKey: 'user_id', as: 'userFriendships' })
+User.hasMany(Friendships, { foreignKey: 'friend_id', as: 'friendFriendships' })
+
+Friendships.belongsTo(User, { foreignKey: 'user_id', as: 'user' })
+Friendships.belongsTo(User, { foreignKey: 'friend_id', as: 'friend' })
+
 // Sync all models with the database
 sequelize
     .sync()
@@ -25,4 +32,4 @@ sequelize
     .catch((err) => console.error('Sync failed:', err))
 
 // Export all models
-export { User, Password, RefreshToken, BlacklistToken, ResetCode }
+export { User, Password, RefreshToken, BlacklistToken, ResetCode, Friendships }

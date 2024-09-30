@@ -1,6 +1,7 @@
-import { NextFunction, Request, Response } from 'express'
+import { Request, Response, NextFunction } from 'express'
+
+import { BadRequest, InternalServerError, NotFoundError } from '../errors/errors'
 import { User } from '../models'
-import { InternalServerError, NotFoundError, BadRequest } from '../errors/errors'
 
 class UserController {
     // [GET] /user/:nickname
@@ -20,7 +21,7 @@ class UserController {
                 return next(new NotFoundError({ message: 'User not found' }))
             }
 
-            res.json({ user })
+            res.json({ data: user })
         } catch (error: any) {
             return next(new InternalServerError({ message: error.message }))
         }
