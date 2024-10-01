@@ -2,8 +2,9 @@ import { Request, Response, NextFunction } from 'express'
 
 import { BadRequest, InternalServerError, NotFoundError, UnauthorizedError } from '../errors/errors'
 import { Friendships, User } from '../models'
-import { QueryTypes } from 'sequelize'
+import { QueryTypes, Sequelize } from 'sequelize'
 import { sequelize } from '~/config/db'
+import { Op } from 'sequelize'
 
 class UserController {
     async isFriend(userId: string, friendId: string) {
@@ -107,7 +108,7 @@ class UserController {
         }
     }
 
-    // [GET] /user?page=&per_page=
+    // [GET] /users?page=&per_page=
     async getAllFriends(req: Request, res: Response, next: NextFunction) {
         try {
             const { page, per_page } = req.query
@@ -143,7 +144,61 @@ class UserController {
                 type: QueryTypes.SELECT,
             })
 
-            res.json({ data: friends })
+            res.json({
+                data: friends,
+                meta: {
+                    pagination: {
+                        count: friends.length,
+                        per_page: Number(per_page),
+                        current_page: Number(page),
+                    },
+                },
+            })
+        } catch (error: any) {
+            return next(new InternalServerError({ message: error.message }))
+        }
+    }
+
+    // [POST] /user/friend-invitation?page=&per_page=
+    async getFriendInvitation(req: Request, res: Response, next: NextFunction) {
+        try {
+            const decoded = req.decoded
+            const { page, per_page } = req.query
+
+            if (!page || !per_page) {
+                return next(new BadRequest({ message: 'Page and per_page are required' }))
+            }
+
+            if (!decoded) {
+                return next(new UnauthorizedError({ message: 'Unauthorized' }))
+            }
+
+            // Danh sách lời mời kết bạn
+            const friendInvitations = await Friendships.findAll<any>({
+                where: {
+                    [Op.and]: [{ status: 'pending' }, { friend_id: decoded.sub }],
+                },
+                include: {
+                    model: User,
+                    as: 'user',
+                    where: {
+                        id: Sequelize.col('Friendships.user_id'),
+                    },
+                },
+                limit: Number(per_page),
+                offset: (Number(page) - 1) * Number(per_page),
+            })
+
+            res.json({
+                data: friendInvitations,
+                meta: {
+                    pagination: {
+                        count: friendInvitations.length,
+                        per_page: Number(per_page),
+                        current_page: Number(page),
+                    },
+                },
+            })
         } catch (error: any) {
             return next(new InternalServerError({ message: error.message }))
         }
