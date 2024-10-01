@@ -34,17 +34,26 @@ class UserController {
         try {
             const { nickname } = req.params
 
+            const decoded = req.decoded
+
+            if (!decoded) {
+                return next(new UnauthorizedError({ message: 'Unauthorized' }))
+            }
+
             if (!nickname) {
                 return next(new BadRequest({ message: 'Nickname is required' }))
             }
 
-            const user = await User.findOne({
+            const user = await User.findOne<any>({
                 where: { nickname: nickname.slice(1).toLowerCase() },
             })
 
             if (!user) {
                 return next(new NotFoundError({ message: 'User not found' }))
             }
+
+            const isFriend = await this.isFriend(decoded.sub, user.id)
+            user.dataValues.isFriend = isFriend
 
             res.json({ data: user })
         } catch (error: any) {
@@ -67,10 +76,14 @@ class UserController {
                 return next(new BadRequest({ message: 'User ID is required' }))
             }
 
-            const hasUser = await User.findOne({ where: { id } })
+            const hasUser = await User.findOne<any>({ where: { id } })
 
             if (!hasUser) {
                 return next(new NotFoundError({ message: 'User not found' }))
+            }
+
+            if (hasUser.id === decoded.sub) {
+                return next(new BadRequest({ message: 'You cannot add yourself as a friend' }))
             }
 
             const isFriend = await this.isFriend(decoded.sub, id)
@@ -89,6 +102,48 @@ class UserController {
             }
 
             res.sendStatus(201)
+        } catch (error: any) {
+            return next(new InternalServerError({ message: error.message }))
+        }
+    }
+
+    // [GET] /user?page=&per_page=
+    async getAllFriends(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { page, per_page } = req.query
+
+            const decoded = req.decoded
+
+            if (!decoded) {
+                return next(new UnauthorizedError({ message: 'Unauthorized' }))
+            }
+
+            if (!page || !per_page) {
+                return next(new BadRequest({ message: 'Page and per_page are required' }))
+            }
+
+            const query = `
+                SELECT 
+                    users.*
+                FROM 
+                    friendships
+                JOIN 
+                    users 
+                    ON 
+                        (users.id = friendships.friend_id AND friendships.user_id = ${decoded.sub}) 
+                    OR 
+                        (users.id = friendships.user_id AND friendships.friend_id = ${decoded.sub})
+                    WHERE 
+                        friendships.status = 'accepted'
+
+                    LIMIT ${per_page} OFFSET ${(Number(page) - 1) * Number(per_page)};
+            `
+
+            const friends = await sequelize.query(query, {
+                type: QueryTypes.SELECT,
+            })
+
+            res.json({ data: friends })
         } catch (error: any) {
             return next(new InternalServerError({ message: error.message }))
         }
