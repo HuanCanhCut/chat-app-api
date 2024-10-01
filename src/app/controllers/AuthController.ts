@@ -13,7 +13,6 @@ import createToken from '../utils/createToken'
 import hashValue from '../utils/hashValue'
 import sendVerificationCode from '../helper/sendVerificationCode'
 import { UserModel } from '~/type'
-import cloudinary from '~/config/cloudinary'
 
 class AuthController {
     resetCodeExpired = 60
@@ -390,7 +389,6 @@ class AuthController {
             }
 
             // Update password
-
             const user = await User.findOne({
                 where: {
                     email,
