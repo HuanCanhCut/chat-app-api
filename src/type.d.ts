@@ -11,6 +11,7 @@ interface UserAttributes {
     avatar: string
     createdAt: Date
     updatedAt: Date
+    friends_count: number
 }
 
 // Interface này xác định các thuộc tính nào là không bắt buộc khi tạo mới

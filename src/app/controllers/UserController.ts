@@ -5,6 +5,8 @@ import { Friendships, User } from '../models'
 import { QueryTypes, Sequelize } from 'sequelize'
 import { sequelize } from '~/config/db'
 import { Op } from 'sequelize'
+import { UserAttributes } from '~/type'
+import getFriendsCount from '../utils/friendsCount'
 
 class UserController {
     async isFriend(userId: string, friendId: string) {
@@ -125,7 +127,7 @@ class UserController {
 
             const query = `
                 SELECT 
-                    users.*
+                    users.id, users.first_name, users.last_name, users.full_name, users.nickname, users.avatar, users.uuid, users.createdAt, users.updatedAt
                 FROM 
                     friendships
                 JOIN 
@@ -140,9 +142,13 @@ class UserController {
                     LIMIT ${per_page} OFFSET ${(Number(page) - 1) * Number(per_page)};
             `
 
-            const friends = await sequelize.query(query, {
+            const friends: UserAttributes[] = await sequelize.query(query, {
                 type: QueryTypes.SELECT,
             })
+
+            for (let i = 0; i < friends.length; i++) {
+                friends[i].friends_count = await getFriendsCount(friends[i].id)
+            }
 
             res.json({
                 data: friends,
@@ -174,7 +180,7 @@ class UserController {
             }
 
             // Danh sách lời mời kết bạn
-            const friendInvitations = await Friendships.findAll<any>({
+            const { rows: friendInvitations, count } = await Friendships.findAndCountAll<any>({
                 where: {
                     [Op.and]: [{ status: 'pending' }, { friend_id: decoded.sub }],
                 },
@@ -193,6 +199,7 @@ class UserController {
                 data: friendInvitations,
                 meta: {
                     pagination: {
+                        total: count,
                         count: friendInvitations.length,
                         per_page: Number(per_page),
                         current_page: Number(page),
