@@ -1,8 +1,15 @@
-import { DataTypes } from 'sequelize'
+import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
 import { sequelize } from '../../config/db'
 
-const BlacklistToken = sequelize.define(
-    'BlacklistToken',
+class BlacklistToken extends Model<InferAttributes<BlacklistToken>, InferCreationAttributes<BlacklistToken>> {
+    declare id?: number
+    declare token: string
+    declare refresh_token: string
+    declare createdAt?: Date
+    declare updatedAt?: Date
+}
+
+BlacklistToken.init(
     {
         id: {
             type: DataTypes.INTEGER,
@@ -20,6 +27,7 @@ const BlacklistToken = sequelize.define(
     },
     {
         tableName: 'blacklist_tokens',
+        sequelize,
         timestamps: true,
     },
 )

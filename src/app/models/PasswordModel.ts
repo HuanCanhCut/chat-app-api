@@ -1,8 +1,14 @@
-import { DataTypes } from 'sequelize'
+import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
 import { sequelize } from '../../config/db'
 
-const Password = sequelize.define(
-    'Password',
+class Password extends Model<InferAttributes<Password>, InferCreationAttributes<Password>> {
+    declare id?: number
+    declare password: string
+    declare user_id: number
+    declare createdAt?: Date
+    declare updatedAt?: Date
+}
+Password.init(
     {
         id: {
             type: DataTypes.INTEGER,
@@ -24,6 +30,7 @@ const Password = sequelize.define(
     },
     {
         tableName: 'passwords',
+        sequelize,
         timestamps: true,
     },
 )

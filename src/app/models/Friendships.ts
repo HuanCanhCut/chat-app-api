@@ -1,10 +1,18 @@
-import { DataTypes } from 'sequelize'
+import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
 
 import { sequelize } from '../../config/db'
 import getFriendsCount from '../utils/friendsCount'
 
-const Friendships = sequelize.define(
-    'Friendships',
+class Friendships extends Model<InferAttributes<Friendships>, InferCreationAttributes<Friendships>> {
+    declare id?: number
+    declare user_id: number
+    declare friend_id: number
+    declare status?: string
+    declare createdAt?: Date
+    declare updatedAt?: Date
+}
+
+Friendships.init(
     {
         id: {
             type: DataTypes.INTEGER,
@@ -34,6 +42,7 @@ const Friendships = sequelize.define(
         },
     },
     {
+        sequelize,
         tableName: 'friendships',
         timestamps: true,
     },

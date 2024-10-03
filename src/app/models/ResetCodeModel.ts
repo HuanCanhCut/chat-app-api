@@ -1,8 +1,15 @@
-import { DataTypes } from 'sequelize'
+import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
 import { sequelize } from '../../config/db'
 
-const ResetCode = sequelize.define(
-    'ResetCode',
+class ResetCode extends Model<InferAttributes<ResetCode>, InferCreationAttributes<ResetCode>> {
+    declare id?: number
+    declare email: string
+    declare code: number
+    declare createdAt?: Date
+    declare updatedAt?: Date
+}
+
+ResetCode.init(
     {
         id: {
             type: DataTypes.INTEGER,
@@ -28,6 +35,7 @@ const ResetCode = sequelize.define(
     },
     {
         tableName: 'reset_code',
+        sequelize,
         timestamps: true,
     },
 )

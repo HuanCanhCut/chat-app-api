@@ -1,9 +1,22 @@
-import { DataTypes } from 'sequelize'
+import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
 
 import { sequelize } from '../../config/db'
 
-const User = sequelize.define(
-    'User',
+class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
+    declare id?: number
+    declare first_name: string
+    declare last_name: string
+    declare full_name: string
+    declare nickname: string
+    declare uuid: string
+    declare email: string
+    declare avatar: string
+    declare sent_friend_request?: boolean
+    declare is_friend?: boolean
+    declare createdAt?: Date
+    declare updatedAt?: Date
+}
+User.init(
     {
         id: {
             type: DataTypes.INTEGER,
@@ -50,6 +63,7 @@ const User = sequelize.define(
     },
     {
         tableName: 'users',
+        sequelize,
         timestamps: true,
     },
 )

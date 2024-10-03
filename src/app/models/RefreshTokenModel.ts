@@ -1,8 +1,15 @@
-import { DataTypes } from 'sequelize'
+import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
 import { sequelize } from '../../config/db'
 
-const RefreshToken = sequelize.define(
-    'RefreshToken',
+class RefreshToken extends Model<InferAttributes<RefreshToken>, InferCreationAttributes<RefreshToken>> {
+    declare id?: number
+    declare user_id: number
+    declare refresh_token: string
+    declare createdAt?: Date
+    declare updatedAt?: Date
+}
+
+RefreshToken.init(
     {
         id: {
             type: DataTypes.INTEGER,
@@ -25,6 +32,7 @@ const RefreshToken = sequelize.define(
     {
         tableName: 'refresh_tokens',
         timestamps: true,
+        sequelize,
     },
 )
 

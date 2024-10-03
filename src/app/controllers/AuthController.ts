@@ -42,7 +42,7 @@ class AuthController {
         status?: number
     }) {
         await RefreshToken.create({
-            user_id: user.id,
+            user_id: user.id as number,
             refresh_token: refreshToken,
         })
 
@@ -87,12 +87,12 @@ class AuthController {
             const passwordHashed = await hashValue(password)
 
             await Password.create({
-                user_id: user.id,
+                user_id: user.id as number,
                 password: passwordHashed,
             })
 
             const payload = {
-                sub: user.id,
+                sub: user.id as number,
             }
 
             const { token, refreshToken } = this.generateToken(payload)
@@ -184,13 +184,17 @@ class AuthController {
 
             const { email, name, picture } = decodedToken
 
+            if (!email || !name || !picture) {
+                return next(new UnauthorizedError({ message: 'Invalid token' }))
+            }
+
             const splitName = name.split(' ')
             const middle = Math.floor(splitName.length / 2)
 
             const firstName = splitName.slice(0, middle).join(' ')
             const lastName = splitName.slice(middle).join(' ')
 
-            const [user] = await User.findOrCreate<any>({
+            const [user] = await User.findOrCreate({
                 where: {
                     email,
                 },
@@ -205,7 +209,11 @@ class AuthController {
                 },
             })
 
-            const { token: AccessToken, refreshToken } = this.generateToken({ sub: user.id })
+            if (!user) {
+                return next(new UnauthorizedError({ message: 'Invalid token' }))
+            }
+
+            const { token: AccessToken, refreshToken } = this.generateToken({ sub: user.id as number })
 
             this.sendToClient({ res, user, token: AccessToken, refreshToken })
         } catch (error: any) {

@@ -1,12 +1,13 @@
-import { NextFunction, Request, Response } from 'express'
+import { NextFunction, Response } from 'express'
 import cloudinary from '~/config/cloudinary'
 
 import { User } from '../models'
+import { IRequest } from '~/type'
 import { InternalServerError, NotFoundError, BadRequest } from '../errors/errors'
 
 class MeController {
     // [GET] /auth/me
-    async getCurrentUser(req: Request, res: Response, next: NextFunction) {
+    async getCurrentUser(req: IRequest, res: Response, next: NextFunction) {
         try {
             const decoded = req.decoded as { sub: number }
 
@@ -14,7 +15,7 @@ class MeController {
                 return next(new NotFoundError({ message: 'User not found' }))
             }
 
-            const user = await User.findOne<any>({
+            const user = await User.findOne({
                 where: {
                     id: decoded.sub,
                 },
@@ -31,7 +32,7 @@ class MeController {
     }
 
     // [POST] /auth/me/update
-    async updateCurrentUser(req: Request, res: Response, next: NextFunction) {
+    async updateCurrentUser(req: IRequest, res: Response, next: NextFunction) {
         try {
             const file = req.file
 

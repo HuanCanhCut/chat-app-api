@@ -1,13 +1,14 @@
-import { Request, Response, NextFunction } from 'express'
+import { Response, NextFunction } from 'express'
 
 import { BadRequest, InternalServerError, NotFoundError, UnauthorizedError } from '../errors/errors'
 import { Friendships, User } from '../models'
 import { literal, Sequelize } from 'sequelize'
 import { Op } from 'sequelize'
+import { IRequest } from '~/type'
 
 class UserController {
-    async isFriend(userId: string, friendId: string) {
-        const isFriend = await Friendships.findOne<any>({
+    async isFriend(userId: number, friendId: number) {
+        const isFriend = await Friendships.findOne({
             attributes: ['user_id'],
             where: {
                 status: 'accepted',
@@ -29,7 +30,7 @@ class UserController {
     }
 
     // [GET] /user/:nickname
-    async getAnUser(req: Request, res: Response, next: NextFunction) {
+    async getAnUser(req: IRequest, res: Response, next: NextFunction) {
         try {
             const { nickname } = req.params
 
@@ -43,13 +44,17 @@ class UserController {
                 return next(new BadRequest({ message: 'Nickname is required' }))
             }
 
-            const user = await User.findOne<any>({
+            const user = await User.findOne({
                 where: { nickname: nickname.slice(1).toLowerCase() },
             })
 
+            if (!user) {
+                return next(new NotFoundError({ message: 'User not found' }))
+            }
+
             // Kiểm tra xem người dùng đã gửi lời mời kết bạn hay chưa
             if (user.id !== decoded.sub) {
-                const sentFriendRequest = await Friendships.findOne<any>({
+                const sentFriendRequest = await Friendships.findOne({
                     attributes: ['user_id'],
                     where: {
                         [Op.and]: [{ status: 'pending' }, { [Op.or]: [{ user_id: user.id }, { friend_id: user.id }] }],
@@ -69,11 +74,7 @@ class UserController {
                 user.dataValues.sent_friend_request = sentFriendRequest ? true : false
             }
 
-            if (!user) {
-                return next(new NotFoundError({ message: 'User not found' }))
-            }
-
-            const isFriend = await this.isFriend(decoded.sub, user.id)
+            const isFriend = await this.isFriend(decoded.sub, Number(user.id))
             user.dataValues.is_friend = isFriend
 
             res.json({ data: user })
@@ -83,7 +84,7 @@ class UserController {
     }
 
     // [GET] /user/:id/add
-    async addFriend(req: Request, res: Response, next: NextFunction) {
+    async addFriend(req: IRequest, res: Response, next: NextFunction) {
         try {
             // id of user that want to add friend
             const { id: id } = req.params
@@ -107,7 +108,7 @@ class UserController {
                 return next(new BadRequest({ message: 'You cannot add yourself as a friend' }))
             }
 
-            const isFriend = await this.isFriend(decoded.sub, id)
+            const isFriend = await this.isFriend(decoded.sub, Number(id))
 
             if (isFriend) {
                 return next(new BadRequest({ message: 'User is already your friend' }))
@@ -115,7 +116,7 @@ class UserController {
 
             const newFriendship = await Friendships.create({
                 user_id: decoded.sub,
-                friend_id: id,
+                friend_id: Number(id),
             })
 
             if (!newFriendship) {
@@ -129,7 +130,7 @@ class UserController {
     }
 
     // [GET] /users?page=&per_page=
-    async getAllFriends(req: Request, res: Response, next: NextFunction) {
+    async getAllFriends(req: IRequest, res: Response, next: NextFunction) {
         try {
             const { page, per_page } = req.query
 
@@ -179,7 +180,7 @@ class UserController {
     }
 
     // [POST] /user/friend-invitation?page=&per_page=
-    async getFriendInvitation(req: Request, res: Response, next: NextFunction) {
+    async getFriendInvitation(req: IRequest, res: Response, next: NextFunction) {
         try {
             const decoded = req.decoded
             const { page, per_page } = req.query
