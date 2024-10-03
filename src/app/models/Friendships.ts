@@ -46,8 +46,6 @@ Friendships.afterFind(async (result: any, options: any) => {
             if (includeModel.dataValues && includeModel.dataValues.user) {
                 const count = await getFriendsCount(includeModel.dataValues.user_id)
 
-                console.log(count)
-
                 includeModel.dataValues.user.dataValues.friends_count = count
             }
         }

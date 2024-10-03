@@ -119,6 +119,7 @@ class AuthController {
                 },
                 include: {
                     model: Password,
+                    required: true,
                     where: {
                         user_id: Sequelize.col('User.id'),
                     },
@@ -184,7 +185,7 @@ class AuthController {
             const { email, name, picture } = decodedToken
 
             const splitName = name.split(' ')
-            const middle = Math.ceil(splitName.length / 2)
+            const middle = Math.floor(splitName.length / 2)
 
             const firstName = splitName.slice(0, middle).join(' ')
             const lastName = splitName.slice(middle).join(' ')
@@ -331,13 +332,12 @@ class AuthController {
             }
 
             await Promise.all([
-                await ResetCode.create({
+                ResetCode.create({
                     email,
                     code: resetCode,
                 }),
-
                 // Delete all records if expired
-                await ResetCode.destroy({
+                ResetCode.destroy({
                     where: {
                         email,
                         createdAt: {

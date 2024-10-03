@@ -2,34 +2,30 @@ import { Request, Response, NextFunction } from 'express'
 
 import { BadRequest, InternalServerError, NotFoundError, UnauthorizedError } from '../errors/errors'
 import { Friendships, User } from '../models'
-import { QueryTypes, Sequelize } from 'sequelize'
-import { sequelize } from '~/config/db'
+import { literal, Sequelize } from 'sequelize'
 import { Op } from 'sequelize'
-import { UserAttributes } from '~/type'
-import getFriendsCount from '../utils/friendsCount'
 
 class UserController {
     async isFriend(userId: string, friendId: string) {
-        const query = `
-            SELECT users.*
-            FROM 
-                friendships 
-            JOIN 
-                users
-            ON 
-                (users.id = friendships.friend_id AND friendships.user_id = ${userId}) 
-            OR 
-                (users.id = friendships.user_id AND friendships.friend_id = ${userId}) 
-            WHERE 
-                friendships.status = 'accepted' AND
-                friendships.friend_id = ${friendId}
-        `
-
-        const isFriend = await sequelize.query(query, {
-            type: QueryTypes.SELECT,
+        const isFriend = await Friendships.findOne<any>({
+            attributes: ['user_id'],
+            where: {
+                status: 'accepted',
+                [Op.or]: [{ friend_id: friendId }, { user_id: friendId }],
+            },
+            include: {
+                model: User,
+                as: 'user',
+                required: true,
+                on: literal(`
+                        (user.id = Friendships.friend_id AND Friendships.user_id = ${userId})
+                    OR
+                        (user.id = Friendships.user_id AND Friendships.friend_id = ${userId})
+                `),
+            },
         })
 
-        return isFriend.length > 0
+        return isFriend ? true : false
     }
 
     // [GET] /user/:nickname
@@ -51,12 +47,34 @@ class UserController {
                 where: { nickname: nickname.slice(1).toLowerCase() },
             })
 
+            // Kiểm tra xem người dùng đã gửi lời mời kết bạn hay chưa
+            if (user.id !== decoded.sub) {
+                const sentFriendRequest = await Friendships.findOne<any>({
+                    attributes: ['user_id'],
+                    where: {
+                        [Op.and]: [{ status: 'pending' }, { [Op.or]: [{ user_id: user.id }, { friend_id: user.id }] }],
+                    },
+                    include: {
+                        model: User,
+                        as: 'user',
+                        required: true,
+                        on: literal(`
+                            (user.id = Friendships.friend_id AND Friendships.user_id = ${decoded.sub})
+                                OR
+                            (user.id = Friendships.user_id AND Friendships.friend_id = ${decoded.sub})
+                        `),
+                    },
+                })
+
+                user.dataValues.sent_friend_request = sentFriendRequest ? true : false
+            }
+
             if (!user) {
                 return next(new NotFoundError({ message: 'User not found' }))
             }
 
             const isFriend = await this.isFriend(decoded.sub, user.id)
-            user.dataValues.isFriend = isFriend
+            user.dataValues.is_friend = isFriend
 
             res.json({ data: user })
         } catch (error: any) {
@@ -125,38 +143,33 @@ class UserController {
                 return next(new BadRequest({ message: 'Page and per_page are required' }))
             }
 
-            const query = `
-                SELECT 
-                    users.id, users.first_name, users.last_name, users.full_name, users.nickname, users.avatar, users.uuid, users.createdAt, users.updatedAt
-                FROM 
-                    friendships
-                JOIN 
-                    users 
-                    ON 
-                        (users.id = friendships.friend_id AND friendships.user_id = ${decoded.sub}) 
-                    OR 
-                        (users.id = friendships.user_id AND friendships.friend_id = ${decoded.sub})
-                    WHERE 
-                        friendships.status = 'accepted'
-
-                    LIMIT ${per_page} OFFSET ${(Number(page) - 1) * Number(per_page)};
-            `
-
-            const friends: UserAttributes[] = await sequelize.query(query, {
-                type: QueryTypes.SELECT,
+            const { rows: friends, count } = await Friendships.findAndCountAll<any>({
+                where: {
+                    status: 'accepted',
+                },
+                include: {
+                    model: User,
+                    as: 'user',
+                    required: true,
+                    on: literal(`   
+                            (user.id = Friendships.friend_id AND Friendships.user_id = ${decoded.sub})
+                        OR
+                            (user.id = Friendships.user_id AND Friendships.friend_id = ${decoded.sub})
+                    `),
+                },
+                limit: Number(per_page),
+                offset: (Number(page) - 1) * Number(per_page),
             })
-
-            for (let i = 0; i < friends.length; i++) {
-                friends[i].friends_count = await getFriendsCount(friends[i].id)
-            }
 
             res.json({
                 data: friends,
                 meta: {
                     pagination: {
+                        total: count,
                         count: friends.length,
                         per_page: Number(per_page),
                         current_page: Number(page),
+                        total_pages: Math.ceil(count / Number(per_page)),
                     },
                 },
             })
@@ -187,6 +200,7 @@ class UserController {
                 include: {
                     model: User,
                     as: 'user',
+                    required: true,
                     where: {
                         id: Sequelize.col('Friendships.user_id'),
                     },
@@ -203,6 +217,7 @@ class UserController {
                         count: friendInvitations.length,
                         per_page: Number(per_page),
                         current_page: Number(page),
+                        total_pages: Math.ceil(count / Number(per_page)),
                     },
                 },
             })

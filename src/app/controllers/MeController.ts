@@ -10,8 +10,6 @@ class MeController {
         try {
             const decoded = req.decoded as { sub: number }
 
-            console.log(decoded)
-
             if (!decoded) {
                 return next(new NotFoundError({ message: 'User not found' }))
             }
