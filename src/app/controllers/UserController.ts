@@ -1,6 +1,6 @@
 import { Response, NextFunction } from 'express'
 
-import { BadRequest, InternalServerError, NotFoundError, UnauthorizedError } from '../errors/errors'
+import { BadRequest, InternalServerError, NotFoundError } from '../errors/errors'
 import { Friendships, User } from '../models'
 import { literal, Sequelize } from 'sequelize'
 import { Op } from 'sequelize'
@@ -29,16 +29,20 @@ class UserController {
         return isFriend ? true : false
     }
 
+    joinLiteral(userId: number) {
+        return literal(`
+                        (user.id = Friendships.friend_id AND Friendships.user_id = ${userId})
+                    OR
+                        (user.id = Friendships.user_id AND Friendships.friend_id = ${userId})
+                `)
+    }
+
     // [GET] /user/:nickname
     async getAnUser(req: IRequest, res: Response, next: NextFunction) {
         try {
             const { nickname } = req.params
 
             const decoded = req.decoded
-
-            if (!decoded) {
-                return next(new UnauthorizedError({ message: 'Unauthorized' }))
-            }
 
             if (!nickname) {
                 return next(new BadRequest({ message: 'Nickname is required' }))
@@ -52,8 +56,11 @@ class UserController {
                 return next(new NotFoundError({ message: 'User not found' }))
             }
 
+            const isFriend = await this.isFriend(decoded.sub, Number(user.id))
+            user.dataValues.is_friend = isFriend
+
             // Kiểm tra xem người dùng đã gửi lời mời kết bạn hay chưa
-            if (user.id !== decoded.sub) {
+            if (user.id !== decoded.sub && !isFriend) {
                 const sentFriendRequest = await Friendships.findOne({
                     attributes: ['user_id'],
                     where: {
@@ -63,19 +70,12 @@ class UserController {
                         model: User,
                         as: 'user',
                         required: true,
-                        on: literal(`
-                            (user.id = Friendships.friend_id AND Friendships.user_id = ${decoded.sub})
-                                OR
-                            (user.id = Friendships.user_id AND Friendships.friend_id = ${decoded.sub})
-                        `),
+                        on: this.joinLiteral(decoded.sub),
                     },
                 })
 
                 user.dataValues.sent_friend_request = sentFriendRequest ? true : false
             }
-
-            const isFriend = await this.isFriend(decoded.sub, Number(user.id))
-            user.dataValues.is_friend = isFriend
 
             res.json({ data: user })
         } catch (error: any) {
@@ -89,10 +89,6 @@ class UserController {
             // id of user that want to add friend
             const { id: id } = req.params
             const decoded = req.decoded
-
-            if (!decoded) {
-                return next(new UnauthorizedError({ message: 'Unauthorized' }))
-            }
 
             if (!id) {
                 return next(new BadRequest({ message: 'User ID is required' }))
@@ -136,10 +132,6 @@ class UserController {
 
             const decoded = req.decoded
 
-            if (!decoded) {
-                return next(new UnauthorizedError({ message: 'Unauthorized' }))
-            }
-
             if (!page || !per_page) {
                 return next(new BadRequest({ message: 'Page and per_page are required' }))
             }
@@ -152,11 +144,7 @@ class UserController {
                     model: User,
                     as: 'user',
                     required: true,
-                    on: literal(`   
-                            (user.id = Friendships.friend_id AND Friendships.user_id = ${decoded.sub})
-                        OR
-                            (user.id = Friendships.user_id AND Friendships.friend_id = ${decoded.sub})
-                    `),
+                    on: this.joinLiteral(decoded.sub),
                 },
                 limit: Number(per_page),
                 offset: (Number(page) - 1) * Number(per_page),
@@ -179,6 +167,49 @@ class UserController {
         }
     }
 
+    // [POST] /user/:id/accept
+    async acceptFriend(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const { id } = req.params
+            const decoded = req.decoded
+
+            if (!id) {
+                return next(new BadRequest({ message: 'User ID is required' }))
+            }
+
+            const isFriend = await this.isFriend(decoded.sub, Number(id))
+
+            if (isFriend) {
+                return next(new BadRequest({ message: 'User is already your friend' }))
+            }
+
+            const friendRequest = await Friendships.findOne({
+                where: {
+                    [Op.and]: [
+                        { status: 'pending' },
+                        { [Op.or]: [{ user_id: decoded.sub }, { friend_id: decoded.sub }] },
+                    ],
+                },
+                include: {
+                    model: User,
+                    as: 'user',
+                    required: true,
+                    on: this.joinLiteral(Number(id)),
+                },
+            })
+
+            if (!friendRequest) {
+                return next(new NotFoundError({ message: 'Friend request not found' }))
+            }
+
+            await friendRequest.update({ status: 'accepted' })
+
+            res.sendStatus(200)
+        } catch (error: any) {
+            return next(new InternalServerError({ message: error.message }))
+        }
+    }
+
     // [POST] /user/friend-invitation?page=&per_page=
     async getFriendInvitation(req: IRequest, res: Response, next: NextFunction) {
         try {
@@ -187,10 +218,6 @@ class UserController {
 
             if (!page || !per_page) {
                 return next(new BadRequest({ message: 'Page and per_page are required' }))
-            }
-
-            if (!decoded) {
-                return next(new UnauthorizedError({ message: 'Unauthorized' }))
             }
 
             // Danh sách lời mời kết bạn
