@@ -9,6 +9,8 @@ router.get('/friend-invitation', verifyToken, UserController.getFriendInvitation
 router.post('/:id/add', verifyToken, UserController.addFriend.bind(UserController))
 router.post('/:id/accept', verifyToken, UserController.acceptFriend.bind(UserController))
 router.post('/:id/reject', verifyToken, UserController.rejectFriend.bind(UserController))
+router.post('/:id/cancel', verifyToken, UserController.cancelMakeFriendRequest.bind(UserController))
+router.post('/:id/unfriend', verifyToken, UserController.unfriend.bind(UserController))
 router.get('/:nickname', verifyToken, UserController.getAnUser.bind(UserController))
 
 export default router

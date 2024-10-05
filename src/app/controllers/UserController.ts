@@ -206,7 +206,11 @@ class UserController {
                 return next(new NotFoundError({ message: 'Friend request not found' }))
             }
 
-            await isMakeFriendRequest.update({ status: 'accepted' })
+            const updateSuccess = await isMakeFriendRequest.update({ status: 'accepted' })
+
+            if (!updateSuccess) {
+                return next(new InternalServerError({ message: 'Failed to accept friend request' }))
+            }
 
             res.sendStatus(200)
         } catch (error: any) {
@@ -236,6 +240,41 @@ class UserController {
             }
 
             await isMakeFriendRequest.destroy()
+
+            res.sendStatus(200)
+        } catch (error: any) {
+            return next(new InternalServerError({ message: error.message }))
+        }
+    }
+
+    // [POST] /user/:id/unfriend
+    async unfriend(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const { id } = req.params
+            const decoded = req.decoded
+
+            if (!id) {
+                return next(new BadRequest({ message: 'User ID is required' }))
+            }
+
+            if (decoded.sub === Number(id)) {
+                return next(new BadRequest({ message: 'You cannot unfriend yourself' }))
+            }
+
+            const isFriend = await this.isFriend(decoded.sub, Number(id))
+
+            if (!isFriend) {
+                return next(new NotFoundError({ message: 'User is not your friend' }))
+            }
+
+            await Friendships.destroy({
+                where: {
+                    [Op.or]: [
+                        { user_id: decoded.sub, friend_id: Number(id) },
+                        { user_id: Number(id), friend_id: decoded.sub },
+                    ],
+                },
+            })
 
             res.sendStatus(200)
         } catch (error: any) {
