@@ -6,6 +6,7 @@ interface friendCount {
 }
 
 const getFriendsCount = async (id: number /* id của người dùng muốn lấy danh sách */): Promise<number> => {
+    // Dùng raw query, không được dùng query builder vì sẽ gây ra đệ quy trong FriendShipModel
     const query = `
                     SELECT
                         COUNT(friendships.user_id) AS count

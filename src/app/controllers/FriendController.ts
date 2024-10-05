@@ -52,6 +52,12 @@ class FriendController {
                 return next(new BadRequest({ message: 'User is already your friend' }))
             }
 
+            const isMakeFriendRequest = await this.isMakeFriendRequest(decoded.sub, Number(id))
+
+            if (isMakeFriendRequest) {
+                return next(new BadRequest({ message: 'You have already sent a friend request to this user' }))
+            }
+
             const newFriendship = await Friendships.create({
                 user_id: decoded.sub,
                 friend_id: Number(id),
