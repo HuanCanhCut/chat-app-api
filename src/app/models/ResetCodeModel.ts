@@ -5,8 +5,8 @@ class ResetCode extends Model<InferAttributes<ResetCode>, InferCreationAttribute
     declare id?: number
     declare email: string
     declare code: number
-    declare createdAt?: Date
-    declare updatedAt?: Date
+    declare created_at?: Date
+    declare updated_at?: Date
 }
 
 ResetCode.init(
@@ -36,6 +36,7 @@ ResetCode.init(
     {
         tableName: 'reset_code',
         sequelize,
+        underscored: true,
         timestamps: true,
     },
 )

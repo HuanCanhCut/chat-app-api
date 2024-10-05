@@ -5,8 +5,8 @@ class BlacklistToken extends Model<InferAttributes<BlacklistToken>, InferCreatio
     declare id?: number
     declare token: string
     declare refresh_token: string
-    declare createdAt?: Date
-    declare updatedAt?: Date
+    declare created_at?: Date
+    declare updated_at?: Date
 }
 
 BlacklistToken.init(
@@ -28,6 +28,7 @@ BlacklistToken.init(
     {
         tableName: 'blacklist_tokens',
         sequelize,
+        underscored: true,
         timestamps: true,
     },
 )

@@ -8,8 +8,8 @@ class Friendships extends Model<InferAttributes<Friendships>, InferCreationAttri
     declare user_id: number
     declare friend_id: number
     declare status?: string
-    declare createdAt?: Date
-    declare updatedAt?: Date
+    declare created_at?: Date
+    declare updated_at?: Date
 }
 
 Friendships.init(
@@ -45,6 +45,7 @@ Friendships.init(
         sequelize,
         tableName: 'friendships',
         timestamps: true,
+        underscored: true,
     },
 )
 

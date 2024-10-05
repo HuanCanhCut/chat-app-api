@@ -5,8 +5,8 @@ class RefreshToken extends Model<InferAttributes<RefreshToken>, InferCreationAtt
     declare id?: number
     declare user_id: number
     declare refresh_token: string
-    declare createdAt?: Date
-    declare updatedAt?: Date
+    declare created_at?: Date
+    declare updated_at?: Date
 }
 
 RefreshToken.init(
@@ -31,8 +31,9 @@ RefreshToken.init(
     },
     {
         tableName: 'refresh_tokens',
-        timestamps: true,
         sequelize,
+        underscored: true,
+        timestamps: true,
     },
 )
 

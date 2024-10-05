@@ -269,7 +269,7 @@ class AuthController {
             const hasRefreshToken = await RefreshToken.findOne({
                 where: { user_id: decoded.sub },
                 limit: 1,
-                order: [['createdAt', 'DESC']],
+                order: [['created_at', 'DESC']],
             })
             // if have'nt refreshToken in database
             if (hasRefreshToken?.dataValues.refresh_token !== refreshToken) {
@@ -348,7 +348,7 @@ class AuthController {
                 ResetCode.destroy({
                     where: {
                         email,
-                        createdAt: {
+                        created_at: {
                             [Op.lt]: moment().subtract(this.resetCodeExpired, 'seconds').toISOString(),
                         },
                     },
@@ -381,12 +381,12 @@ class AuthController {
                 'YYYY-MM-DD HH:mm:ss',
             ).toISOString()
 
-            // chỉ lấy những code còn hạn (createdAt >= 60s trước hiện tại)
+            // chỉ lấy những code còn hạn (created_at >= 60s trước hiện tại)
             const hasCode = await ResetCode.findOne({
                 where: {
                     email,
                     code,
-                    createdAt: {
+                    created_at: {
                         [Op.gte]: sixtySecondsAgo,
                     },
                 },

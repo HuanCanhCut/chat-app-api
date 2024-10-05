@@ -5,8 +5,8 @@ import { Friendships, User } from '../models'
 import { Sequelize } from 'sequelize'
 import { Op } from 'sequelize'
 import { IRequest } from '~/type'
-import { friendShipJoinLiteral } from '../utils/isFriend'
 import checkIsFriend from '../utils/isFriend'
+import sentMakeFriendRequest from '../utils/sentMakeFriendRequest'
 
 class UserController {
     // [GET] /user/:nickname
@@ -37,20 +37,10 @@ class UserController {
 
             // Kiểm tra xem người dùng đã gửi lời mời kết bạn hay chưa
             if (user.id !== decoded.sub && !isFriend) {
-                const sentMakeFriendRequest = await Friendships.findOne({
-                    attributes: ['user_id'],
-                    where: {
-                        [Op.and]: [{ status: 'pending' }, { [Op.or]: [{ user_id: user.id }, { friend_id: user.id }] }],
-                    },
-                    include: {
-                        model: User,
-                        as: 'user',
-                        required: true,
-                        on: friendShipJoinLiteral(decoded.sub),
-                    },
-                })
-
-                user.dataValues.sent_friend_request = sentMakeFriendRequest ? true : false
+                if (!user.id) {
+                    return next(new InternalServerError({ message: 'User id is undefined' }))
+                }
+                user.dataValues.sent_friend_request = (await sentMakeFriendRequest(decoded.sub, user.id)) ? true : false
             }
 
             res.json({ data: user })

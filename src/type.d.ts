@@ -11,8 +11,8 @@ export interface UserModel {
     avatar: string
     sent_friend_request?: boolean
     is_friend?: boolean
-    createdAt?: Date
-    updatedAt?: Date
+    created_at?: Date
+    updated_at?: Date
 }
 
 export interface IRequest extends Request {

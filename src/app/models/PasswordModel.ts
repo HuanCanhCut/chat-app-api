@@ -5,8 +5,8 @@ class Password extends Model<InferAttributes<Password>, InferCreationAttributes<
     declare id?: number
     declare password: string
     declare user_id: number
-    declare createdAt?: Date
-    declare updatedAt?: Date
+    declare created_at?: Date
+    declare updated_at?: Date
 }
 Password.init(
     {
@@ -31,6 +31,7 @@ Password.init(
     {
         tableName: 'passwords',
         sequelize,
+        underscored: true,
         timestamps: true,
     },
 )

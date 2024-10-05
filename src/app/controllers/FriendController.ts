@@ -7,24 +7,9 @@ import { Op } from 'sequelize'
 import { IRequest } from '~/type'
 import { friendShipJoinLiteral } from '../utils/isFriend'
 import checkIsFriend from '../utils/isFriend'
+import sentMakeFriendRequest from '../utils/sentMakeFriendRequest'
 
 class FriendController {
-    async isMakeFriendRequest(userId: number, friendId: number) {
-        const isMakeFriendRequest = await Friendships.findOne({
-            where: {
-                [Op.and]: [{ status: 'pending' }, { [Op.or]: [{ user_id: userId }, { friend_id: userId }] }],
-            },
-            include: {
-                model: User,
-                as: 'user',
-                required: true,
-                on: friendShipJoinLiteral(friendId),
-            },
-        })
-
-        return isMakeFriendRequest
-    }
-
     // [POST] /user/:id/add
     async addFriend(req: IRequest, res: Response, next: NextFunction) {
         try {
@@ -52,7 +37,7 @@ class FriendController {
                 return next(new BadRequest({ message: 'User is already your friend' }))
             }
 
-            const isMakeFriendRequest = await this.isMakeFriendRequest(decoded.sub, Number(id))
+            const isMakeFriendRequest = await sentMakeFriendRequest(decoded.sub, Number(id))
 
             if (isMakeFriendRequest) {
                 return next(new BadRequest({ message: 'You have already sent a friend request to this user' }))
@@ -131,7 +116,7 @@ class FriendController {
 
             const [isFriend, isMakeFriendRequest] = await Promise.all([
                 checkIsFriend(decoded.sub, Number(id)),
-                this.isMakeFriendRequest(Number(id), decoded.sub),
+                sentMakeFriendRequest(Number(id), decoded.sub),
             ])
 
             if (isFriend) {
@@ -169,7 +154,7 @@ class FriendController {
             }
 
             // Check if the user has sent a friend request to the this user
-            const isMakeFriendRequest = await this.isMakeFriendRequest(decoded.sub, Number(id))
+            const isMakeFriendRequest = await sentMakeFriendRequest(decoded.sub, Number(id))
 
             if (!isMakeFriendRequest) {
                 return next(new NotFoundError({ message: 'Friend request not found' }))

@@ -13,8 +13,8 @@ class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
     declare avatar: string
     declare sent_friend_request?: boolean
     declare is_friend?: boolean
-    declare createdAt?: Date
-    declare updatedAt?: Date
+    declare created_at?: Date
+    declare updated_at?: Date
 }
 User.init(
     {
@@ -64,6 +64,7 @@ User.init(
     {
         tableName: 'users',
         sequelize,
+        underscored: true,
         timestamps: true,
     },
 )
