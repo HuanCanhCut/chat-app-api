@@ -203,6 +203,34 @@ class FriendController {
         }
     }
 
+    // [POST] /user/:id/cancel
+    async cancelFriendRequest(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const { id } = req.params
+            const decoded = req.decoded
+
+            if (!id) {
+                return next(new BadRequest({ message: 'User ID is required' }))
+            }
+
+            if (decoded.sub === Number(id)) {
+                return next(new BadRequest({ message: 'You cannot cancel friend request to yourself' }))
+            }
+
+            const isMakeFriendRequest = await sentMakeFriendRequest(decoded.sub, Number(id))
+
+            if (!isMakeFriendRequest) {
+                return next(new NotFoundError({ message: 'Friend request not found' }))
+            }
+
+            await isMakeFriendRequest.destroy()
+
+            res.sendStatus(200)
+        } catch (error: any) {
+            return next(new InternalServerError({ message: error.message }))
+        }
+    }
+
     // [POST] /user/friend-invitation?page=&per_page=
     async getFriendInvitation(req: IRequest, res: Response, next: NextFunction) {
         try {
