@@ -7,6 +7,14 @@ import { Op } from 'sequelize'
 import { IRequest } from '~/type'
 
 class UserController {
+    joinLiteral(userId: number) {
+        return literal(`
+                        (user.id = Friendships.friend_id AND Friendships.user_id = ${userId})
+                    OR
+                        (user.id = Friendships.user_id AND Friendships.friend_id = ${userId})
+                `)
+    }
+
     async isFriend(userId: number, friendId: number) {
         const isFriend = await Friendships.findOne({
             attributes: ['user_id'],
@@ -18,23 +26,27 @@ class UserController {
                 model: User,
                 as: 'user',
                 required: true,
-                on: literal(`
-                        (user.id = Friendships.friend_id AND Friendships.user_id = ${userId})
-                    OR
-                        (user.id = Friendships.user_id AND Friendships.friend_id = ${userId})
-                `),
+                on: this.joinLiteral(userId),
             },
         })
 
         return isFriend ? true : false
     }
 
-    joinLiteral(userId: number) {
-        return literal(`
-                        (user.id = Friendships.friend_id AND Friendships.user_id = ${userId})
-                    OR
-                        (user.id = Friendships.user_id AND Friendships.friend_id = ${userId})
-                `)
+    async isMakeFriendRequest(userId: number, friendId: number) {
+        const isMakeFriendRequest = await Friendships.findOne({
+            where: {
+                [Op.and]: [{ status: 'pending' }, { [Op.or]: [{ user_id: userId }, { friend_id: userId }] }],
+            },
+            include: {
+                model: User,
+                as: 'user',
+                required: true,
+                on: this.joinLiteral(friendId),
+            },
+        })
+
+        return isMakeFriendRequest
     }
 
     // [GET] /user/:nickname
@@ -61,7 +73,7 @@ class UserController {
 
             // Kiểm tra xem người dùng đã gửi lời mời kết bạn hay chưa
             if (user.id !== decoded.sub && !isFriend) {
-                const sentFriendRequest = await Friendships.findOne({
+                const sentMakeFriendRequest = await Friendships.findOne({
                     attributes: ['user_id'],
                     where: {
                         [Op.and]: [{ status: 'pending' }, { [Op.or]: [{ user_id: user.id }, { friend_id: user.id }] }],
@@ -74,7 +86,7 @@ class UserController {
                     },
                 })
 
-                user.dataValues.sent_friend_request = sentFriendRequest ? true : false
+                user.dataValues.sent_friend_request = sentMakeFriendRequest ? true : false
             }
 
             res.json({ data: user })
@@ -177,32 +189,53 @@ class UserController {
                 return next(new BadRequest({ message: 'User ID is required' }))
             }
 
-            const isFriend = await this.isFriend(decoded.sub, Number(id))
+            if (decoded.sub === Number(id)) {
+                return next(new BadRequest({ message: 'You cannot accept yourself' }))
+            }
+
+            const [isFriend, isMakeFriendRequest] = await Promise.all([
+                this.isFriend(decoded.sub, Number(id)),
+                this.isMakeFriendRequest(Number(id), decoded.sub),
+            ])
 
             if (isFriend) {
                 return next(new BadRequest({ message: 'User is already your friend' }))
             }
 
-            const friendRequest = await Friendships.findOne({
-                where: {
-                    [Op.and]: [
-                        { status: 'pending' },
-                        { [Op.or]: [{ user_id: decoded.sub }, { friend_id: decoded.sub }] },
-                    ],
-                },
-                include: {
-                    model: User,
-                    as: 'user',
-                    required: true,
-                    on: this.joinLiteral(Number(id)),
-                },
-            })
-
-            if (!friendRequest) {
+            if (!isMakeFriendRequest) {
                 return next(new NotFoundError({ message: 'Friend request not found' }))
             }
 
-            await friendRequest.update({ status: 'accepted' })
+            await isMakeFriendRequest.update({ status: 'accepted' })
+
+            res.sendStatus(200)
+        } catch (error: any) {
+            return next(new InternalServerError({ message: error.message }))
+        }
+    }
+
+    // [POST] /user/:id/reject
+    async rejectFriend(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const { id } = req.params
+            const decoded = req.decoded
+
+            if (!id) {
+                return next(new BadRequest({ message: 'User ID is required' }))
+            }
+
+            if (decoded.sub === Number(id)) {
+                return next(new BadRequest({ message: 'You cannot reject yourself' }))
+            }
+
+            // Check if the user has sent a friend request to the this user
+            const isMakeFriendRequest = await this.isMakeFriendRequest(decoded.sub, Number(id))
+
+            if (!isMakeFriendRequest) {
+                return next(new NotFoundError({ message: 'Friend request not found' }))
+            }
+
+            await isMakeFriendRequest.destroy()
 
             res.sendStatus(200)
         } catch (error: any) {
