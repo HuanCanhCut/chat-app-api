@@ -2,15 +2,15 @@ import express from 'express'
 const router = express.Router()
 
 import UserController from '../app/controllers/UserController'
+import FriendController from '../app/controllers/FriendController'
 import verifyToken from '~/app/middlewares/verifyToken'
 
-router.get('/', verifyToken, UserController.getAllFriends.bind(UserController))
-router.get('/friend-invitation', verifyToken, UserController.getFriendInvitation.bind(UserController))
-router.post('/:id/add', verifyToken, UserController.addFriend.bind(UserController))
-router.post('/:id/accept', verifyToken, UserController.acceptFriend.bind(UserController))
-router.post('/:id/reject', verifyToken, UserController.rejectFriend.bind(UserController))
-router.post('/:id/cancel', verifyToken, UserController.cancelMakeFriendRequest.bind(UserController))
-router.post('/:id/unfriend', verifyToken, UserController.unfriend.bind(UserController))
+router.get('/friends', verifyToken, FriendController.getAllFriends.bind(FriendController))
+router.get('/friend-invitation', verifyToken, FriendController.getFriendInvitation.bind(FriendController))
+router.post('/:id/add', verifyToken, FriendController.addFriend.bind(FriendController))
+router.post('/:id/accept', verifyToken, FriendController.acceptFriend.bind(FriendController))
+router.post('/:id/reject', verifyToken, FriendController.rejectFriend.bind(FriendController))
+router.post('/:id/unfriend', verifyToken, FriendController.unfriend.bind(FriendController))
 router.get('/:nickname', verifyToken, UserController.getAnUser.bind(UserController))
 
 export default router

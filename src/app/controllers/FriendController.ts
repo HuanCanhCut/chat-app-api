@@ -1,0 +1,260 @@
+import { Response, NextFunction } from 'express'
+
+import { BadRequest, InternalServerError, NotFoundError } from '../errors/errors'
+import { Friendships, User } from '../models'
+import { Sequelize } from 'sequelize'
+import { Op } from 'sequelize'
+import { IRequest } from '~/type'
+import { friendShipJoinLiteral } from '../utils/isFriend'
+import checkIsFriend from '../utils/isFriend'
+
+class FriendController {
+    async isMakeFriendRequest(userId: number, friendId: number) {
+        const isMakeFriendRequest = await Friendships.findOne({
+            where: {
+                [Op.and]: [{ status: 'pending' }, { [Op.or]: [{ user_id: userId }, { friend_id: userId }] }],
+            },
+            include: {
+                model: User,
+                as: 'user',
+                required: true,
+                on: friendShipJoinLiteral(friendId),
+            },
+        })
+
+        return isMakeFriendRequest
+    }
+
+    // [POST] /user/:id/add
+    async addFriend(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            // id of user that want to add friend
+            const { id: id } = req.params
+            const decoded = req.decoded
+
+            if (!id) {
+                return next(new BadRequest({ message: 'User ID is required' }))
+            }
+
+            const hasUser = await User.findOne<any>({ where: { id } })
+
+            if (!hasUser) {
+                return next(new NotFoundError({ message: 'User not found' }))
+            }
+
+            if (hasUser.id === decoded.sub) {
+                return next(new BadRequest({ message: 'You cannot add yourself as a friend' }))
+            }
+
+            const isFriend = await checkIsFriend(decoded.sub, Number(id))
+
+            if (isFriend) {
+                return next(new BadRequest({ message: 'User is already your friend' }))
+            }
+
+            const newFriendship = await Friendships.create({
+                user_id: decoded.sub,
+                friend_id: Number(id),
+            })
+
+            if (!newFriendship) {
+                return next(new InternalServerError({ message: 'Failed to add friend' }))
+            }
+
+            res.sendStatus(201)
+        } catch (error: any) {
+            return next(new InternalServerError({ message: error.message }))
+        }
+    }
+
+    // [GET] /user/friends?page=&per_page=
+    async getAllFriends(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const { page, per_page } = req.query
+
+            const decoded = req.decoded
+
+            if (!page || !per_page) {
+                return next(new BadRequest({ message: 'Page and per_page are required' }))
+            }
+
+            const { rows: friends, count } = await Friendships.findAndCountAll<any>({
+                where: {
+                    status: 'accepted',
+                },
+                include: {
+                    model: User,
+                    as: 'user',
+                    required: true,
+                    on: friendShipJoinLiteral(decoded.sub),
+                },
+                limit: Number(per_page),
+                offset: (Number(page) - 1) * Number(per_page),
+            })
+
+            res.json({
+                data: friends,
+                meta: {
+                    pagination: {
+                        total: count,
+                        count: friends.length,
+                        per_page: Number(per_page),
+                        current_page: Number(page),
+                        total_pages: Math.ceil(count / Number(per_page)),
+                    },
+                },
+            })
+        } catch (error: any) {
+            return next(new InternalServerError({ message: error.message }))
+        }
+    }
+
+    // [POST] /user/:id/accept
+    async acceptFriend(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const { id } = req.params
+            const decoded = req.decoded
+
+            if (!id) {
+                return next(new BadRequest({ message: 'User ID is required' }))
+            }
+
+            if (decoded.sub === Number(id)) {
+                return next(new BadRequest({ message: 'You cannot accept yourself' }))
+            }
+
+            const [isFriend, isMakeFriendRequest] = await Promise.all([
+                checkIsFriend(decoded.sub, Number(id)),
+                this.isMakeFriendRequest(Number(id), decoded.sub),
+            ])
+
+            if (isFriend) {
+                return next(new BadRequest({ message: 'User is already your friend' }))
+            }
+
+            if (!isMakeFriendRequest) {
+                return next(new NotFoundError({ message: 'Friend request not found' }))
+            }
+
+            const updateSuccess = await isMakeFriendRequest.update({ status: 'accepted' })
+
+            if (!updateSuccess) {
+                return next(new InternalServerError({ message: 'Failed to accept friend request' }))
+            }
+
+            res.sendStatus(200)
+        } catch (error: any) {
+            return next(new InternalServerError({ message: error.message }))
+        }
+    }
+
+    // [POST] /user/:id/reject
+    async rejectFriend(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const { id } = req.params
+            const decoded = req.decoded
+
+            if (!id) {
+                return next(new BadRequest({ message: 'User ID is required' }))
+            }
+
+            if (decoded.sub === Number(id)) {
+                return next(new BadRequest({ message: 'You cannot reject yourself' }))
+            }
+
+            // Check if the user has sent a friend request to the this user
+            const isMakeFriendRequest = await this.isMakeFriendRequest(decoded.sub, Number(id))
+
+            if (!isMakeFriendRequest) {
+                return next(new NotFoundError({ message: 'Friend request not found' }))
+            }
+
+            await isMakeFriendRequest.destroy()
+
+            res.sendStatus(200)
+        } catch (error: any) {
+            return next(new InternalServerError({ message: error.message }))
+        }
+    }
+
+    // [POST] /user/:id/unfriend
+    async unfriend(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const { id } = req.params
+            const decoded = req.decoded
+
+            if (!id) {
+                return next(new BadRequest({ message: 'User ID is required' }))
+            }
+
+            if (decoded.sub === Number(id)) {
+                return next(new BadRequest({ message: 'You cannot unfriend yourself' }))
+            }
+
+            const isFriend = await checkIsFriend(decoded.sub, Number(id))
+
+            if (!isFriend) {
+                return next(new NotFoundError({ message: 'User is not your friend' }))
+            }
+
+            await Friendships.destroy({
+                where: {
+                    [Op.or]: [
+                        { user_id: decoded.sub, friend_id: Number(id) },
+                        { user_id: Number(id), friend_id: decoded.sub },
+                    ],
+                },
+            })
+
+            res.sendStatus(200)
+        } catch (error: any) {
+            return next(new InternalServerError({ message: error.message }))
+        }
+    }
+
+    // [POST] /user/friend-invitation?page=&per_page=
+    async getFriendInvitation(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const decoded = req.decoded
+            const { page, per_page } = req.query
+
+            if (!page || !per_page) {
+                return next(new BadRequest({ message: 'Page and per_page are required' }))
+            }
+
+            // Danh sách lời mời kết bạn
+            const { rows: friendInvitations, count } = await Friendships.findAndCountAll<any>({
+                where: {
+                    [Op.and]: [{ status: 'pending' }, { friend_id: decoded.sub }],
+                },
+                include: {
+                    model: User,
+                    as: 'user',
+                    required: true,
+                    where: {
+                        id: Sequelize.col('Friendships.user_id'),
+                    },
+                },
+                limit: Number(per_page),
+                offset: (Number(page) - 1) * Number(per_page),
+            })
+
+            res.json({
+                data: friendInvitations,
+                meta: {
+                    pagination: {
+                        total: count,
+                        count: friendInvitations.length,
+                        per_page: Number(per_page),
+                        current_page: Number(page),
+                        total_pages: Math.ceil(count / Number(per_page)),
+                    },
+                },
+            })
+        } catch (error: any) {
+            return next(new InternalServerError({ message: error.message }))
+        }
+    }
+}
+
+export default new FriendController()
