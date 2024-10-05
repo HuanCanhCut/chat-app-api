@@ -1,6 +1,6 @@
 import { Response, NextFunction } from 'express'
 
-import { BadRequest, InternalServerError, NotFoundError } from '../errors/errors'
+import { BadRequest, ConflictError, InternalServerError, NotFoundError } from '../errors/errors'
 import { Friendships, User } from '../models'
 import { Sequelize } from 'sequelize'
 import { Op } from 'sequelize'
@@ -28,19 +28,23 @@ class FriendController {
             }
 
             if (hasUser.id === decoded.sub) {
-                return next(new BadRequest({ message: 'You cannot add yourself as a friend' }))
+                return next(new ConflictError({ message: 'You cannot add yourself as a friend' }))
             }
 
             const isFriend = await checkIsFriend(decoded.sub, Number(id))
 
             if (isFriend) {
-                return next(new BadRequest({ message: 'User is already your friend' }))
+                return next(new ConflictError({ message: 'User is already your friend' }))
             }
 
-            const isMakeFriendRequest = await sentMakeFriendRequest(decoded.sub, Number(id))
+            const isMakeFriendRequest = await sentMakeFriendRequest({
+                userId: decoded.sub,
+                friendId: Number(id),
+                toWay: true,
+            })
 
             if (isMakeFriendRequest) {
-                return next(new BadRequest({ message: 'You have already sent a friend request to this user' }))
+                return next(new ConflictError({ message: 'You have already sent a friend request to this user' }))
             }
 
             const newFriendship = await Friendships.create({
@@ -116,11 +120,11 @@ class FriendController {
 
             const [isFriend, isMakeFriendRequest] = await Promise.all([
                 checkIsFriend(decoded.sub, Number(id)),
-                sentMakeFriendRequest(Number(id), decoded.sub),
+                sentMakeFriendRequest({ userId: Number(id), friendId: decoded.sub }),
             ])
 
             if (isFriend) {
-                return next(new BadRequest({ message: 'User is already your friend' }))
+                return next(new ConflictError({ message: 'User is already your friend' }))
             }
 
             if (!isMakeFriendRequest) {
@@ -154,7 +158,11 @@ class FriendController {
             }
 
             // Check if the user has sent a friend request to the this user
-            const isMakeFriendRequest = await sentMakeFriendRequest(decoded.sub, Number(id))
+            const isMakeFriendRequest = await sentMakeFriendRequest({
+                userId: Number(id),
+                friendId: decoded.sub,
+                toWay: false,
+            })
 
             if (!isMakeFriendRequest) {
                 return next(new NotFoundError({ message: 'Friend request not found' }))
@@ -185,7 +193,7 @@ class FriendController {
             const isFriend = await checkIsFriend(decoded.sub, Number(id))
 
             if (!isFriend) {
-                return next(new NotFoundError({ message: 'User is not your friend' }))
+                return next(new BadRequest({ message: 'User is not your friend' }))
             }
 
             await Friendships.destroy({
@@ -217,7 +225,10 @@ class FriendController {
                 return next(new BadRequest({ message: 'You cannot cancel friend request to yourself' }))
             }
 
-            const isMakeFriendRequest = await sentMakeFriendRequest(decoded.sub, Number(id))
+            const isMakeFriendRequest = await sentMakeFriendRequest({
+                userId: decoded.sub,
+                friendId: Number(id),
+            })
 
             if (!isMakeFriendRequest) {
                 return next(new NotFoundError({ message: 'Friend request not found' }))

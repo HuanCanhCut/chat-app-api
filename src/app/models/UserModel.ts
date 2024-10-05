@@ -15,6 +15,7 @@ class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
     declare is_friend?: boolean
     declare created_at?: Date
     declare updated_at?: Date
+    declare friend_request?: boolean
 }
 User.init(
     {

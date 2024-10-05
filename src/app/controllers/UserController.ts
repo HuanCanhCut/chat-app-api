@@ -32,15 +32,30 @@ class UserController {
                 return next(new NotFoundError({ message: 'User not found' }))
             }
 
-            const isFriend = await checkIsFriend(decoded.sub, Number(user.id))
-            user.dataValues.is_friend = isFriend
+            const [isFriend, friendRequest] = await Promise.all([
+                checkIsFriend(decoded.sub, Number(user.id)),
+                sentMakeFriendRequest({
+                    userId: Number(user.id),
+                    friendId: decoded.sub,
+                }),
+            ])
+
+            if (decoded.sub !== Number(user.id)) {
+                user.dataValues.is_friend = isFriend
+                user.dataValues.friend_request = friendRequest ? true : false
+            }
 
             // Kiểm tra xem người dùng đã gửi lời mời kết bạn hay chưa
-            if (user.id !== decoded.sub && !isFriend) {
+            if (user.id !== decoded.sub && !isFriend && !friendRequest) {
                 if (!user.id) {
                     return next(new InternalServerError({ message: 'User id is undefined' }))
                 }
-                user.dataValues.sent_friend_request = (await sentMakeFriendRequest(decoded.sub, user.id)) ? true : false
+                user.dataValues.sent_friend_request = (await sentMakeFriendRequest({
+                    userId: decoded.sub,
+                    friendId: user.id,
+                }))
+                    ? true
+                    : false
             }
 
             res.json({ data: user })
