@@ -9,7 +9,7 @@ const getFriendsCount = async (id: number /* id của người dùng muốn lấ
     // Dùng raw query, không được dùng query builder vì sẽ gây ra đệ quy trong FriendShipModel
     const query = `
                     SELECT
-                        COUNT(friendships.user_id) AS count
+                        COUNT(friendships.id) AS count
                     FROM
                         friendships
                     JOIN
@@ -19,8 +19,6 @@ const getFriendsCount = async (id: number /* id của người dùng muốn lấ
                         friendships.status = 'accepted'
                     AND
                         users.id = ?
-                    GROUP BY
-                        friendships.user_id
                 `
 
     const resultQuery: friendCount[] = await sequelize.query(query, {

@@ -1,6 +1,7 @@
 import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
 
 import { sequelize } from '../../config/db'
+import getFriendsCount from '../utils/friendsCount'
 
 class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
     declare id?: number
@@ -11,6 +12,7 @@ class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
     declare uuid: string
     declare email: string
     declare avatar: string
+    declare cover_photo: string
     declare sent_friend_request?: boolean
     declare is_friend?: boolean
     declare created_at?: Date
@@ -61,6 +63,11 @@ User.init(
             allowNull: false,
             defaultValue: '',
         },
+        cover_photo: {
+            type: DataTypes.STRING,
+            allowNull: false,
+            defaultValue: '',
+        },
     },
     {
         tableName: 'users',
@@ -93,6 +100,20 @@ User.beforeFind((options) => {
         options.include.forEach((includeModel) => {
             excludeEmail(includeModel)
         })
+    }
+})
+
+User.afterFind(async (users: any) => {
+    if (users) {
+        if (Array.isArray(users)) {
+            for (const user of users) {
+                const friendsCount = await getFriendsCount(user.dataValues.id)
+                user.dataValues.friends_count = friendsCount
+            }
+        } else {
+            const friendsCount = await getFriendsCount(users.dataValues.id)
+            users.dataValues.friends_count = friendsCount
+        }
     }
 })
 

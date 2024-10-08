@@ -206,6 +206,7 @@ class AuthController {
                     uuid: uuidv4(),
                     avatar: picture,
                     nickname: email?.split('@')[0],
+                    cover_photo: picture,
                 },
             })
 
