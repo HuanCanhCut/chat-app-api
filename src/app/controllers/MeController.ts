@@ -79,10 +79,10 @@ class MeController {
             // Tạo các promise upload các file lên Cloudinary (nếu có)
             const uploadPromises = []
             if (files.avatar) {
-                uploadPromises.push(uploadSingleFile(files.avatar[0], 'avatar', req.decoded.sub))
+                uploadPromises.push(uploadSingleFile(files.avatar[0], 'chat-app/avatar', req.decoded.sub))
             }
             if (files.cover_photo) {
-                uploadPromises.push(uploadSingleFile(files.cover_photo[0], 'cover_photo', req.decoded.sub))
+                uploadPromises.push(uploadSingleFile(files.cover_photo[0], 'chat-app/cover_photo', req.decoded.sub))
             }
 
             // Thực hiện upload song song
