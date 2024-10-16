@@ -18,6 +18,7 @@ class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
     declare created_at?: Date
     declare updated_at?: Date
     declare friend_request?: boolean
+    declare password?: string
 }
 User.init(
     {
@@ -68,6 +69,11 @@ User.init(
             allowNull: false,
             defaultValue: '',
         },
+        password: {
+            type: DataTypes.TEXT,
+            allowNull: false,
+            defaultValue: '',
+        },
     },
     {
         tableName: 'users',
@@ -79,7 +85,7 @@ User.init(
 
 User.beforeFind((options) => {
     // Hàm để xử lý loại bỏ trường email từ attributes
-    const excludeEmail = (opts: any) => {
+    const excludeFields = (opts: any) => {
         if (!opts.attributes) {
             opts.attributes = { exclude: [] }
         }
@@ -88,21 +94,23 @@ User.beforeFind((options) => {
             opts.attributes = { exclude: opts.attributes }
         }
 
-        // Loại bỏ email khỏi kết quả
-        opts.attributes.exclude.push('email')
+        // Loại bỏ field khỏi kết quả
+        const fields = ['password', 'email']
+        opts.attributes.exclude.push(...fields)
     }
 
-    // Loại bỏ email khỏi model User
-    excludeEmail(options)
+    // Loại bỏ fields khỏi model User
+    excludeFields(options)
 
     // Nếu có include (liên kết với các bảng khác)
     if (options.include && Array.isArray(options.include)) {
         options.include.forEach((includeModel) => {
-            excludeEmail(includeModel)
+            excludeFields(includeModel)
         })
     }
 })
 
+// Thêm số lượng bạn bè vào user
 User.afterFind(async (users: any) => {
     if (users) {
         if (Array.isArray(users)) {

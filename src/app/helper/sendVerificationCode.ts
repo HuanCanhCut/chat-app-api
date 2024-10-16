@@ -24,8 +24,8 @@ const sendVerificationCode = ({ email, code }: { email: string; code: number }) 
                     <div style="max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px">
                         <div style="width: 100%; display: flex; justify-content: center; align-items: center">
                             <img
-                                src="https://res.cloudinary.com/dkmwrkngj/image/upload/chat-app/static/logo.jpg"  
-                                style="width: 40%; height: auto; object-fit: cover; margin: 0 auto"
+                                src="https://res.cloudinary.com/dkmwrkngj/image/upload/v1729089577/chat-app/logo.png"  
+                                style="width: 30%; height: auto; object-fit: cover; margin: 0 auto"
                                 alt=""
                             />
                         </div>

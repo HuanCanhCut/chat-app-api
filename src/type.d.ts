@@ -14,6 +14,7 @@ export interface UserModel {
     created_at?: Date
     updated_at?: Date
     cover_photo: string
+    password?: string
 }
 
 export interface IRequest extends Request {

@@ -2,17 +2,18 @@ import { Request, Response, NextFunction } from 'express'
 import admin from 'firebase-admin'
 import { v4 as uuidv4 } from 'uuid'
 import bcrypt from 'bcrypt'
-import { Sequelize, Op } from 'sequelize'
+import { Op, QueryTypes } from 'sequelize'
 import jwt, { JwtPayload } from 'jsonwebtoken'
 import moment from 'moment'
 
 import clearCookie from '../utils/clearCookies'
 import { BadRequest, ConflictError, InternalServerError, NotFoundError, UnauthorizedError } from '../errors/errors'
-import { User, Password, BlacklistToken, RefreshToken, ResetCode } from '../models'
+import { User, BlacklistToken, RefreshToken, ResetCode } from '../models'
 import createToken from '../utils/createToken'
 import hashValue from '../utils/hashValue'
 import sendVerificationCode from '../helper/sendVerificationCode'
 import { UserModel } from '~/type'
+import { sequelize } from '~/config/db'
 
 class AuthController {
     resetCodeExpired = 60
@@ -69,6 +70,8 @@ class AuthController {
                 return next(new BadRequest({ message: 'Email and password are required' }))
             }
 
+            const passwordHashed = await hashValue(password)
+
             const [user, created]: [UserModel, boolean] = await User.findOrCreate<any>({
                 where: {
                     email,
@@ -77,19 +80,13 @@ class AuthController {
                     email,
                     uuid: uuidv4(),
                     nickname: email.split('@')[0],
+                    password: passwordHashed,
                 },
             })
 
             if (!created) {
                 return next(new ConflictError({ message: 'User already exists' }))
             }
-
-            const passwordHashed = await hashValue(password)
-
-            await Password.create({
-                user_id: user.id as number,
-                password: passwordHashed,
-            })
 
             const payload = {
                 sub: user.id as number,
@@ -113,24 +110,29 @@ class AuthController {
                 return next(new BadRequest({ message: 'Email and password are required' }))
             }
 
-            const user = await User.findOne<any>({
-                where: {
-                    email,
-                },
-                include: {
-                    model: Password,
-                    required: true,
+            const sql = `SELECT password FROM users WHERE email = ?`
+
+            type Password = {
+                password: string
+            }
+
+            const [user, userPassword] = await Promise.all([
+                User.findOne<any>({
                     where: {
-                        user_id: Sequelize.col('User.id'),
+                        email,
                     },
-                },
-            })
+                }),
+                sequelize.query<Password>(sql, {
+                    type: QueryTypes.SELECT,
+                    replacements: [email],
+                }),
+            ])
 
             if (!user) {
                 return next(new UnauthorizedError({ message: 'Invalid email or password' }))
             }
 
-            const passwordHashed = user.dataValues.Password.dataValues.password
+            const passwordHashed = userPassword[0].password
 
             const isPasswordValid = bcrypt.compareSync(password, passwordHashed)
 
@@ -143,8 +145,6 @@ class AuthController {
             }
 
             const { token, refreshToken } = this.generateToken(payload)
-
-            delete user.dataValues.Password
 
             this.sendToClient({ res, user, token, refreshToken })
         } catch (error: any) {
@@ -398,15 +398,9 @@ class AuthController {
             }
 
             // Update password
-            const user = await User.findOne({
-                where: {
-                    email,
-                },
-            })
-
             const passwordHashed = await hashValue(password)
 
-            await Password.update({ password: passwordHashed }, { where: { user_id: user?.dataValues.id } })
+            await User.update({ password: passwordHashed }, { where: { email } })
 
             res.sendStatus(204)
         } catch (error: any) {
