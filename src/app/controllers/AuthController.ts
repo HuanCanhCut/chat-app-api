@@ -157,11 +157,13 @@ class AuthController {
         try {
             const { token, refreshToken } = req.cookies
 
-            // save token to blacklist and delete refreshToken in database
-            await Promise.all([
-                BlacklistToken.create({ token, refresh_token: refreshToken }),
-                RefreshToken.destroy({ where: { refresh_token: refreshToken } }),
-            ])
+            if (token && refreshToken) {
+                // save token to blacklist and delete refreshToken in database
+                await Promise.all([
+                    BlacklistToken.create({ token, refresh_token: refreshToken }),
+                    RefreshToken.destroy({ where: { refresh_token: refreshToken } }),
+                ])
+            }
 
             clearCookie({ res, cookies: ['token', 'refreshToken'] })
 
@@ -206,7 +208,6 @@ class AuthController {
                     uuid: uuidv4(),
                     avatar: picture,
                     nickname: email?.split('@')[0],
-                    cover_photo: picture,
                 },
             })
 
@@ -323,6 +324,10 @@ class AuthController {
                 return next(new BadRequest({ message: 'Email is required' }))
             }
 
+            if (!/^\w+([\\.-]?\w+)*@\w+([\\.-]?\w+)*(\.\w{2,3})+$/.test(email)) {
+                return next(new BadRequest({ message: 'Email is invalid' }))
+            }
+
             // 6 number
             const resetCode = Math.floor(100000 + Math.random() * 900000)
 
@@ -360,7 +365,7 @@ class AuthController {
 
             res.sendStatus(204)
         } catch (error: any) {
-            if (error.parent.errno === 1452) {
+            if (error?.parent?.errno === 1452) {
                 return next(new NotFoundError({ message: 'Email not found' }))
             }
             return next(new InternalServerError(error))

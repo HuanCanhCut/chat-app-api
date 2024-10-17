@@ -12,7 +12,7 @@ class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
     declare uuid: string
     declare email: string
     declare avatar: string
-    declare cover_photo: string
+    declare cover_photo?: string
     declare sent_friend_request?: boolean
     declare is_friend?: boolean
     declare created_at?: Date

@@ -21,7 +21,7 @@ Friendships.belongsTo(User, { foreignKey: 'friend_id', as: 'friend' })
 
 // Sync all models with the database
 sequelize
-    .sync({ alter: true })
+    .sync()
     .then(() => {
         console.log('\x1b[36m%s\x1b[0m', 'All models were synchronized successfully.')
     })

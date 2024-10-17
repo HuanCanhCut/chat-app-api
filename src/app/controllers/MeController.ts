@@ -61,15 +61,22 @@ class MeController {
                 }
             }
 
+            interface IUploadFile {
+                file: Express.Multer.File
+                folder: string
+                publicId: string
+                type: 'avatar' | 'cover_photo'
+            }
+
             // Hàm upload từng file lên Cloudinary
-            const uploadSingleFile = (file: Express.Multer.File, folder: string, publicId: string) => {
+            const uploadSingleFile = ({ file, folder, publicId, type }: IUploadFile) => {
                 return new Promise((resolve, reject) => {
                     cloudinary.v2.uploader
                         .upload_stream(
                             { resource_type: 'image', folder, public_id: `${publicId}-${folder}` },
                             (error, result) => {
                                 if (error) reject(error)
-                                else resolve(result)
+                                else resolve({ result, type })
                             },
                         )
                         .end(file.buffer)
@@ -78,15 +85,36 @@ class MeController {
 
             // Tạo các promise upload các file lên Cloudinary (nếu có)
             const uploadPromises = []
+
             if (files.avatar) {
-                uploadPromises.push(uploadSingleFile(files.avatar[0], 'chat-app/avatar', req.decoded.sub))
+                uploadPromises.push(
+                    uploadSingleFile({
+                        file: files.avatar[0],
+                        folder: 'chat-app/avatar',
+                        publicId: req.decoded.sub,
+                        type: 'avatar',
+                    }),
+                )
             }
+
             if (files.cover_photo) {
-                uploadPromises.push(uploadSingleFile(files.cover_photo[0], 'chat-app/cover_photo', req.decoded.sub))
+                uploadPromises.push(
+                    uploadSingleFile({
+                        file: files.cover_photo[0],
+                        folder: 'chat-app/cover_photo',
+                        publicId: req.decoded.sub,
+                        type: 'cover_photo',
+                    }),
+                )
+            }
+
+            type IUploadResult = {
+                result: cloudinary.UploadApiResponse
+                type: 'avatar' | 'cover_photo'
             }
 
             // Thực hiện upload song song
-            const [avatarResult, cover_photoResult] = await Promise.all(uploadPromises)
+            const uploadResolve = (await Promise.all(uploadPromises)) as IUploadResult[]
 
             // Chuẩn bị dữ liệu để update
             const updateData: any = {
@@ -96,8 +124,15 @@ class MeController {
                 full_name: `${first_name} ${last_name}`,
             }
 
-            if (avatarResult) updateData.avatar = (avatarResult as any).secure_url
-            if (cover_photoResult) updateData.cover_photo = (cover_photoResult as any).secure_url
+            uploadResolve.forEach((upload) => {
+                if (upload.type === 'avatar') {
+                    updateData.avatar = upload.result.secure_url
+                } else if (upload.type === 'cover_photo') {
+                    updateData.cover_photo = upload.result.secure_url
+                }
+            })
+
+            console.log(updateData)
 
             // Cập nhật vào database
             await User.update(updateData, { where: { id: req.decoded.sub } })
