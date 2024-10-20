@@ -1,0 +1,28 @@
+const excludeBeforeFind = (options: any) => {
+    // Hàm để xử lý loại bỏ trường từ attributes
+    const excludeFields = (opts: any) => {
+        if (!opts.attributes) {
+            opts.attributes = { exclude: [] }
+        }
+
+        if (Array.isArray(opts.attributes)) {
+            opts.attributes = { ...opts.attributes, exclude: opts.attributes }
+        }
+
+        // Loại bỏ field khỏi kết quả
+        const fields = ['password', 'email']
+        opts.attributes.exclude.push(...fields)
+    }
+
+    // Loại bỏ fields khỏi model User
+    excludeFields(options)
+
+    // Nếu có include (liên kết với các bảng khác)
+    if (options.include && Array.isArray(options.include)) {
+        options.include.forEach((includeModel: any) => {
+            excludeFields(includeModel)
+        })
+    }
+}
+
+export default excludeBeforeFind

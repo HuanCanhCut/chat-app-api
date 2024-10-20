@@ -5,9 +5,10 @@ import { Friendships, User } from '../models'
 import { Sequelize } from 'sequelize'
 import { Op } from 'sequelize'
 import { IRequest } from '~/type'
-import { friendShipJoinLiteral } from '../utils/isFriend'
+import { friendShipJoinLiteral, isFriendLiteral } from '../utils/isFriend'
 import checkIsFriend from '../utils/isFriend'
 import sentMakeFriendRequest from '../utils/sentMakeFriendRequest'
+import { sequelize } from '~/config/db'
 
 class FriendController {
     // [POST] /user/:id/add
@@ -65,23 +66,27 @@ class FriendController {
     // [GET] /user/friends?page=&per_page=
     async getAllFriends(req: IRequest, res: Response, next: NextFunction) {
         try {
-            const { page, per_page } = req.query
-
-            const decoded = req.decoded
+            const { page, per_page, user_id } = req.query
 
             if (!page || !per_page) {
                 return next(new BadRequest({ message: 'Page and per_page are required' }))
             }
+
+            const decoded = req.decoded
 
             const { rows: friends, count } = await Friendships.findAndCountAll<any>({
                 where: {
                     status: 'accepted',
                 },
                 include: {
+                    attributes: {
+                        include: [[sequelize.literal(isFriendLiteral(Number(decoded.sub))), 'is_friend']],
+                    },
                     model: User,
                     as: 'user',
                     required: true,
-                    on: friendShipJoinLiteral(decoded.sub),
+                    nested: true,
+                    on: friendShipJoinLiteral(Number(user_id)),
                 },
                 limit: Number(per_page),
                 offset: (Number(page) - 1) * Number(per_page),

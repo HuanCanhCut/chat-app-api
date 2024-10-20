@@ -4,7 +4,7 @@ import User from './UserModel'
 import RefreshToken from './RefreshTokenModel'
 import BlacklistToken from './BlacklistTokenModel'
 import ResetCode from './ResetCodeModel'
-import Friendships from './Friendships'
+import Friendships from './FriendshipsModel'
 
 // define relations
 User.hasMany(RefreshToken, { foreignKey: 'user_id' })

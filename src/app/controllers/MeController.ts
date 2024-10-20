@@ -4,6 +4,7 @@ import cloudinary from '~/config/cloudinary'
 import { User } from '../models'
 import { IRequest, MulterRequest } from '~/type'
 import { InternalServerError, NotFoundError, BadRequest } from '../errors/errors'
+import { Op } from 'sequelize'
 
 class MeController {
     // [GET] /auth/me
@@ -44,6 +45,19 @@ class MeController {
 
             if (nickname.trim().split(' ').length > 2) {
                 return next(new BadRequest({ message: 'Nickname must be in the format: first last' }))
+            }
+
+            const user = await User.findOne({
+                where: {
+                    nickname,
+                    id: {
+                        [Op.ne]: req.decoded.sub,
+                    },
+                },
+            })
+
+            if (user) {
+                return next(new BadRequest({ message: 'Nickname already exists' }))
             }
 
             // Nếu không có file được upload, chỉ cập nhật thông tin của user mà không thay đổi avatar

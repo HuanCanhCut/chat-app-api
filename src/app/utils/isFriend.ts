@@ -1,12 +1,14 @@
 import { literal, Op } from 'sequelize'
 import { Friendships } from '../models'
 import { User } from '../models'
+import { sequelize } from '~/config/db'
 
+// escape userId để tránh SQL injection
 export const friendShipJoinLiteral = (userId: number) => {
     return literal(`
-            (user.id = Friendships.friend_id AND Friendships.user_id = ${userId})
+            (user.id = Friendships.friend_id AND Friendships.user_id = ${sequelize.escape(userId)}) 
         OR
-            (user.id = Friendships.user_id AND Friendships.friend_id = ${userId})
+            (user.id = Friendships.user_id AND Friendships.friend_id = ${sequelize.escape(userId)})
         `)
 }
 
@@ -26,6 +28,19 @@ const checkIsFriend = async (userId: number, friendId: number): Promise<boolean>
     })
 
     return isFriend ? true : false
+}
+
+// userId : id of current user
+export const isFriendLiteral = (userId: number): string => {
+    return `
+        (CASE
+        WHEN (user.id = Friendships.user_id AND Friendships.user_id = ${sequelize.escape(userId)} and Friendships.status = 'accepted')
+            OR
+                (user.id = Friendships.friend_id and Friendships.friend_id = ${sequelize.escape(userId)} and Friendships.status = 'accepted')
+        THEN 'true'
+        ELSE 'false'
+        END)
+    `
 }
 
 export default checkIsFriend

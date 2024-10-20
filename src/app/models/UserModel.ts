@@ -2,6 +2,7 @@ import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequ
 
 import { sequelize } from '../../config/db'
 import getFriendsCount from '../utils/friendsCount'
+import excludeBeforeFind from '../utils/excludeBeforeFind'
 
 class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
     declare id?: number
@@ -84,30 +85,7 @@ User.init(
 )
 
 User.beforeFind((options) => {
-    // Hàm để xử lý loại bỏ trường email từ attributes
-    const excludeFields = (opts: any) => {
-        if (!opts.attributes) {
-            opts.attributes = { exclude: [] }
-        }
-
-        if (Array.isArray(opts.attributes)) {
-            opts.attributes = { exclude: opts.attributes }
-        }
-
-        // Loại bỏ field khỏi kết quả
-        const fields = ['password', 'email']
-        opts.attributes.exclude.push(...fields)
-    }
-
-    // Loại bỏ fields khỏi model User
-    excludeFields(options)
-
-    // Nếu có include (liên kết với các bảng khác)
-    if (options.include && Array.isArray(options.include)) {
-        options.include.forEach((includeModel) => {
-            excludeFields(includeModel)
-        })
-    }
+    excludeBeforeFind(options)
 })
 
 // Thêm số lượng bạn bè vào user

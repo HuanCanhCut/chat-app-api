@@ -2,6 +2,7 @@ import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequ
 
 import { sequelize } from '../../config/db'
 import getFriendsCount from '../utils/friendsCount'
+import excludeWithInclude from '../utils/excludeWithInclude'
 
 class Friendships extends Model<InferAttributes<Friendships>, InferCreationAttributes<Friendships>> {
     declare id?: number
@@ -48,6 +49,11 @@ Friendships.init(
         underscored: true,
     },
 )
+
+// Remove password and email from User model
+Friendships.beforeFind((options) => {
+    excludeWithInclude(options)
+})
 
 Friendships.afterFind(async (result: any, options: any) => {
     // Đảm bảo chỉ xử lý khi có `include` và kết quả là một mảng
