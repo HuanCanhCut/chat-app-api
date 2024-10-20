@@ -5,7 +5,7 @@ import { Friendships, User } from '../models'
 import { Sequelize } from 'sequelize'
 import { Op } from 'sequelize'
 import { IRequest } from '~/type'
-import { friendShipJoinLiteral, isFriendLiteral } from '../utils/isFriend'
+import { friendShipJoinLiteral } from '../utils/isFriend'
 import checkIsFriend from '../utils/isFriend'
 import sentMakeFriendRequest from '../utils/sentMakeFriendRequest'
 import { sequelize } from '~/config/db'
@@ -74,13 +74,24 @@ class FriendController {
 
             const decoded = req.decoded
 
+            // Check if the user is friend with the current user
+            const sql = `
+                    (CASE
+                    WHEN (user.id = Friendships.user_id AND Friendships.user_id = ${sequelize.escape(decoded.sub)} and Friendships.status = 'accepted')
+                        OR
+                            (user.id = Friendships.friend_id and Friendships.friend_id = ${sequelize.escape(decoded.sub)} and Friendships.status = 'accepted')
+                    THEN 'true'
+                    ELSE 'false'
+                    END)
+            `
+
             const { rows: friends, count } = await Friendships.findAndCountAll<any>({
                 where: {
                     status: 'accepted',
                 },
                 include: {
                     attributes: {
-                        include: [[sequelize.literal(isFriendLiteral(Number(decoded.sub))), 'is_friend']],
+                        include: [[sequelize.literal(sql), 'is_friend']],
                     },
                     model: User,
                     as: 'user',

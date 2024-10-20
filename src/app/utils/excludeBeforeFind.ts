@@ -5,9 +5,15 @@ const excludeBeforeFind = (options: any) => {
             opts.attributes = { exclude: [] }
         }
 
-        if (Array.isArray(opts.attributes)) {
-            opts.attributes = { ...opts.attributes, exclude: opts.attributes }
+        if (opts.attributes) {
+            if (opts.attributes.exclude) {
+                opts.attributes = { ...opts.attributes, exclude: [...opts.attributes.exclude] }
+            } else {
+                opts.attributes = { ...opts.attributes, exclude: [] }
+            }
         }
+
+        console.log(opts.attributes)
 
         // Loại bỏ field khỏi kết quả
         const fields = ['password', 'email']

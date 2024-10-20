@@ -30,17 +30,4 @@ const checkIsFriend = async (userId: number, friendId: number): Promise<boolean>
     return isFriend ? true : false
 }
 
-// userId : id of current user
-export const isFriendLiteral = (userId: number): string => {
-    return `
-        (CASE
-        WHEN (user.id = Friendships.user_id AND Friendships.user_id = ${sequelize.escape(userId)} and Friendships.status = 'accepted')
-            OR
-                (user.id = Friendships.friend_id and Friendships.friend_id = ${sequelize.escape(userId)} and Friendships.status = 'accepted')
-        THEN 'true'
-        ELSE 'false'
-        END)
-    `
-}
-
 export default checkIsFriend
