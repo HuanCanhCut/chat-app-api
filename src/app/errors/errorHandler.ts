@@ -14,9 +14,9 @@ const errorHandler = (err: CustomError, req: Request, res: any, next: NextFuncti
 
     if (err.statusCode.toString().startsWith('5')) {
         logger.error(
-            `Error occurred: ${err.message}\nStack trace: ${err.stack}\n Request: ${JSON.stringify(
+            `Error occurred: ${err.message}\nStack trace: ${err.stack}\nRequest: ${JSON.stringify(
                 req.body,
-            )} \n Error code: ${err.statusCode}`,
+            )} \nError code: ${err.statusCode}`,
         )
     }
 

@@ -63,7 +63,7 @@ class FriendController {
         }
     }
 
-    // [GET] /user/friends?page=&per_page=
+    // [GET] /users/friends?page=&per_page=
     async getAllFriends(req: IRequest, res: Response, next: NextFunction) {
         try {
             const { page, per_page, user_id } = req.query
@@ -76,12 +76,21 @@ class FriendController {
 
             // Check if the user is friend with the current user
             const sql = `
-                    (CASE
-                    WHEN (user.id = Friendships.user_id AND Friendships.user_id = ${sequelize.escape(decoded.sub)} and Friendships.status = 'accepted')
-                        OR
-                            (user.id = Friendships.friend_id and Friendships.friend_id = ${sequelize.escape(decoded.sub)} and Friendships.status = 'accepted')
-                    THEN 'true'
-                    ELSE 'false'
+                    (CASE 
+                        WHEN EXISTS (
+                            SELECT 1
+                            FROM 
+                                friendships 
+                            WHERE 
+                                friendships.status = 'accepted'
+                                AND (
+                                    (friendships.user_id = ${sequelize.escape(decoded.sub)} AND friendships.friend_id = user.id)
+                                    OR 
+                                    (friendships.friend_id = ${sequelize.escape(decoded.sub)} AND friendships.user_id = user.id)
+                                )
+                        ) 
+                        THEN "true"
+                        ELSE "false"
                     END)
             `
 
@@ -102,6 +111,13 @@ class FriendController {
                 limit: Number(per_page),
                 offset: (Number(page) - 1) * Number(per_page),
             })
+
+            // Convert is_friend from string to boolean
+            for (const friend of friends) {
+                if (friend) {
+                    friend.dataValues.user.dataValues.is_friend = friend.dataValues.user.dataValues.is_friend === 'true'
+                }
+            }
 
             res.json({
                 data: friends,
