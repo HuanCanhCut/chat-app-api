@@ -11,7 +11,7 @@ import sentMakeFriendRequest from '../utils/sentMakeFriendRequest'
 import { sequelize } from '~/config/db'
 
 class FriendController {
-    // [POST] /user/:id/add
+    // [POST] /users/:id/add
     async addFriend(req: IRequest, res: Response, next: NextFunction) {
         try {
             // id of user that want to add friend
@@ -136,7 +136,7 @@ class FriendController {
         }
     }
 
-    // [POST] /user/:id/accept
+    // [POST] /users/:id/accept
     async acceptFriend(req: IRequest, res: Response, next: NextFunction) {
         try {
             const { id } = req.params
@@ -175,7 +175,7 @@ class FriendController {
         }
     }
 
-    // [POST] /user/:id/reject
+    // [POST] /users/:id/reject
     async rejectFriend(req: IRequest, res: Response, next: NextFunction) {
         try {
             const { id } = req.params
@@ -208,7 +208,7 @@ class FriendController {
         }
     }
 
-    // [POST] /user/:id/unfriend
+    // [DELETE] /users/:id/unfriend
     async unfriend(req: IRequest, res: Response, next: NextFunction) {
         try {
             const { id } = req.params
@@ -243,7 +243,7 @@ class FriendController {
         }
     }
 
-    // [POST] /user/:id/cancel
+    // [POST] /users/:id/cancel
     async cancelFriendRequest(req: IRequest, res: Response, next: NextFunction) {
         try {
             const { id } = req.params
@@ -274,7 +274,7 @@ class FriendController {
         }
     }
 
-    // [POST] /user/friend-invitation?page=&per_page=
+    // [POST] /users/friend-invitation?page=&per_page=
     async getFriendInvitation(req: IRequest, res: Response, next: NextFunction) {
         try {
             const decoded = req.decoded
