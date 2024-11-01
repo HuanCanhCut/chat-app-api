@@ -4,11 +4,11 @@ import { v4 as uuidv4 } from 'uuid'
 import bcrypt from 'bcrypt'
 import { Op, QueryTypes } from 'sequelize'
 import jwt, { JwtPayload } from 'jsonwebtoken'
-import moment from 'moment'
 
+import { client as redisClient } from '../../config/redis'
 import clearCookie from '../utils/clearCookies'
 import { BadRequest, ConflictError, InternalServerError, NotFoundError, UnauthorizedError } from '../errors/errors'
-import { User, BlacklistToken, RefreshToken, ResetCode } from '../models'
+import { User, BlacklistToken, RefreshToken } from '../models'
 import createToken from '../utils/createToken'
 import hashValue from '../utils/hashValue'
 import sendVerificationCode from '../helper/sendVerificationCode'
@@ -331,35 +331,13 @@ class AuthController {
             // 6 number
             const resetCode = Math.floor(100000 + Math.random() * 900000)
 
-            const hasAccount = await ResetCode.findOne({
-                where: {
-                    email,
-                },
-            })
+            const hasCode = await redisClient.get(`resetCode-${email}`)
 
-            if (hasAccount) {
-                await ResetCode.destroy({
-                    where: {
-                        email,
-                    },
-                })
+            if (hasCode) {
+                await redisClient.del(`resetCode-${email}`)
             }
 
-            await Promise.all([
-                ResetCode.create({
-                    email,
-                    code: resetCode,
-                }),
-                // Delete all records if expired
-                ResetCode.destroy({
-                    where: {
-                        email,
-                        created_at: {
-                            [Op.lt]: moment().subtract(this.resetCodeExpired, 'seconds').toISOString(),
-                        },
-                    },
-                }),
-            ])
+            await redisClient.set(`resetCode-${email}`, resetCode, { EX: this.resetCodeExpired })
 
             sendVerificationCode({ email, code: resetCode })
 
@@ -381,22 +359,7 @@ class AuthController {
                 return next(new BadRequest({ message: 'Email, code and password are required' }))
             }
 
-            // 60s trước hiện tại
-            const sixtySecondsAgo = moment(
-                moment().subtract(this.resetCodeExpired, 'seconds').toDate(),
-                'YYYY-MM-DD HH:mm:ss',
-            ).toISOString()
-
-            // chỉ lấy những code còn hạn (created_at >= 60s trước hiện tại)
-            const hasCode = await ResetCode.findOne({
-                where: {
-                    email,
-                    code,
-                    created_at: {
-                        [Op.gte]: sixtySecondsAgo,
-                    },
-                },
-            })
+            const hasCode = await redisClient.get(`resetCode-${email}`)
 
             if (!hasCode) {
                 return next(new UnauthorizedError({ message: 'Invalid code' }))

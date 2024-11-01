@@ -7,6 +7,7 @@ import dotenv from 'dotenv'
 
 import route from './routes/index'
 import * as db from './config/db/index'
+import { client as redisClient } from './config/redis'
 import serviceAccount from './config/firebase/serviceAccount'
 import errorHandler from './app/errors/errorHandler'
 
@@ -20,6 +21,9 @@ admin.initializeApp({
 
 // connect to db
 db.connect()
+
+// connect to redis
+redisClient.connect()
 
 app.use(
     cors({

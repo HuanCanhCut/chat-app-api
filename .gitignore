@@ -12,6 +12,7 @@ dist
 dist-ssr
 *.local
 .env
+redis_logs.sh
 
 # Editor directories and files
 .vscode/*
