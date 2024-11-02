@@ -4,6 +4,10 @@ import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import 'express-async-errors'
 import dotenv from 'dotenv'
+import http from 'http'
+import socketIO from './config/socket'
+import { Server } from 'socket.io'
+import { ClientToServerEvents, ServerToClientEvents, InterServerEvents } from './config/socket/types'
 
 import route from './routes/index'
 import * as db from './config/db/index'
@@ -12,8 +16,15 @@ import serviceAccount from './config/firebase/serviceAccount'
 import errorHandler from './app/errors/errorHandler'
 
 const app = express()
+const server = http.createServer(app)
 
 dotenv.config()
+
+const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents>(server, {
+    cors: {
+        origin: process.env.ORIGIN_URL,
+    },
+})
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
@@ -42,6 +53,7 @@ app.use(express.json())
 app.use(cookieParser())
 
 route(app)
+socketIO(io)
 
 app.all('*', (req: Request, res: Response) => {
     res.status(404).json({
@@ -52,6 +64,6 @@ app.all('*', (req: Request, res: Response) => {
 
 app.use(errorHandler)
 
-app.listen(process.env.PORT, () => {
+server.listen(process.env.PORT, () => {
     console.log(`Server is running on port ${process.env.PORT}`)
 })

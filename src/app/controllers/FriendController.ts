@@ -9,6 +9,7 @@ import { friendShipJoinLiteral } from '../utils/isFriend'
 import checkIsFriend from '../utils/isFriend'
 import sentMakeFriendRequest from '../utils/sentMakeFriendRequest'
 import { sequelize } from '~/config/db'
+import { socket } from '~/config/socket'
 
 class FriendController {
     // [POST] /users/:id/add
@@ -56,6 +57,11 @@ class FriendController {
             if (!newFriendship) {
                 return next(new InternalServerError({ message: 'Failed to add friend' }))
             }
+
+            socket.emit('notification', {
+                message: 'You have a new friend request',
+                userId: Number(id),
+            })
 
             res.sendStatus(201)
         } catch (error: any) {

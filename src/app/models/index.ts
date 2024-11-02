@@ -3,15 +3,11 @@ import { sequelize } from '../../config/db'
 import User from './UserModel'
 import RefreshToken from './RefreshTokenModel'
 import BlacklistToken from './BlacklistTokenModel'
-import ResetCode from './ResetCodeModel'
 import Friendships from './FriendshipsModel'
 
 // define relations
 User.hasMany(RefreshToken, { foreignKey: 'user_id' })
 RefreshToken.belongsTo(User, { foreignKey: 'user_id' })
-
-User.hasMany(ResetCode, { foreignKey: 'email' })
-ResetCode.belongsTo(User, { foreignKey: 'email' })
 
 User.hasMany(Friendships, { foreignKey: 'user_id', as: 'userFriendships' })
 User.hasMany(Friendships, { foreignKey: 'friend_id', as: 'friendFriendships' })
@@ -28,4 +24,4 @@ sequelize
     .catch((err) => console.error('Sync failed:', err))
 
 // Export all models
-export { User, RefreshToken, BlacklistToken, ResetCode, Friendships }
+export { User, RefreshToken, BlacklistToken, Friendships }
