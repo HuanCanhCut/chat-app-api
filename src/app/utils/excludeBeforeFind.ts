@@ -13,8 +13,6 @@ const excludeBeforeFind = (options: any) => {
             }
         }
 
-        console.log(opts.attributes)
-
         // Loại bỏ field khỏi kết quả
         const fields = ['password', 'email']
         opts.attributes.exclude.push(...fields)

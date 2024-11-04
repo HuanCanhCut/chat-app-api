@@ -37,6 +37,7 @@ class MeController {
         const typedReq = req as MulterRequest
         try {
             const { files } = typedReq
+
             const { first_name, last_name, nickname } = req.body
 
             if (!first_name || !last_name || !nickname) {
@@ -145,8 +146,6 @@ class MeController {
                     updateData.cover_photo = upload.result.secure_url
                 }
             })
-
-            console.log(updateData)
 
             // Cập nhật vào database
             await User.update(updateData, { where: { id: req.decoded.sub } })

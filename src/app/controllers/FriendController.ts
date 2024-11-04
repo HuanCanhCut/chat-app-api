@@ -1,22 +1,24 @@
 import { Response, NextFunction } from 'express'
 
 import { BadRequest, ConflictError, InternalServerError, NotFoundError } from '../errors/errors'
-import { Friendships, User } from '../models'
+import { Friendships, User, Notification, NotificationDetail } from '../models'
 import { Sequelize } from 'sequelize'
 import { Op } from 'sequelize'
+
+import { client as redisClient } from '~/config/redis'
 import { IRequest } from '~/type'
 import { friendShipJoinLiteral } from '../utils/isFriend'
 import checkIsFriend from '../utils/isFriend'
 import sentMakeFriendRequest from '../utils/sentMakeFriendRequest'
 import { sequelize } from '~/config/db'
-import { socket } from '~/config/socket'
+import { io } from '~/config/socket'
 
 class FriendController {
     // [POST] /users/:id/add
     async addFriend(req: IRequest, res: Response, next: NextFunction) {
         try {
             // id of user that want to add friend
-            const { id: id } = req.params
+            const { id } = req.params
             const decoded = req.decoded
 
             if (!id) {
@@ -58,10 +60,26 @@ class FriendController {
                 return next(new InternalServerError({ message: 'Failed to add friend' }))
             }
 
-            socket.emit('notification', {
-                message: 'You have a new friend request',
-                userId: Number(id),
+            const notification = await Notification.create({
+                recipient_id: Number(id),
+                type: 'friend_request',
             })
+
+            if (notification.id) {
+                await NotificationDetail.create({
+                    notification_id: notification.id,
+                    sender_id: decoded.sub,
+                    message: `${decoded.full_name} vừa gửi cho bạn một lời mời kết bạn`,
+                })
+            }
+
+            const socketId = await redisClient.get(`socket_id_${Number(id)}`)
+
+            if (socketId) {
+                io.to(socketId).emit('notification', {
+                    message: `${decoded.full_name} vừa gửi cho bạn một lời mời kết bạn`,
+                })
+            }
 
             res.sendStatus(201)
         } catch (error: any) {

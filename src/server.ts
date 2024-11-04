@@ -23,6 +23,7 @@ dotenv.config()
 const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents>(server, {
     cors: {
         origin: process.env.ORIGIN_URL,
+        credentials: true,
     },
 })
 

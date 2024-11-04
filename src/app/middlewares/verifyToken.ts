@@ -20,6 +20,7 @@ const verifyToken = async (req: IRequest, res: any, next: NextFunction) => {
         }
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET as string)
+
         if (!decoded) {
             clearCookie({ res, cookies: ['token', 'refreshToken'] })
             res.status(401).json({
