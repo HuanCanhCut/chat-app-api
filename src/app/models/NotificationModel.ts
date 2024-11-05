@@ -35,12 +35,4 @@ Notification.init(
     },
 )
 
-// Notification.afterFind((notification: any, options: any) => {
-//     if (options.include && Array.isArray(notification)) {
-//         for (const includeModel of notification) {
-//             console.log(includeModel)
-//         }
-//     }
-// })
-
 export default Notification

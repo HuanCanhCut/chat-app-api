@@ -1,4 +1,5 @@
 import { NextFunction, Response } from 'express'
+import { Op } from 'sequelize'
 
 import { IRequest } from '~/type'
 import { BadRequest, InternalServerError } from '../errors/errors'
@@ -61,6 +62,84 @@ class NotificationController {
                     per_page: Number(per_page),
                 }),
             )
+        } catch (error: any) {
+            return next(new InternalServerError({ message: error.message }))
+        }
+    }
+
+    async readNotification(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const { notification_id } = req.body
+
+            if (!notification_id) {
+                return next(new BadRequest({ message: 'Notification id is required' }))
+            }
+
+            await NotificationDetail.update({ is_read: true }, { where: { id: notification_id } })
+
+            res.sendStatus(200)
+        } catch (error: any) {
+            return next(new InternalServerError({ message: error.message }))
+        }
+    }
+
+    async seenNotification(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const decoded = req.decoded
+
+            await NotificationDetail.update(
+                { is_seen: true },
+                {
+                    where: {
+                        notification_id: {
+                            [Op.in]: (
+                                await Notification.findAll({
+                                    attributes: ['id'],
+                                    where: {
+                                        recipient_id: decoded.sub,
+                                    },
+                                })
+                            )
+                                .map((item) => item.id)
+                                .filter((id) => id !== undefined),
+                        },
+                    },
+                },
+            )
+
+            res.sendStatus(200)
+        } catch (error: any) {
+            return next(new InternalServerError({ message: error.message }))
+        }
+    }
+
+    async unreadNotification(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const { notification_id } = req.body
+
+            if (!notification_id) {
+                return next(new BadRequest({ message: 'Notification id is required' }))
+            }
+
+            await NotificationDetail.update({ is_read: false }, { where: { id: notification_id } })
+
+            res.sendStatus(200)
+        } catch (error: any) {
+            return next(new InternalServerError({ message: error.message }))
+        }
+    }
+
+    async deleteNotification(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const { notification_id } = req.body
+
+            if (!notification_id) {
+                return next(new BadRequest({ message: 'Notification id is required' }))
+            }
+
+            await Notification.destroy({ where: { id: notification_id } })
+
+            res.sendStatus(200)
         } catch (error: any) {
             return next(new InternalServerError({ message: error.message }))
         }

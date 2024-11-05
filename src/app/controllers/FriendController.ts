@@ -73,6 +73,7 @@ class FriendController {
                 })
             }
 
+            // Send notification to user
             const socketId = await redisClient.get(`socket_id_${Number(id)}`)
 
             if (socketId) {
@@ -192,6 +193,24 @@ class FriendController {
             if (!updateSuccess) {
                 return next(new InternalServerError({ message: 'Failed to accept friend request' }))
             }
+
+            // Delete notification when accept friend request
+            await Notification.destroy({
+                where: {
+                    recipient_id: decoded.sub,
+                    type: 'friend_request',
+                    id: {
+                        [Op.in]: (
+                            await NotificationDetail.findAll({
+                                attributes: ['notification_id'],
+                                where: {
+                                    sender_id: Number(id),
+                                },
+                            })
+                        ).map((item) => item.notification_id),
+                    },
+                },
+            })
 
             res.sendStatus(200)
         } catch (error: any) {

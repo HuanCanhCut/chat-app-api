@@ -9,6 +9,7 @@ class NotificationDetail extends Model<
     declare notification_id: number
     declare message: string
     declare is_read?: boolean
+    declare is_seen?: boolean
     declare sender_id: number
 }
 
@@ -32,6 +33,11 @@ NotificationDetail.init(
             allowNull: false,
         },
         is_read: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false,
+        },
+        is_seen: {
             type: DataTypes.BOOLEAN,
             allowNull: false,
             defaultValue: false,
