@@ -67,7 +67,7 @@ class NotificationController {
         }
     }
 
-    async readNotification(req: IRequest, res: Response, next: NextFunction) {
+    async markAsRead(req: IRequest, res: Response, next: NextFunction) {
         try {
             const { notification_id } = req.body
 
@@ -113,7 +113,7 @@ class NotificationController {
         }
     }
 
-    async unreadNotification(req: IRequest, res: Response, next: NextFunction) {
+    async markAsUnread(req: IRequest, res: Response, next: NextFunction) {
         try {
             const { notification_id } = req.body
 
@@ -131,7 +131,7 @@ class NotificationController {
 
     async deleteNotification(req: IRequest, res: Response, next: NextFunction) {
         try {
-            const { notification_id } = req.body
+            const { id: notification_id } = req.params
 
             if (!notification_id) {
                 return next(new BadRequest({ message: 'Notification id is required' }))

@@ -5,9 +5,9 @@ import NotificationController from '~/app/controllers/NotificationController'
 import verifyToken from '~/app/middlewares/verifyToken'
 
 router.get('/', verifyToken, NotificationController.getNotifications)
-router.patch('/read', verifyToken, NotificationController.readNotification)
+router.patch('/mark-as-read', verifyToken, NotificationController.markAsRead)
+router.patch('/mark-as-unread', verifyToken, NotificationController.markAsUnread)
 router.patch('/seen', verifyToken, NotificationController.seenNotification)
-router.patch('/unread', verifyToken, NotificationController.unreadNotification)
-router.delete('/', verifyToken, NotificationController.deleteNotification)
+router.delete('/:id', verifyToken, NotificationController.deleteNotification)
 
 export default router
