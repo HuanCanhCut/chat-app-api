@@ -22,7 +22,7 @@ class AuthController {
         return Math.floor(Date.now() / 1000) + Number(process.env.EXPIRED_TOKEN)
     }
 
-    generateToken(payload: { sub: number; full_name: string }) {
+    generateToken(payload: { sub: number }) {
         const token = createToken({ payload }).token
         const refreshToken = createToken({ payload }).refreshToken
 
@@ -81,6 +81,7 @@ class AuthController {
                     uuid: uuidv4(),
                     nickname: email.split('@')[0],
                     password: passwordHashed,
+                    full_name: email.split('@')[0],
                 },
             })
 
@@ -90,7 +91,6 @@ class AuthController {
 
             const payload = {
                 sub: user.id as number,
-                full_name: user.full_name,
             }
 
             const { token, refreshToken } = this.generateToken(payload)
@@ -143,7 +143,6 @@ class AuthController {
 
             const payload = {
                 sub: user.dataValues.id,
-                full_name: user.dataValues.full_name,
             }
 
             const { token, refreshToken } = this.generateToken(payload)
@@ -219,7 +218,6 @@ class AuthController {
 
             const { token: AccessToken, refreshToken } = this.generateToken({
                 sub: user.id as number,
-                full_name: user.dataValues.full_name,
             })
 
             this.sendToClient({ res, user, token: AccessToken, refreshToken })
@@ -283,7 +281,7 @@ class AuthController {
                 return next(new UnauthorizedError({ message: 'Invalid or expired token' }))
             }
 
-            const payload = { sub: Number(decoded.sub), full_name: decoded.full_name }
+            const payload = { sub: Number(decoded.sub) }
 
             if (!decoded.exp) {
                 return next(new UnauthorizedError({ message: 'Invalid or expired token' }))

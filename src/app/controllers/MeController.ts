@@ -40,8 +40,12 @@ class MeController {
 
             const { first_name, last_name, nickname } = req.body
 
-            if (!first_name || !last_name || !nickname) {
-                return next(new BadRequest({ message: 'First name, last name, nickname are required' }))
+            if (!first_name && !last_name) {
+                return next(new BadRequest({ message: 'First name, last name are required' }))
+            }
+
+            if (!nickname) {
+                return next(new BadRequest({ message: 'Nickname is required' }))
             }
 
             if (nickname.trim().split(' ').length > 2) {

@@ -12,7 +12,6 @@ const expiredRefreshToken = Number(process.env.EXPIRED_REFRESH_TOKEN)
 interface ICreateToken {
     payload: {
         sub: number
-        full_name: string
     }
     expToken?: number
     expRefresh?: number

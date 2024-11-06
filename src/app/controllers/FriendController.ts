@@ -60,6 +60,8 @@ class FriendController {
                 return next(new InternalServerError({ message: 'Failed to add friend' }))
             }
 
+            const currentUser = await User.findOne<any>({ where: { id: decoded.sub } })
+
             const notification = await Notification.create({
                 recipient_id: Number(id),
                 type: 'friend_request',
@@ -69,7 +71,7 @@ class FriendController {
                 await NotificationDetail.create({
                     notification_id: notification.id,
                     sender_id: decoded.sub,
-                    message: `${decoded.full_name} vừa gửi cho bạn một lời mời kết bạn`,
+                    message: `${currentUser.full_name} vừa gửi cho bạn một lời mời kết bạn`,
                 })
             }
 
@@ -78,7 +80,7 @@ class FriendController {
 
             if (socketId) {
                 io.to(socketId).emit('notification', {
-                    message: `${decoded.full_name} vừa gửi cho bạn một lời mời kết bạn`,
+                    message: `${currentUser.full_name} vừa gửi cho bạn một lời mời kết bạn`,
                 })
             }
 
