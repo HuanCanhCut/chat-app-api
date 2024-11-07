@@ -11,6 +11,8 @@ class NotificationDetail extends Model<
     declare is_read?: boolean
     declare is_seen?: boolean
     declare sender_id: number
+    declare createdAt?: Date
+    declare updatedAt?: Date
 }
 
 NotificationDetail.init(

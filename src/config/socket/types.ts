@@ -1,9 +1,13 @@
+import { NotificationEvent } from '~/app/enum/notification'
+
 interface ServerToClientEvents {
-    notification: (data: any) => void
+    [NotificationEvent.NEW_NOTIFICATION]: (data: any) => void
+    [NotificationEvent.REMOVE_NOTIFICATION]: (data: any) => void
 }
 
 interface ClientToServerEvents {
-    notification: (data: any) => void
+    [NotificationEvent.NEW_NOTIFICATION]: (data: any) => void
+    [NotificationEvent.REMOVE_NOTIFICATION]: (data: any) => void
 }
 
 interface InterServerEvents {

@@ -5,6 +5,8 @@ import { Friendships, User, Notification, NotificationDetail } from '../models'
 import { Sequelize } from 'sequelize'
 import { Op } from 'sequelize'
 
+import { NotificationEvent } from '../enum/notification'
+import { RedisKey } from '../enum/redis'
 import { client as redisClient } from '~/config/redis'
 import { IRequest } from '~/type'
 import { friendShipJoinLiteral } from '../utils/isFriend'
@@ -12,8 +14,27 @@ import checkIsFriend from '../utils/isFriend'
 import sentMakeFriendRequest from '../utils/sentMakeFriendRequest'
 import { sequelize } from '~/config/db'
 import { io } from '~/config/socket'
+import createNotification from '../utils/createNotification'
 
 class FriendController {
+    // Delete notification when reject friend request
+    async destroyNotification(recipient_id: number, sender_id: number) {
+        await Notification.destroy({
+            where: {
+                recipient_id,
+                type: 'friend_request',
+                id: {
+                    [Op.in]: (
+                        await NotificationDetail.findAll({
+                            attributes: ['notification_id'],
+                            where: { sender_id: sender_id },
+                        })
+                    ).map((item) => item.notification_id),
+                },
+            },
+        })
+    }
+
     // [POST] /users/:id/add
     async addFriend(req: IRequest, res: Response, next: NextFunction) {
         try {
@@ -60,28 +81,18 @@ class FriendController {
                 return next(new InternalServerError({ message: 'Failed to add friend' }))
             }
 
-            const currentUser = await User.findOne<any>({ where: { id: decoded.sub } })
-
-            const notification = await Notification.create({
-                recipient_id: Number(id),
+            const notificationData = await createNotification({
+                recipientId: Number(id),
                 type: 'friend_request',
+                currentUserId: decoded.sub,
+                message: 'vừa gửi cho bạn một lời mời kết bạn',
             })
 
-            if (notification.id) {
-                await NotificationDetail.create({
-                    notification_id: notification.id,
-                    sender_id: decoded.sub,
-                    message: `${currentUser.full_name} vừa gửi cho bạn một lời mời kết bạn`,
-                })
-            }
-
             // Send notification to user
-            const socketId = await redisClient.get(`socket_id_${Number(id)}`)
+            const socketId = await redisClient.get(`${RedisKey.SOCKET_ID}${Number(id)}`)
 
             if (socketId) {
-                io.to(socketId).emit('notification', {
-                    message: `${currentUser.full_name} vừa gửi cho bạn một lời mời kết bạn`,
-                })
+                io.to(socketId).emit(NotificationEvent.NEW_NOTIFICATION, notificationData)
             }
 
             res.sendStatus(201)
@@ -214,6 +225,19 @@ class FriendController {
                 },
             })
 
+            const notificationData = await createNotification({
+                recipientId: Number(id),
+                type: 'accept_friend_request',
+                currentUserId: decoded.sub,
+                message: 'đã chấp nhận lời mời kết bạn',
+            })
+
+            const socketId = await redisClient.get(`${RedisKey.SOCKET_ID}${Number(id)}`)
+
+            if (socketId) {
+                io.to(socketId).emit(NotificationEvent.NEW_NOTIFICATION, notificationData)
+            }
+
             res.sendStatus(200)
         } catch (error: any) {
             return next(new InternalServerError({ message: error.message }))
@@ -221,22 +245,22 @@ class FriendController {
     }
 
     // [POST] /users/:id/reject
-    async rejectFriend(req: IRequest, res: Response, next: NextFunction) {
+    async rejectFriendRequest(req: IRequest, res: Response, next: NextFunction) {
         try {
-            const { id } = req.params
+            const { id: sender_id } = req.params
             const decoded = req.decoded
 
-            if (!id) {
+            if (!sender_id) {
                 return next(new BadRequest({ message: 'User ID is required' }))
             }
 
-            if (decoded.sub === Number(id)) {
+            if (decoded.sub === Number(sender_id)) {
                 return next(new BadRequest({ message: 'You cannot reject yourself' }))
             }
 
             // Check if the user has sent a friend request to the this user
             const isMakeFriendRequest = await sentMakeFriendRequest({
-                userId: Number(id),
+                userId: Number(sender_id),
                 friendId: decoded.sub,
                 toWay: false,
             })
@@ -245,7 +269,35 @@ class FriendController {
                 return next(new NotFoundError({ message: 'Friend request not found' }))
             }
 
-            await isMakeFriendRequest.destroy()
+            const socketId = await redisClient.get(`${RedisKey.SOCKET_ID}${Number(sender_id)}`)
+
+            const notification = await Notification.findOne({
+                where: {
+                    recipient_id: decoded.sub,
+                    type: 'friend_request',
+                },
+                attributes: ['id'],
+                include: {
+                    model: NotificationDetail,
+                    as: 'notification_details',
+                    where: {
+                        sender_id: Number(sender_id),
+                    },
+                },
+            })
+
+            if (socketId) {
+                io.to(socketId).emit(NotificationEvent.REMOVE_NOTIFICATION, notification?.id)
+            }
+
+            if (notification) {
+                await Promise.all([
+                    isMakeFriendRequest.destroy(),
+                    Notification.destroy({ where: { id: notification.id } }),
+                ])
+            } else {
+                await isMakeFriendRequest.destroy()
+            }
 
             res.sendStatus(200)
         } catch (error: any) {
@@ -311,7 +363,35 @@ class FriendController {
                 return next(new NotFoundError({ message: 'Friend request not found' }))
             }
 
-            await isMakeFriendRequest.destroy()
+            const socketId = await redisClient.get(`${RedisKey.SOCKET_ID}${Number(id)}`)
+
+            const notification = await Notification.findOne({
+                where: {
+                    recipient_id: id,
+                    type: 'friend_request',
+                },
+                attributes: ['id'],
+                include: {
+                    model: NotificationDetail,
+                    as: 'notification_details',
+                    where: {
+                        sender_id: decoded.sub,
+                    },
+                },
+            })
+
+            if (socketId) {
+                io.to(socketId).emit(NotificationEvent.REMOVE_NOTIFICATION, notification?.id)
+            }
+
+            if (notification) {
+                await Promise.all([
+                    isMakeFriendRequest.destroy(),
+                    Notification.destroy({ where: { id: notification?.id } }),
+                ])
+            } else {
+                await isMakeFriendRequest.destroy()
+            }
 
             res.sendStatus(200)
         } catch (error: any) {
