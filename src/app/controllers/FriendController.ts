@@ -1,7 +1,7 @@
 import { Response, NextFunction } from 'express'
 
 import { BadRequest, ConflictError, InternalServerError, NotFoundError } from '../errors/errors'
-import { Friendships, User, Notification, NotificationDetail } from '../models'
+import { Friendships, User, Notification } from '../models'
 import { Sequelize } from 'sequelize'
 import { Op } from 'sequelize'
 
@@ -22,15 +22,8 @@ class FriendController {
         await Notification.destroy({
             where: {
                 recipient_id,
+                sender_id,
                 type: 'friend_request',
-                id: {
-                    [Op.in]: (
-                        await NotificationDetail.findAll({
-                            attributes: ['notification_id'],
-                            where: { sender_id: sender_id },
-                        })
-                    ).map((item) => item.notification_id),
-                },
             },
         })
     }
@@ -211,17 +204,8 @@ class FriendController {
             await Notification.destroy({
                 where: {
                     recipient_id: decoded.sub,
+                    sender_id: Number(id),
                     type: 'friend_request',
-                    id: {
-                        [Op.in]: (
-                            await NotificationDetail.findAll({
-                                attributes: ['notification_id'],
-                                where: {
-                                    sender_id: Number(id),
-                                },
-                            })
-                        ).map((item) => item.notification_id),
-                    },
                 },
             })
 
@@ -269,35 +253,12 @@ class FriendController {
                 return next(new NotFoundError({ message: 'Friend request not found' }))
             }
 
-            const socketId = await redisClient.get(`${RedisKey.SOCKET_ID}${Number(sender_id)}`)
-
-            const notification = await Notification.findOne({
-                where: {
-                    recipient_id: decoded.sub,
-                    type: 'friend_request',
-                },
-                attributes: ['id'],
-                include: {
-                    model: NotificationDetail,
-                    as: 'notification_details',
-                    where: {
-                        sender_id: Number(sender_id),
-                    },
-                },
-            })
-
-            if (socketId) {
-                io.to(socketId).emit(NotificationEvent.REMOVE_NOTIFICATION, notification?.id)
-            }
-
-            if (notification) {
-                await Promise.all([
-                    isMakeFriendRequest.destroy(),
-                    Notification.destroy({ where: { id: notification.id } }),
-                ])
-            } else {
-                await isMakeFriendRequest.destroy()
-            }
+            await Promise.all([
+                isMakeFriendRequest.destroy(),
+                Notification.destroy({
+                    where: { recipient_id: decoded.sub, sender_id: Number(sender_id), type: 'friend_request' },
+                }),
+            ])
 
             res.sendStatus(200)
         } catch (error: any) {
@@ -368,20 +329,14 @@ class FriendController {
             const notification = await Notification.findOne({
                 where: {
                     recipient_id: id,
+                    sender_id: decoded.sub,
                     type: 'friend_request',
                 },
                 attributes: ['id'],
-                include: {
-                    model: NotificationDetail,
-                    as: 'notification_details',
-                    where: {
-                        sender_id: decoded.sub,
-                    },
-                },
             })
 
             if (socketId) {
-                io.to(socketId).emit(NotificationEvent.REMOVE_NOTIFICATION, notification?.id)
+                io.to(socketId).emit(NotificationEvent.REMOVE_NOTIFICATION, { notificationId: notification?.id })
             }
 
             if (notification) {

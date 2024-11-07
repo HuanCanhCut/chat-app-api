@@ -1,5 +1,4 @@
 import Notification from '~/app/models/NotificationModel'
-import NotificationDetail from '~/app/models/NotificationDetailModel'
 import { User } from '../models'
 import { NotFoundError } from '../errors/errors'
 
@@ -26,26 +25,15 @@ const createNotification = async ({ recipientId, type, currentUserId, message }:
     const notification = await Notification.create({
         recipient_id: Number(recipientId),
         type,
+        sender_id: currentUserId,
+        message: `${currentUser.full_name} ${message}`,
     })
-
-    let notificationDetail
-
-    if (notification.id) {
-        notificationDetail = await NotificationDetail.create({
-            notification_id: notification.id,
-            sender_id: currentUserId,
-            message: `${currentUser.full_name} ${message}`,
-        })
-    }
 
     const notificationData = {
         notification: {
             ...notification?.dataValues,
-            notification_details: {
-                ...notificationDetail?.dataValues,
-                sender_id: currentUserId,
-                sender_user: currentUser,
-            },
+            sender_id: currentUserId,
+            sender_user: currentUser,
         },
     }
 

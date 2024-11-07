@@ -1,14 +1,14 @@
 import { NextFunction, Response } from 'express'
-import { Op } from 'sequelize'
 
 import { IRequest } from '~/type'
 import { BadRequest, InternalServerError } from '../errors/errors'
 import Notification from '../models/NotificationModel'
 import User from '../models/UserModel'
 import { responseModel } from '../utils/responseMode'
-import NotificationDetail from '../models/NotificationDetailModel'
 
 class NotificationController {
+    // [GET] /notifications?page=&per_page=&type=
+
     async getNotifications(req: IRequest, res: Response, next: NextFunction) {
         try {
             const { page = 1, per_page = 10, type } = req.query
@@ -19,32 +19,24 @@ class NotificationController {
 
             const decoded = req.decoded
 
-            const whereCondition: any = {}
+            const whereCondition: any = {
+                recipient_id: decoded.sub,
+            }
 
             if (type === 'unread') {
-                whereCondition['is_read'] = false
+                whereCondition.is_read = false
             }
 
             const { rows: notifications, count: total } = await Notification.findAndCountAll({
-                where: {
-                    recipient_id: decoded.sub,
-                },
+                where: whereCondition,
                 include: [
                     {
-                        model: NotificationDetail,
-                        as: 'notification_details',
+                        model: User,
+                        as: 'sender_user',
                         required: true,
-                        where: whereCondition,
-                        include: [
-                            {
-                                model: User,
-                                as: 'sender_user',
-                                required: true,
-                                attributes: {
-                                    exclude: ['password', 'email'],
-                                },
-                            },
-                        ],
+                        attributes: {
+                            exclude: ['password', 'email'],
+                        },
                     },
                 ],
                 order: [['created_at', 'DESC']],
@@ -67,6 +59,7 @@ class NotificationController {
         }
     }
 
+    // [PUT] /notifications/mark-as-read
     async markAsRead(req: IRequest, res: Response, next: NextFunction) {
         try {
             const { notification_id } = req.body
@@ -75,7 +68,7 @@ class NotificationController {
                 return next(new BadRequest({ message: 'Notification id is required' }))
             }
 
-            await NotificationDetail.update({ is_read: true }, { where: { id: notification_id } })
+            await Notification.update({ is_read: true }, { where: { id: notification_id } })
 
             res.sendStatus(200)
         } catch (error: any) {
@@ -83,29 +76,12 @@ class NotificationController {
         }
     }
 
+    // [PUT] /notifications/mark-as-seen
     async seenNotification(req: IRequest, res: Response, next: NextFunction) {
         try {
             const decoded = req.decoded
 
-            await NotificationDetail.update(
-                { is_seen: true },
-                {
-                    where: {
-                        notification_id: {
-                            [Op.in]: (
-                                await Notification.findAll({
-                                    attributes: ['id'],
-                                    where: {
-                                        recipient_id: decoded.sub,
-                                    },
-                                })
-                            )
-                                .map((item) => item.id)
-                                .filter((id) => id !== undefined),
-                        },
-                    },
-                },
-            )
+            await Notification.update({ is_seen: true }, { where: { recipient_id: decoded.sub } })
 
             res.sendStatus(200)
         } catch (error: any) {
@@ -113,6 +89,7 @@ class NotificationController {
         }
     }
 
+    // [PUT] /notifications/mark-as-unread
     async markAsUnread(req: IRequest, res: Response, next: NextFunction) {
         try {
             const { notification_id } = req.body
@@ -121,7 +98,7 @@ class NotificationController {
                 return next(new BadRequest({ message: 'Notification id is required' }))
             }
 
-            await NotificationDetail.update({ is_read: false }, { where: { id: notification_id } })
+            await Notification.update({ is_read: false }, { where: { id: notification_id } })
 
             res.sendStatus(200)
         } catch (error: any) {
@@ -129,6 +106,7 @@ class NotificationController {
         }
     }
 
+    // [DELETE] /notifications/:id
     async deleteNotification(req: IRequest, res: Response, next: NextFunction) {
         try {
             const { id: notification_id } = req.params
