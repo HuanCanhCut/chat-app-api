@@ -364,8 +364,8 @@ class AuthController {
 
             const hasCode = await redisClient.get(`resetCode-${email}`)
 
-            if (!hasCode) {
-                return next(new UnauthorizedError({ message: 'Invalid code' }))
+            if (!hasCode || hasCode !== code) {
+                return next(new UnauthorizedError({ message: 'Sai mã xác thực hoặc mã xác thực đã hết hạn' }))
             }
 
             // Update password

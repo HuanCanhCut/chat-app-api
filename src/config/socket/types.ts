@@ -1,4 +1,4 @@
-import { NotificationEvent } from '~/app/enum/notification'
+import { NotificationEvent } from '~/enum/notification'
 
 interface ServerToClientEvents {
     [NotificationEvent.NEW_NOTIFICATION]: (data: any) => void

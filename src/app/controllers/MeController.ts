@@ -154,7 +154,7 @@ class MeController {
             // Cập nhật vào database
             await User.update(updateData, { where: { id: req.decoded.sub } })
 
-            res.sendStatus(200)
+            res.json({ data: updateData })
         } catch (error: any) {
             return next(new InternalServerError({ message: error.message }))
         }
