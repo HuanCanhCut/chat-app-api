@@ -12,6 +12,6 @@ router.post('/:id/accept', verifyToken, FriendController.acceptFriend.bind(Frien
 router.post('/:id/reject', verifyToken, FriendController.rejectFriendRequest.bind(FriendController))
 router.delete('/:id/unfriend', verifyToken, FriendController.unfriend.bind(FriendController))
 router.post('/:id/cancel', verifyToken, FriendController.cancelFriendRequest.bind(FriendController))
+router.get('/search', verifyToken, UserController.searchUser.bind(UserController))
 router.get('/:nickname', verifyToken, UserController.getAnUser.bind(UserController))
-
 export default router

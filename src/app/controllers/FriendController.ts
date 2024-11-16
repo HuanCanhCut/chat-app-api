@@ -253,12 +253,25 @@ class FriendController {
                 return next(new NotFoundError({ message: 'Friend request not found' }))
             }
 
+            const notification = await Notification.findOne({
+                where: { recipient_id: decoded.sub, sender_id: Number(sender_id), type: 'friend_request' },
+                attributes: ['id'],
+            })
+
             await Promise.all([
                 isMakeFriendRequest.destroy(),
                 Notification.destroy({
-                    where: { recipient_id: decoded.sub, sender_id: Number(sender_id), type: 'friend_request' },
+                    where: {
+                        id: notification?.id,
+                    },
                 }),
             ])
+
+            const socketId = await redisClient.get(`${RedisKey.SOCKET_ID}${Number(decoded.sub)}`)
+
+            if (socketId) {
+                io.to(socketId).emit(NotificationEvent.REMOVE_NOTIFICATION, { notificationId: notification?.id })
+            }
 
             res.sendStatus(200)
         } catch (error: any) {

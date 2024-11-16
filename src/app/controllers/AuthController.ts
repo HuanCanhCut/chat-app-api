@@ -108,7 +108,7 @@ class AuthController {
             const { email, password } = req.body
 
             if (!email || !password) {
-                return next(new BadRequest({ message: 'Email and password are required' }))
+                return next(new BadRequest({ message: 'Email và mật khẩu là bắt buộc' }))
             }
 
             const sql = `SELECT password FROM users WHERE email = ?`
@@ -130,7 +130,7 @@ class AuthController {
             ])
 
             if (!user) {
-                return next(new UnauthorizedError({ message: 'Invalid email or password' }))
+                return next(new UnauthorizedError({ message: 'Email hoặc mật khẩu không đúng' }))
             }
 
             const passwordHashed = userPassword[0].password
@@ -138,7 +138,7 @@ class AuthController {
             const isPasswordValid = bcrypt.compareSync(password, passwordHashed)
 
             if (!isPasswordValid) {
-                return next(new UnauthorizedError({ message: 'Invalid email or password' }))
+                return next(new UnauthorizedError({ message: 'Email hoặc mật khẩu không đúng' }))
             }
 
             const payload = {

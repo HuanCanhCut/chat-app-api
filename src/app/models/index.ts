@@ -5,6 +5,7 @@ import RefreshToken from './RefreshTokenModel'
 import BlacklistToken from './BlacklistTokenModel'
 import Friendships from './FriendshipsModel'
 import Notification from './NotificationModel'
+import SearchHistory from './SearchHistory'
 
 // define relations
 User.hasMany(RefreshToken, { foreignKey: 'user_id' })
@@ -18,6 +19,9 @@ Friendships.belongsTo(User, { foreignKey: 'friend_id', as: 'friend' })
 
 Notification.belongsTo(User, { foreignKey: 'sender_id', as: 'sender_user' })
 User.hasMany(Notification, { foreignKey: 'sender_id', as: 'notifications' })
+
+SearchHistory.belongsTo(User, { foreignKey: 'user_id', as: 'user' })
+User.hasMany(SearchHistory, { foreignKey: 'user_id', as: 'search_histories' })
 
 // Sync all models with the database
 sequelize
