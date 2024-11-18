@@ -7,6 +7,7 @@ import checkIsFriend from '../utils/isFriend'
 import sentMakeFriendRequest from '../utils/sentMakeFriendRequest'
 import { QueryTypes } from 'sequelize'
 import { sequelize } from '~/config/db'
+import SearchHistory from '../models/SearchHistoryModel'
 
 class UserController {
     // [GET] /user/:nickname
@@ -66,10 +67,14 @@ class UserController {
 
     async searchUser(req: IRequest, res: Response, next: NextFunction) {
         try {
-            const { q, per_page } = req.query
+            const { q, type } = req.query
 
-            if (!q || !per_page) {
-                return next(new BadRequest({ message: 'Query and per_page are required' }))
+            if (!q || !type) {
+                return next(new BadRequest({ message: 'Query and type are required' }))
+            }
+
+            if (type !== 'less' && type !== 'more') {
+                return next(new BadRequest({ message: 'Type must be less or more' }))
             }
 
             const query = `
@@ -77,16 +82,74 @@ class UserController {
                             id, full_name, nickname, avatar, first_name, last_name, uuid, cover_photo, created_at, updated_at 
                         FROM 
                             users 
-                        WHERE MATCH (full_name) AGAINST (:search IN NATURAL LANGUAGE MODE)
+                        WHERE MATCH (full_name, nickname) AGAINST (:search IN NATURAL LANGUAGE MODE)
+                        OR full_name LIKE '%${q}%'
+                        OR nickname LIKE '%${q}%'
                         LIMIT :per_page
                         `
 
             const users = await sequelize.query(query, {
-                replacements: { search: q, per_page: Number(per_page) },
+                replacements: { search: q, per_page: type === 'less' ? 8 : 15 },
                 type: QueryTypes.SELECT,
             })
 
             res.json({ data: users })
+        } catch (error: any) {
+            return next(new InternalServerError({ message: error.message }))
+        }
+    }
+
+    async setSearchHistory(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const decoded = req.decoded
+
+            const { user_search_id } = req.body
+
+            if (!user_search_id) {
+                return next(new BadRequest({ message: 'User search id is required' }))
+            }
+
+            const userSearchExist = await User.findByPk(user_search_id)
+
+            if (!userSearchExist) {
+                return next(new NotFoundError({ message: 'User search not found' }))
+            }
+
+            const searchHistoryExist = await SearchHistory.findOne({
+                where: { user_id: decoded.sub, user_search_id },
+            })
+
+            if (!searchHistoryExist) {
+                await SearchHistory.create({
+                    user_id: decoded.sub,
+                    user_search_id,
+                })
+            }
+
+            res.sendStatus(204)
+        } catch (error: any) {
+            return next(new InternalServerError({ message: error.message }))
+        }
+    }
+
+    async getSearchHistory(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const decoded = req.decoded
+
+            const searchHistory = await SearchHistory.findAll({
+                where: { user_id: decoded.sub },
+                include: {
+                    model: User,
+                    as: 'user_search',
+                    required: true,
+                    attributes: {
+                        exclude: ['password', 'email'],
+                    },
+                },
+                limit: 8,
+            })
+
+            res.json({ data: searchHistory })
         } catch (error: any) {
             return next(new InternalServerError({ message: error.message }))
         }
