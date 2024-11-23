@@ -1,11 +1,11 @@
 import { Response, NextFunction } from 'express'
+import { QueryTypes } from 'sequelize'
 
 import { BadRequest, InternalServerError, NotFoundError } from '../errors/errors'
-import { User } from '../models'
+import { Conversation, ConversationMember, User } from '../models'
 import { IRequest } from '~/type'
 import checkIsFriend from '../utils/isFriend'
 import sentMakeFriendRequest from '../utils/sentMakeFriendRequest'
-import { QueryTypes } from 'sequelize'
 import { sequelize } from '~/config/db'
 import SearchHistory from '../models/SearchHistoryModel'
 
@@ -44,6 +44,32 @@ class UserController {
             if (decoded.sub !== Number(user.id)) {
                 user.dataValues.is_friend = isFriend
                 user.dataValues.friend_request = friendRequest ? true : false
+
+                if (isFriend) {
+                    const conversation = await Conversation.findOne({
+                        where: {
+                            is_group: false,
+                        },
+                        include: [
+                            {
+                                model: ConversationMember,
+                                as: 'conversation_members',
+                                required: true,
+                                where: { user_id: decoded.sub },
+                            },
+                            {
+                                model: ConversationMember,
+                                as: 'conversation_members',
+                                required: true,
+                                where: { user_id: Number(user.id) },
+                            },
+                        ],
+                    })
+
+                    if (conversation) {
+                        user.dataValues.conversation = conversation
+                    }
+                }
             }
 
             // Kiểm tra xem người dùng đã gửi lời mời kết bạn hay chưa

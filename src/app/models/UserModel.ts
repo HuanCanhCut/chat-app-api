@@ -3,6 +3,7 @@ import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequ
 import { sequelize } from '../../config/db'
 import getFriendsCount from '../utils/friendsCount'
 import excludeBeforeFind from '../utils/excludeBeforeFind'
+import { ConversationModel } from '~/type'
 
 class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
     declare id?: number
@@ -19,6 +20,7 @@ class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
     declare created_at?: Date
     declare updated_at?: Date
     declare friend_request?: boolean
+    declare conversation?: ConversationModel
     declare password?: string
 }
 User.init(
@@ -77,6 +79,13 @@ User.init(
         },
     },
     {
+        indexes: [
+            {
+                fields: ['full_name', 'nickname'],
+                type: 'FULLTEXT',
+            },
+        ],
+
         tableName: 'users',
         sequelize,
         underscored: true,

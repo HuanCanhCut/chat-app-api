@@ -6,6 +6,10 @@ import BlacklistToken from './BlacklistTokenModel'
 import Friendships from './FriendshipsModel'
 import Notification from './NotificationModel'
 import SearchHistory from './SearchHistoryModel'
+import Conversation from './ConversationModel'
+import ConversationMember from './ConversationMemberModel'
+import Message from './MessageModel'
+import MessageStatus from './MessageStatusModel'
 
 // define relations
 User.hasMany(RefreshToken, { foreignKey: 'user_id' })
@@ -26,6 +30,21 @@ User.hasMany(SearchHistory, { foreignKey: 'user_id', as: 'search_histories' })
 SearchHistory.belongsTo(User, { foreignKey: 'user_search_id', as: 'user_search' })
 User.hasMany(SearchHistory, { foreignKey: 'user_search_id', as: 'user_search_histories' })
 
+Conversation.hasMany(ConversationMember, { foreignKey: 'conversation_id', as: 'conversation_members' })
+ConversationMember.belongsTo(Conversation, { foreignKey: 'conversation_id', as: 'conversation' })
+
+Conversation.hasMany(Message, { foreignKey: 'conversation_id', as: 'messages' })
+Message.belongsTo(Conversation, { foreignKey: 'conversation_id', as: 'conversation' })
+
+User.hasMany(ConversationMember, { foreignKey: 'user_id', as: 'conversation_members' })
+ConversationMember.belongsTo(User, { foreignKey: 'user_id', as: 'user' })
+
+Message.hasMany(MessageStatus, { foreignKey: 'message_id', as: 'message_statuses' })
+MessageStatus.belongsTo(Message, { foreignKey: 'message_id', as: 'message' })
+
+MessageStatus.belongsTo(User, { foreignKey: 'user_id', as: 'user' })
+User.hasMany(MessageStatus, { foreignKey: 'user_id', as: 'message_statuses' })
+
 // Sync all models with the database
 sequelize
     .sync()
@@ -35,4 +54,14 @@ sequelize
     .catch((err) => console.error('Sync failed:', err))
 
 // Export all models
-export { User, RefreshToken, BlacklistToken, Friendships, Notification }
+export {
+    User,
+    RefreshToken,
+    BlacklistToken,
+    Friendships,
+    Notification,
+    Conversation,
+    ConversationMember,
+    Message,
+    MessageStatus,
+}

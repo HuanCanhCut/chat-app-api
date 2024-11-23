@@ -1,9 +1,10 @@
 import { Response, NextFunction } from 'express'
 
 import { BadRequest, ConflictError, InternalServerError, NotFoundError } from '../errors/errors'
-import { Friendships, User, Notification } from '../models'
+import { Friendships, User, Notification, Conversation, ConversationMember } from '../models'
 import { Sequelize } from 'sequelize'
 import { Op } from 'sequelize'
+import { v4 as uuidv4 } from 'uuid'
 
 import { NotificationEvent } from '../../enum/notification'
 import { RedisKey } from '../../enum/redis'
@@ -222,6 +223,29 @@ class FriendController {
                 io.to(socketId).emit(NotificationEvent.NEW_NOTIFICATION, notificationData)
             }
 
+            await sequelize.transaction(async () => {
+                // create conversation between two users
+                const conversation = await Conversation.create({
+                    uuid: uuidv4(),
+                    is_group: false,
+                })
+
+                // add two members to conversation
+                if (conversation.id) {
+                    await ConversationMember.create({
+                        conversation_id: conversation.id,
+                        user_id: decoded.sub,
+                        joined_at: new Date(),
+                    })
+
+                    await ConversationMember.create({
+                        conversation_id: conversation.id,
+                        user_id: Number(id),
+                        joined_at: new Date(),
+                    })
+                }
+            })
+
             res.sendStatus(200)
         } catch (error: any) {
             return next(new InternalServerError({ message: error.message }))
@@ -285,6 +309,8 @@ class FriendController {
             const { id } = req.params
             const decoded = req.decoded
 
+            const { conversation_uuid } = req.query
+
             if (!id) {
                 return next(new BadRequest({ message: 'User ID is required' }))
             }
@@ -307,6 +333,13 @@ class FriendController {
                     ],
                 },
             })
+
+            // Delete conversation
+            if (conversation_uuid) {
+                await Conversation.destroy({
+                    where: { uuid: conversation_uuid as string },
+                })
+            }
 
             res.sendStatus(200)
         } catch (error: any) {

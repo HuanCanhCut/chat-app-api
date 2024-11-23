@@ -17,6 +17,14 @@ export interface UserModel {
     password?: string
 }
 
+export interface ConversationModel {
+    id?: number
+    uuid: string
+    name?: string
+    avatar?: string
+    is_group: boolean
+}
+
 export interface IRequest extends Request {
     decoded?: string | JwtPayload
 }
