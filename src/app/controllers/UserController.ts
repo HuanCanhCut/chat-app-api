@@ -1,8 +1,8 @@
 import { Response, NextFunction } from 'express'
-import { QueryTypes } from 'sequelize'
+import { Op, QueryTypes } from 'sequelize'
 
 import { BadRequest, InternalServerError, NotFoundError } from '../errors/errors'
-import { Conversation, ConversationMember, User } from '../models'
+import { Conversation, ConversationMember, Message, User } from '../models'
 import { IRequest } from '~/type'
 import checkIsFriend from '../utils/isFriend'
 import sentMakeFriendRequest from '../utils/sentMakeFriendRequest'
@@ -65,7 +65,6 @@ class UserController {
                             },
                         ],
                     })
-
                     if (conversation) {
                         user.dataValues.conversation = conversation
                     }
@@ -176,6 +175,62 @@ class UserController {
             })
 
             res.json({ data: searchHistory })
+        } catch (error: any) {
+            return next(new InternalServerError({ message: error.message }))
+        }
+    }
+
+    async getConversation(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const decoded = req.decoded
+
+            const { page, per_page } = req.query
+
+            if (!page || !per_page) {
+                return next(new BadRequest({ message: 'Page and per page are required' }))
+            }
+
+            const conversations = await Conversation.findAll({
+                include: [
+                    {
+                        model: ConversationMember,
+                        as: 'conversation_members',
+                        required: true,
+                        include: [
+                            {
+                                model: User,
+                                as: 'user',
+                                required: true,
+                                attributes: {
+                                    exclude: ['password', 'email'],
+                                },
+                                where: {
+                                    id: {
+                                        [Op.ne]: decoded.sub,
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                    {
+                        model: Message,
+                        as: 'messages',
+                        required: false,
+                    },
+                ],
+                where: {
+                    id: {
+                        [Op.in]: sequelize.literal(`(
+                            SELECT conversation_id 
+                            FROM conversation_members 
+                            WHERE user_id = ${decoded.sub}
+                        )`),
+                    },
+                },
+                order: [[{ model: Message, as: 'messages' }, 'created_at', 'DESC']], // Sắp xếp theo tin nhắn mới nhất
+            })
+
+            res.json({ data: conversations })
         } catch (error: any) {
             return next(new InternalServerError({ message: error.message }))
         }

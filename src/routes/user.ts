@@ -6,6 +6,7 @@ import FriendController from '../app/controllers/FriendController'
 import verifyToken from '~/app/middlewares/verifyToken'
 
 router.get('/friends', verifyToken, FriendController.getAllFriends.bind(FriendController))
+router.get('/conversations', verifyToken, UserController.getConversation.bind(UserController))
 router.get('/friend-invitation', verifyToken, FriendController.getFriendInvitation.bind(FriendController))
 router.post('/:id/add', verifyToken, FriendController.addFriend.bind(FriendController))
 router.post('/:id/accept', verifyToken, FriendController.acceptFriend.bind(FriendController))
