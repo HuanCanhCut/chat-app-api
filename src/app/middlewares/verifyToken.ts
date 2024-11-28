@@ -12,25 +12,24 @@ const verifyToken = async (req: IRequest, res: any, next: NextFunction) => {
 
         if (!token) {
             clearCookie({ res, cookies: ['token', 'refreshToken'] })
-            res.status(401).json({
+            return res.status(401).json({
                 message: 'Failed to authenticate because of bad credentials or an invalid authorization header.',
                 status: 401,
             })
-            return
         }
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET as string)
 
         if (!decoded) {
             clearCookie({ res, cookies: ['token', 'refreshToken'] })
-            res.status(401).json({
+            return res.status(401).json({
                 message: 'Failed to authenticate because of bad credentials or an invalid authorization header.',
                 status: 401,
             })
-            return
         }
 
         req.decoded = decoded
+
         next()
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {

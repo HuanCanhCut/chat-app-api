@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from 'uuid'
 
 import { NotificationEvent } from '../../enum/notification'
 import { RedisKey } from '../../enum/redis'
-import { client as redisClient } from '~/config/redis'
+import { redisClient } from '../../config/redis'
 import { IRequest } from '~/type'
 import { friendShipJoinLiteral } from '../utils/isFriend'
 import checkIsFriend from '../utils/isFriend'

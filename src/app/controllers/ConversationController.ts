@@ -49,8 +49,8 @@ class ConversationController {
                 where: {
                     id: {
                         [Op.in]: sequelize.literal(`(
-                            SELECT conversation_id 
-                            FROM conversation_members 
+                            SELECT conversation_id
+                            FROM conversation_members
                             WHERE user_id = ${decoded.sub}
                         )`),
                     },

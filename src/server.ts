@@ -11,7 +11,7 @@ import { ClientToServerEvents, ServerToClientEvents, InterServerEvents } from '.
 
 import route from './routes/index'
 import * as db from './config/db/index'
-import { client as redisClient } from './config/redis'
+import { redisClient } from './config/redis'
 import serviceAccount from './config/firebase/serviceAccount'
 import errorHandler from './app/errors/errorHandler'
 

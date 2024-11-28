@@ -22,6 +22,7 @@ class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
     declare friend_request?: boolean
     declare conversation?: ConversationModel
     declare password?: string
+    declare is_online?: boolean
 }
 User.init(
     {
@@ -77,12 +78,21 @@ User.init(
             allowNull: false,
             defaultValue: '',
         },
+        is_online: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false,
+        },
     },
     {
         indexes: [
             {
                 fields: ['full_name', 'nickname'],
                 type: 'FULLTEXT',
+            },
+            {
+                fields: ['is_online'],
+                name: 'idx_is_online',
             },
         ],
 

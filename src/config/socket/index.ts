@@ -3,7 +3,10 @@ import jwt from 'jsonwebtoken'
 import dotenv from 'dotenv'
 
 import { ClientToServerEvents, ServerToClientEvents } from './types'
-import { client as redisClient } from '~/config/redis'
+import { redisClient } from '../../config/redis'
+import chatSocketController from '~/app/controllers/ChatSocketController'
+import { RedisKey } from '~/enum/redis'
+import { User } from '~/app/models'
 
 dotenv.config()
 
@@ -27,12 +30,17 @@ const socketIO = (ioInstance: Server<ClientToServerEvents, ServerToClientEvents>
             try {
                 decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET as string)
                 if (decoded) {
-                    redisClient.set(`socket_id_${decoded.sub}`, socketInstance.id)
+                    redisClient.set(`${RedisKey.SOCKET_ID}${decoded.sub}`, socketInstance.id)
+
+                    // set user online when connect to database
+                    User.update({ is_online: true }, { where: { id: Number(decoded.sub) } })
                 }
             } catch (error) {
                 console.log(error)
             }
         }
+
+        chatSocketController({ socket: socketInstance, io: ioInstance, currentUserId: Number(decoded?.sub) })
 
         // Set socket to global
         socket = socketInstance
@@ -42,6 +50,7 @@ const socketIO = (ioInstance: Server<ClientToServerEvents, ServerToClientEvents>
             console.log('\x1b[33m===>>>Socket disconnected!!!', '\x1b[0m')
             if (decoded) {
                 redisClient.del(`socket_id_${decoded.sub}`)
+                User.update({ is_online: false }, { where: { id: Number(decoded.sub) } })
             }
         })
     })

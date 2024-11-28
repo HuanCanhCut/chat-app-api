@@ -5,7 +5,7 @@ import bcrypt from 'bcrypt'
 import { Op, QueryTypes } from 'sequelize'
 import jwt, { JwtPayload } from 'jsonwebtoken'
 
-import { client as redisClient } from '../../config/redis'
+import { redisClient } from '../../config/redis'
 import clearCookie from '../utils/clearCookies'
 import { BadRequest, ConflictError, InternalServerError, NotFoundError, UnauthorizedError } from '../errors/errors'
 import { User, BlacklistToken, RefreshToken } from '../models'
@@ -340,7 +340,7 @@ class AuthController {
                 await redisClient.del(`resetCode-${email}`)
             }
 
-            await redisClient.set(`resetCode-${email}`, resetCode, { EX: this.resetCodeExpired })
+            redisClient.set(`resetCode-${email}`, resetCode, { EX: this.resetCodeExpired })
 
             sendVerificationCode({ email, code: resetCode })
 
