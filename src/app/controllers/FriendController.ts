@@ -217,34 +217,52 @@ class FriendController {
                 message: 'đã chấp nhận lời mời kết bạn',
             })
 
+            const hasConversation = await Conversation.findOne({
+                where: {
+                    id: {
+                        [Op.in]: sequelize.literal(`(
+                            SELECT conversation_id
+                            FROM conversation_members
+                            WHERE user_id IN (${decoded.sub}, ${Number(id)})
+                            GROUP BY conversation_id
+                            HAVING COUNT(DISTINCT user_id) = 2
+                        )`),
+                    },
+                    is_group: false,
+                },
+                attributes: ['id'],
+            })
+
+            if (!hasConversation) {
+                await sequelize.transaction(async () => {
+                    // create conversation between two users
+                    const conversation = await Conversation.create({
+                        uuid: uuidv4(),
+                        is_group: false,
+                    })
+
+                    // add two members to conversation
+                    if (conversation.id) {
+                        await ConversationMember.create({
+                            conversation_id: conversation.id,
+                            user_id: decoded.sub,
+                            joined_at: new Date(),
+                        })
+
+                        await ConversationMember.create({
+                            conversation_id: conversation.id,
+                            user_id: Number(id),
+                            joined_at: new Date(),
+                        })
+                    }
+                })
+            }
+
             const socketId = await redisClient.get(`${RedisKey.SOCKET_ID}${Number(id)}`)
 
             if (socketId) {
                 io.to(socketId).emit(NotificationEvent.NEW_NOTIFICATION, notificationData)
             }
-
-            await sequelize.transaction(async () => {
-                // create conversation between two users
-                const conversation = await Conversation.create({
-                    uuid: uuidv4(),
-                    is_group: false,
-                })
-
-                // add two members to conversation
-                if (conversation.id) {
-                    await ConversationMember.create({
-                        conversation_id: conversation.id,
-                        user_id: decoded.sub,
-                        joined_at: new Date(),
-                    })
-
-                    await ConversationMember.create({
-                        conversation_id: conversation.id,
-                        user_id: Number(id),
-                        joined_at: new Date(),
-                    })
-                }
-            })
 
             res.sendStatus(200)
         } catch (error: any) {
@@ -309,8 +327,6 @@ class FriendController {
             const { id } = req.params
             const decoded = req.decoded
 
-            const { conversation_uuid } = req.query
-
             if (!id) {
                 return next(new BadRequest({ message: 'User ID is required' }))
             }
@@ -333,13 +349,6 @@ class FriendController {
                     ],
                 },
             })
-
-            // Delete conversation
-            if (conversation_uuid) {
-                await Conversation.destroy({
-                    where: { uuid: conversation_uuid as string },
-                })
-            }
 
             res.sendStatus(200)
         } catch (error: any) {
