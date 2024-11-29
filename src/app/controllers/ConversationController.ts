@@ -1,7 +1,6 @@
 import { Response, NextFunction } from 'express'
 import { IRequest } from '~/type'
 import { BadRequest, InternalServerError } from '../errors/errors'
-import Message from '../models/MessageModel'
 import Conversation from '../models/ConversationModel'
 import { ConversationMember, User } from '../models'
 import { Op } from 'sequelize'
@@ -39,11 +38,6 @@ class ConversationController {
                                 },
                             },
                         ],
-                    },
-                    {
-                        model: Message,
-                        as: 'messages',
-                        required: false, // true: query những conversation có tin nhắn, false: query tất cả conversation
                     },
                 ],
                 where: {

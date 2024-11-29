@@ -7,8 +7,8 @@ class Message extends Model<InferAttributes<Message>, InferCreationAttributes<Me
     declare conversation_id: number
     declare sender_id: number
     declare content: string
-    declare created_at?: Date
-    declare updated_at?: Date
+    declare createdAt?: Date
+    declare updatedAt?: Date
 }
 
 Message.init(

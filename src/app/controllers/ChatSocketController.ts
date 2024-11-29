@@ -16,12 +16,12 @@ const chatController = ({
     io: Server<ClientToServerEvents, ServerToClientEvents>
     currentUserId: number
 }) => {
-    socket.on(ChatEvent.JOIN_ROOM, (roomUuid: string) => {
-        socket.join(roomUuid)
-        redisClient.set(`user_${currentUserId}_in_room_${roomUuid}`, 'true')
+    socket.on(ChatEvent.JOIN_ROOM, (conversationUuid: string) => {
+        socket.join(conversationUuid)
+        redisClient.set(`user_${currentUserId}_in_room_${conversationUuid}`, 'true')
     })
 
-    socket.on(ChatEvent.NEW_MESSAGE, async ({ roomUuid, message }) => {
+    socket.on(ChatEvent.NEW_MESSAGE, async ({ conversationUuid, message }) => {
         const allUserInRoom = await User.findAll({
             attributes: ['id', 'is_online'],
             where: { id: { [Op.ne]: currentUserId } },
@@ -35,7 +35,7 @@ const chatController = ({
                             model: Conversation,
                             required: true,
                             as: 'conversation',
-                            where: { uuid: roomUuid },
+                            where: { uuid: conversationUuid },
                         },
                     ],
                 },
@@ -52,49 +52,111 @@ const chatController = ({
 
         if (!userIds.length) return
 
-        userIds.forEach(async (user) => {
+        for (const user of userIds) {
             if (!user.id) return
+
             // if member online
             if (user.is_online) {
-                const isUserInRoom = await redisClient.get(`user_${user.id}_in_room_${roomUuid}`)
+                const newMessage = await saveMessageToDatabase({
+                    conversationId: user.conversation_id,
+                    senderId: currentUserId,
+                    userId: user.id,
+                    message,
+                    status: 'delivered',
+                })
+
+                if (!newMessage) return
+
+                const isUserInRoom = await redisClient.get(`user_${user.id}_in_room_${conversationUuid}`)
 
                 // but not in the room
-                const transaction = await sequelize.transaction()
                 if (!isUserInRoom) {
-                    try {
-                        const socketId = await redisClient.get(`${RedisKey.SOCKET_ID}${user.id}`)
+                    const socketId = await redisClient.get(`${RedisKey.SOCKET_ID}${user.id}`)
 
-                        // save message to database
-                        const newMessage = await Message.create({
-                            conversation_id: user.conversation_id,
-                            sender_id: currentUserId,
-                            content: message,
-                        })
+                    // nếu lưu thành công thì emit lại cho user
+                    if (socketId) {
+                        const conversationCache = await redisClient.get(
+                            `${RedisKey.CONVERSATION_UUID}${conversationUuid}`,
+                        )
 
-                        if (newMessage.id) {
-                            await MessageStatus.create({
-                                message_id: newMessage.id,
-                                user_id: user.id,
-                                status: 'sent',
-                            })
+                        if (conversationCache) {
+                            const conversation = {
+                                ...JSON.parse(conversationCache),
+                                last_message_content: newMessage.dataValues.content,
+                                last_message_created_at: newMessage.dataValues?.createdAt,
+                            }
+                            io.to(socketId).emit(ChatEvent.NEW_MESSAGE, { conversation })
+                        } else {
+                            try {
+                                // get conversation from database
+                                const conversation = await getConversation({
+                                    conversationUuid,
+                                    user,
+                                })
+
+                                if (conversation) {
+                                    redisClient.set(
+                                        `${RedisKey.CONVERSATION_UUID}${conversationUuid}`,
+                                        JSON.stringify(conversation),
+                                    )
+
+                                    const conversationData = {
+                                        ...conversation.dataValues,
+                                        last_message_content: newMessage.dataValues.content,
+                                        last_message_created_at: newMessage.dataValues?.createdAt,
+                                    }
+
+                                    io.to(socketId).emit(ChatEvent.NEW_MESSAGE, { conversation: conversationData })
+                                }
+                            } catch (error) {
+                                console.log(error)
+                            }
                         }
-
-                        await transaction.commit()
-
-                        // nếu lưu thành công thì emit lại cho user
-                        if (socketId) {
-                            io.to(socketId).emit(ChatEvent.NEW_MESSAGE, { roomUuid, message })
-                        }
-                        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                    } catch (e: any) {
-                        await transaction.rollback()
+                    } else {
+                        // delete socket id from redis if socket id not exist
+                        redisClient.del(`${RedisKey.SOCKET_ID}${user.id}`)
                     }
                 } else {
                     // user in the room
-                    socket.to(roomUuid).emit(ChatEvent.NEW_MESSAGE, { roomUuid, message })
+                    const conversationCache = await redisClient.get(`${RedisKey.CONVERSATION_UUID}${conversationUuid}`)
+
+                    if (conversationCache) {
+                        const conversation = {
+                            ...JSON.parse(conversationCache),
+                            last_message_content: newMessage.dataValues.content,
+                            last_message_created_at: newMessage.dataValues?.createdAt,
+                        }
+
+                        socket.to(conversationUuid).emit(ChatEvent.NEW_MESSAGE, { conversation })
+                    } else {
+                        // get conversation from database
+                        const conversation = await getConversation({
+                            conversationUuid,
+                            user,
+                        })
+
+                        if (conversation) {
+                            redisClient.set(
+                                `${RedisKey.CONVERSATION_UUID}${conversationUuid}`,
+                                JSON.stringify(conversation),
+                            )
+                        }
+
+                        socket.to(conversationUuid).emit(ChatEvent.NEW_MESSAGE, { conversation })
+                    }
                 }
+            } else {
+                // user offline
+                // save message to database
+                await saveMessageToDatabase({
+                    conversationId: user.conversation_id,
+                    senderId: currentUserId,
+                    userId: user.id,
+                    message,
+                    status: 'sent',
+                })
             }
-        })
+        }
     })
 
     // Xử lý khi người dùng ngắt kết nối
@@ -104,6 +166,81 @@ const chatController = ({
             keys.forEach((key) => redisClient.del(key))
         })
     })
+}
+
+const saveMessageToDatabase = async ({
+    conversationId,
+    senderId,
+    userId,
+    message,
+    status,
+}: {
+    conversationId: number
+    senderId: number
+    userId: number
+    message: string
+    status: 'sent' | 'delivered' | 'read'
+}) => {
+    const transaction = await sequelize.transaction()
+    try {
+        // save message to database
+        const newMessage = await Message.create({
+            conversation_id: conversationId,
+            sender_id: senderId,
+            content: message,
+        })
+
+        if (newMessage.id) {
+            await MessageStatus.create({
+                message_id: newMessage.id,
+                user_id: userId,
+                status,
+            })
+        }
+
+        await transaction.commit()
+
+        return newMessage
+    } catch (error) {
+        if (transaction) {
+            await transaction.rollback()
+        }
+        console.log(error)
+    }
+}
+
+const getConversation = async ({ conversationUuid, user }: { conversationUuid: string; user: any }) => {
+    try {
+        // get conversation from database
+        const conversation = await Conversation.findOne({
+            where: {
+                uuid: conversationUuid,
+            },
+            include: [
+                {
+                    where: {
+                        user_id: {
+                            [Op.ne]: user.id,
+                        },
+                    },
+                    model: ConversationMember,
+                    as: 'conversation_members',
+                    include: [
+                        {
+                            model: User,
+                            as: 'user',
+                            attributes: {
+                                exclude: ['password', 'email'],
+                            },
+                        },
+                    ],
+                },
+            ],
+        })
+        return conversation
+    } catch (error) {
+        console.log(error)
+    }
 }
 
 export default chatController
