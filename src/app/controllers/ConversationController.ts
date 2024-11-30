@@ -2,7 +2,7 @@ import { Response, NextFunction } from 'express'
 import { IRequest } from '~/type'
 import { BadRequest, InternalServerError } from '../errors/errors'
 import Conversation from '../models/ConversationModel'
-import { ConversationMember, User } from '../models'
+import { ConversationMember, Message, MessageStatus, User } from '../models'
 import { Op } from 'sequelize'
 import { sequelize } from '~/config/db'
 
@@ -39,6 +39,29 @@ class ConversationController {
                             },
                         ],
                     },
+                    {
+                        model: Message,
+                        as: 'messages',
+                        required: true, // chỉ lấy các cuộc trò chuyện có tin nhắn
+                        include: [
+                            {
+                                model: User,
+                                as: 'sender',
+                                required: true,
+                                attributes: {
+                                    exclude: ['password', 'email'],
+                                },
+                            },
+                            {
+                                model: MessageStatus,
+                                as: 'message_status',
+                                required: true,
+                            },
+                        ],
+                        // Truy vấn để lấy tin nhắn mới nhất
+                        limit: 1, // chỉ lấy tin nhắn mới nhất
+                        order: [['created_at', 'DESC']], // sắp xếp tin nhắn mới nhất
+                    },
                 ],
                 where: {
                     id: {
@@ -49,40 +72,25 @@ class ConversationController {
                         )`),
                     },
                 },
-                attributes: {
-                    include: [
-                        [
-                            sequelize.literal(`(
-                                SELECT content
-                                FROM messages
-                                WHERE messages.conversation_id = Conversation.id
-                                ORDER BY created_at DESC
-                                LIMIT 1
-                            )`),
-                            'last_message_content',
-                        ],
-                        [
-                            sequelize.literal(`(
-                                SELECT created_at
-                                FROM messages
-                                WHERE messages.conversation_id = Conversation.id
-                                ORDER BY created_at DESC
-                                LIMIT 1
-                            )`),
-                            'last_message_time',
-                        ],
-                    ],
-                },
-                order: sequelize.literal(`(
-                    SELECT MAX(created_at)
+                // Sắp xếp các cuộc trò chuyện theo thời gian của tin nhắn mới nhất
+                order: [
+                    sequelize.literal(`(
+                        SELECT MAX(messages.created_at)
+                        FROM messages
+                        WHERE messages.conversation_id = Conversation.id
+                    ) DESC`), // Sắp xếp theo tin nhắn mới nhất
+                ],
+                // Lọc chỉ những cuộc trò chuyện có ít nhất 1 tin nhắn
+                having: sequelize.literal(`EXISTS (
+                    SELECT 1
                     FROM messages
                     WHERE messages.conversation_id = Conversation.id
-                ) DESC`), // Sắp xếp theo tin nhắn mới nhất
+                )`),
             })
 
             res.json({ data: conversations })
         } catch (error: any) {
-            return next(new InternalServerError(error.message))
+            return next(new InternalServerError(error))
         }
     }
 }

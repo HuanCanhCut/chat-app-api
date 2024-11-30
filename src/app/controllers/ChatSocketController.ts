@@ -82,8 +82,7 @@ const chatController = ({
                         if (conversationCache) {
                             const conversation = {
                                 ...JSON.parse(conversationCache),
-                                last_message_content: newMessage.dataValues.content,
-                                last_message_created_at: newMessage.dataValues?.createdAt,
+                                messages: [newMessage],
                             }
                             io.to(socketId).emit(ChatEvent.NEW_MESSAGE, { conversation })
                         } else {
@@ -102,8 +101,7 @@ const chatController = ({
 
                                     const conversationData = {
                                         ...conversation.dataValues,
-                                        last_message_content: newMessage.dataValues.content,
-                                        last_message_created_at: newMessage.dataValues?.createdAt,
+                                        messages: [newMessage],
                                     }
 
                                     io.to(socketId).emit(ChatEvent.NEW_MESSAGE, { conversation: conversationData })
@@ -123,8 +121,7 @@ const chatController = ({
                     if (conversationCache) {
                         const conversation = {
                             ...JSON.parse(conversationCache),
-                            last_message_content: newMessage.dataValues.content,
-                            last_message_created_at: newMessage.dataValues?.createdAt,
+                            messages: [newMessage],
                         }
 
                         socket.to(conversationUuid).emit(ChatEvent.NEW_MESSAGE, { conversation })
@@ -140,9 +137,14 @@ const chatController = ({
                                 `${RedisKey.CONVERSATION_UUID}${conversationUuid}`,
                                 JSON.stringify(conversation),
                             )
-                        }
 
-                        socket.to(conversationUuid).emit(ChatEvent.NEW_MESSAGE, { conversation })
+                            const conversationData = {
+                                ...conversation.dataValues,
+                                messages: [newMessage],
+                            }
+
+                            socket.to(conversationUuid).emit(ChatEvent.NEW_MESSAGE, { conversation: conversationData })
+                        }
                     }
                 }
             } else {
@@ -200,7 +202,25 @@ const saveMessageToDatabase = async ({
 
         await transaction.commit()
 
-        return newMessage
+        // last message
+        const messageResponse = await Message.findByPk(newMessage.id, {
+            include: [
+                {
+                    model: User,
+                    as: 'sender',
+                    required: true,
+                    attributes: {
+                        exclude: ['password', 'email'],
+                    },
+                },
+                {
+                    model: MessageStatus,
+                    as: 'message_status',
+                },
+            ],
+        })
+
+        return messageResponse
     } catch (error) {
         if (transaction) {
             await transaction.rollback()
