@@ -30,7 +30,8 @@ const socketIO = (ioInstance: Server<ClientToServerEvents, ServerToClientEvents>
             try {
                 decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET as string)
                 if (decoded) {
-                    redisClient.set(`${RedisKey.SOCKET_ID}${decoded.sub}`, socketInstance.id)
+                    // lưu theo dạng list trường hợp nhiều user login 1 account
+                    redisClient.rPush(`${RedisKey.SOCKET_ID}${decoded.sub}`, socketInstance.id)
 
                     // set user online when connect to database
                     User.update({ is_online: true }, { where: { id: Number(decoded.sub) } })
@@ -49,7 +50,8 @@ const socketIO = (ioInstance: Server<ClientToServerEvents, ServerToClientEvents>
         socketInstance.on('disconnect', () => {
             console.log('\x1b[33m===>>>Socket disconnected!!!', '\x1b[0m')
             if (decoded) {
-                redisClient.del(`socket_id_${decoded.sub}`)
+                // redisClient.del(`socket_id_${decoded.sub}`)
+                redisClient.lRem(`${RedisKey.SOCKET_ID}${decoded.sub}`, 0, socketInstance.id)
                 User.update({ is_online: false }, { where: { id: Number(decoded.sub) } })
             }
         })

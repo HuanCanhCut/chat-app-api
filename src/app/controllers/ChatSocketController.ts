@@ -16,9 +16,21 @@ const chatController = ({
     io: Server<ClientToServerEvents, ServerToClientEvents>
     currentUserId: number
 }) => {
-    socket.on(ChatEvent.JOIN_ROOM, (conversationUuid: string) => {
-        socket.join(conversationUuid)
-        redisClient.set(`user_${currentUserId}_in_room_${conversationUuid}`, 'true')
+    socket.on(ChatEvent.JOIN_ROOM, async (conversationUuid: string) => {
+        // Lấy danh sách tất cả socket id của user từ Redis
+        const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${currentUserId}`, 0, -1)
+
+        if (socketIds && socketIds.length > 0) {
+            for (const socketId of socketIds) {
+                const userSocket = io.sockets.sockets.get(socketId) // Lấy socket từ socketId
+                if (userSocket) {
+                    userSocket.join(conversationUuid) // Socket join room
+                }
+            }
+        }
+
+        // Lưu trạng thái user đã vào room vào Redis
+        await redisClient.set(`user_${currentUserId}_in_room_${conversationUuid}`, 'true')
     })
 
     socket.on(ChatEvent.NEW_MESSAGE, async ({ conversationUuid, message }) => {
@@ -71,10 +83,10 @@ const chatController = ({
 
                 // but not in the room
                 if (!isUserInRoom) {
-                    const socketId = await redisClient.get(`${RedisKey.SOCKET_ID}${user.id}`)
+                    const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${user.id}`, 0, -1)
 
                     // nếu lưu thành công thì emit lại cho user
-                    if (socketId) {
+                    if (socketIds && socketIds.length > 0) {
                         const conversationCache = await redisClient.get(
                             `${RedisKey.CONVERSATION_UUID}${conversationUuid}`,
                         )
@@ -84,7 +96,9 @@ const chatController = ({
                                 ...JSON.parse(conversationCache),
                                 messages: [newMessage],
                             }
-                            io.to(socketId).emit(ChatEvent.NEW_MESSAGE, { conversation })
+                            for (const socketId of socketIds) {
+                                io.to(socketId).emit(ChatEvent.NEW_MESSAGE, { conversation })
+                            }
                         } else {
                             try {
                                 // get conversation from database
@@ -104,7 +118,11 @@ const chatController = ({
                                         messages: [newMessage],
                                     }
 
-                                    io.to(socketId).emit(ChatEvent.NEW_MESSAGE, { conversation: conversationData })
+                                    for (const socketId of socketIds) {
+                                        io.to(socketId).emit(ChatEvent.NEW_MESSAGE, {
+                                            conversation: conversationData,
+                                        })
+                                    }
                                 }
                             } catch (error) {
                                 console.log(error)
@@ -112,7 +130,7 @@ const chatController = ({
                         }
                     } else {
                         // delete socket id from redis if socket id not exist
-                        redisClient.del(`${RedisKey.SOCKET_ID}${user.id}`)
+                        redisClient.lRem(`${RedisKey.SOCKET_ID}${user.id}`, 0, socket.id)
                     }
                 } else {
                     // user in the room

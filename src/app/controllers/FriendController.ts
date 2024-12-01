@@ -83,10 +83,12 @@ class FriendController {
             })
 
             // Send notification to user
-            const socketId = await redisClient.get(`${RedisKey.SOCKET_ID}${Number(id)}`)
+            const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${Number(id)}`, 0, -1)
 
-            if (socketId) {
-                io.to(socketId).emit(NotificationEvent.NEW_NOTIFICATION, notificationData)
+            if (socketIds && socketIds.length > 0) {
+                for (const socketId of socketIds) {
+                    io.to(socketId).emit(NotificationEvent.NEW_NOTIFICATION, notificationData)
+                }
             }
 
             res.sendStatus(201)
@@ -258,10 +260,12 @@ class FriendController {
                 })
             }
 
-            const socketId = await redisClient.get(`${RedisKey.SOCKET_ID}${Number(id)}`)
+            const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${Number(id)}`, 0, -1)
 
-            if (socketId) {
-                io.to(socketId).emit(NotificationEvent.NEW_NOTIFICATION, notificationData)
+            if (socketIds && socketIds.length > 0) {
+                for (const socketId of socketIds) {
+                    io.to(socketId).emit(NotificationEvent.NEW_NOTIFICATION, notificationData)
+                }
             }
 
             res.sendStatus(200)
@@ -309,10 +313,12 @@ class FriendController {
                 }),
             ])
 
-            const socketId = await redisClient.get(`${RedisKey.SOCKET_ID}${Number(decoded.sub)}`)
+            const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${Number(decoded.sub)}`, 0, -1)
 
-            if (socketId) {
-                io.to(socketId).emit(NotificationEvent.REMOVE_NOTIFICATION, { notificationId: notification?.id })
+            if (socketIds && socketIds.length > 0) {
+                for (const socketId of socketIds) {
+                    io.to(socketId).emit(NotificationEvent.REMOVE_NOTIFICATION, { notificationId: notification?.id })
+                }
             }
 
             res.sendStatus(200)
@@ -379,7 +385,7 @@ class FriendController {
                 return next(new NotFoundError({ message: 'Friend request not found' }))
             }
 
-            const socketId = await redisClient.get(`${RedisKey.SOCKET_ID}${Number(id)}`)
+            const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${Number(id)}`, 0, -1)
 
             const notification = await Notification.findOne({
                 where: {
@@ -390,8 +396,10 @@ class FriendController {
                 attributes: ['id'],
             })
 
-            if (socketId) {
-                io.to(socketId).emit(NotificationEvent.REMOVE_NOTIFICATION, { notificationId: notification?.id })
+            if (socketIds && socketIds.length > 0) {
+                for (const socketId of socketIds) {
+                    io.to(socketId).emit(NotificationEvent.REMOVE_NOTIFICATION, { notificationId: notification?.id })
+                }
             }
 
             if (notification) {
