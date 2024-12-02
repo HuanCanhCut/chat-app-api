@@ -57,7 +57,7 @@ ConversationMember.belongsTo(User, { foreignKey: 'user_id', as: 'user' })
 /**
  * Message model
  */
-Message.hasMany(MessageStatus, { foreignKey: 'message_id', as: 'message_status' })
+Message.hasOne(MessageStatus, { foreignKey: 'message_id', as: 'message_status' })
 MessageStatus.belongsTo(Message, { foreignKey: 'message_id', as: 'message' })
 
 User.hasMany(Message, { foreignKey: 'sender_id', as: 'messages' })

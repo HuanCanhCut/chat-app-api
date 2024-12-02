@@ -42,7 +42,7 @@ class ConversationController {
                     {
                         model: Message,
                         as: 'messages',
-                        required: true, // chỉ lấy các cuộc trò chuyện có tin nhắn
+                        required: true,
                         include: [
                             {
                                 model: User,

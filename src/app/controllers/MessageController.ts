@@ -63,6 +63,7 @@ class MessageController {
                 ],
                 limit: Number(per_page),
                 offset: (Number(page) - 1) * Number(per_page),
+                order: [['created_at', 'DESC']], // Changed order to DESC to get the latest messages
             })
 
             const response = responseModel({
