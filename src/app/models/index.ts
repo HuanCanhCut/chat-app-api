@@ -66,7 +66,7 @@ Message.belongsTo(User, { foreignKey: 'sender_id', as: 'sender' })
 /**
  * Message status model
  */
-MessageStatus.belongsTo(User, { foreignKey: 'user_id', as: 'user' })
+MessageStatus.belongsTo(User, { foreignKey: 'user_id', as: 'receiver' })
 User.hasMany(MessageStatus, { foreignKey: 'user_id', as: 'message_status' })
 
 // Sync all models with the database
