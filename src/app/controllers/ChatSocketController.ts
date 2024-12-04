@@ -142,7 +142,7 @@ const chatController = ({
                             messages: [newMessage],
                         }
 
-                        socket.to(conversationUuid).emit(ChatEvent.NEW_MESSAGE, { conversation })
+                        io.to(conversationUuid).emit(ChatEvent.NEW_MESSAGE, { conversation })
                     } else {
                         // get conversation from database
                         const conversation = await getConversation({
@@ -161,7 +161,7 @@ const chatController = ({
                                 messages: [newMessage],
                             }
 
-                            socket.to(conversationUuid).emit(ChatEvent.NEW_MESSAGE, { conversation: conversationData })
+                            io.to(conversationUuid).emit(ChatEvent.NEW_MESSAGE, { conversation: conversationData })
                         }
                     }
                 }

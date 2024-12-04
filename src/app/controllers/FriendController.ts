@@ -135,6 +135,7 @@ class FriendController {
                 include: {
                     attributes: {
                         include: [[sequelize.literal(sql), 'is_friend']],
+                        exclude: ['password', 'email'],
                     },
                     model: User,
                     as: 'user',
@@ -438,6 +439,9 @@ class FriendController {
                     required: true,
                     where: {
                         id: Sequelize.col('Friendships.user_id'),
+                    },
+                    attributes: {
+                        exclude: ['password', 'email'],
                     },
                 },
                 limit: Number(per_page),

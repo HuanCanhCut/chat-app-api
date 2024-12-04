@@ -52,6 +52,9 @@ class MessageController {
                             {
                                 model: User,
                                 as: 'receiver',
+                                attributes: {
+                                    exclude: ['password', 'email'],
+                                },
                             },
                         ],
                     },
@@ -59,6 +62,9 @@ class MessageController {
                         model: User,
                         as: 'sender',
                         required: true,
+                        attributes: {
+                            exclude: ['password', 'email'],
+                        },
                     },
                 ],
                 limit: Number(per_page),
@@ -69,7 +75,7 @@ class MessageController {
             const response = responseModel({
                 data: messages,
                 total: count,
-                count,
+                count: messages.length,
                 current_page: Number(page),
                 total_pages: Math.ceil(count / Number(per_page)),
                 per_page: Number(per_page),

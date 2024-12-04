@@ -19,6 +19,9 @@ const sendMakeFriendRequest = async ({ userId, friendId, toWay = false }: SendMa
             as: 'user',
             required: true,
             on: friendShipJoinLiteral(userId),
+            attributes: {
+                exclude: ['password', 'email'],
+            },
         },
     })
 }

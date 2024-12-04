@@ -1,6 +1,6 @@
 import { Response, NextFunction } from 'express'
 import { IRequest } from '~/type'
-import { BadRequest, InternalServerError } from '../errors/errors'
+import { BadRequest, ForBiddenError, InternalServerError } from '../errors/errors'
 import Conversation from '../models/ConversationModel'
 import { ConversationMember, Message, MessageStatus, User } from '../models'
 import { Op } from 'sequelize'
@@ -89,6 +89,65 @@ class ConversationController {
             })
 
             res.json({ data: conversations })
+        } catch (error: any) {
+            return next(new InternalServerError(error))
+        }
+    }
+
+    async getConversationByUuid(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const decoded = req.decoded
+
+            const uuid = req.params.uuid
+
+            // check if user is a member of the conversation
+            const hasMember = await Conversation.findOne({
+                attributes: ['id'],
+                where: {
+                    uuid: uuid,
+                },
+                include: {
+                    model: ConversationMember,
+                    as: 'conversation_members',
+                    attributes: ['id'],
+                    where: {
+                        user_id: decoded.sub,
+                    },
+                },
+            })
+
+            if (!hasMember) {
+                return next(new ForBiddenError({ message: 'Permission denied' }))
+            }
+
+            const conversation = await Conversation.findOne({
+                where: {
+                    uuid,
+                },
+                include: [
+                    {
+                        model: ConversationMember,
+                        as: 'conversation_members',
+                        required: true,
+                        where: {
+                            user_id: {
+                                [Op.ne]: decoded.sub,
+                            },
+                        },
+                        include: [
+                            {
+                                model: User,
+                                as: 'user',
+                                attributes: {
+                                    exclude: ['password', 'email'],
+                                },
+                            },
+                        ],
+                    },
+                ],
+            })
+
+            res.json({ data: conversation })
         } catch (error: any) {
             return next(new InternalServerError(error))
         }

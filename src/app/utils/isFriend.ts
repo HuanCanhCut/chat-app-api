@@ -24,6 +24,9 @@ const checkIsFriend = async (userId: number, friendId: number): Promise<boolean>
             as: 'user',
             required: true,
             on: friendShipJoinLiteral(userId),
+            attributes: {
+                exclude: ['password', 'email'],
+            },
         },
     })
 
