@@ -94,7 +94,7 @@ const chatController = ({
                         if (conversationCache) {
                             const conversation = {
                                 ...JSON.parse(conversationCache),
-                                messages: [newMessage],
+                                last_message: newMessage,
                             }
                             for (const socketId of socketIds) {
                                 io.to(socketId).emit(ChatEvent.NEW_MESSAGE, { conversation })
@@ -115,7 +115,7 @@ const chatController = ({
 
                                     const conversationData = {
                                         ...conversation.dataValues,
-                                        messages: [newMessage],
+                                        last_message: newMessage,
                                     }
 
                                     for (const socketId of socketIds) {
@@ -139,7 +139,7 @@ const chatController = ({
                     if (conversationCache) {
                         const conversation = {
                             ...JSON.parse(conversationCache),
-                            messages: [newMessage],
+                            last_message: newMessage,
                         }
 
                         io.to(conversationUuid).emit(ChatEvent.NEW_MESSAGE, { conversation })
@@ -158,7 +158,7 @@ const chatController = ({
 
                             const conversationData = {
                                 ...conversation.dataValues,
-                                messages: [newMessage],
+                                last_message: newMessage,
                             }
 
                             io.to(conversationUuid).emit(ChatEvent.NEW_MESSAGE, { conversation: conversationData })

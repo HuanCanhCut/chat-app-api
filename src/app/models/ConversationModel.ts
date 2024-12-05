@@ -1,6 +1,7 @@
 import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
 
 import { sequelize } from '../../config/db'
+import Message from './MessageModel'
 
 class Conversation extends Model<InferAttributes<Conversation>, InferCreationAttributes<Conversation>> {
     declare id?: number
@@ -8,6 +9,7 @@ class Conversation extends Model<InferAttributes<Conversation>, InferCreationAtt
     declare name?: string
     declare avatar?: string
     declare uuid: string
+    declare last_message?: Message
     declare created_at?: Date
     declare updated_at?: Date
 }

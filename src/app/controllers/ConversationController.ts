@@ -39,29 +39,6 @@ class ConversationController {
                             },
                         ],
                     },
-                    {
-                        model: Message,
-                        as: 'messages',
-                        required: true,
-                        include: [
-                            {
-                                model: User,
-                                as: 'sender',
-                                required: true,
-                                attributes: {
-                                    exclude: ['password', 'email'],
-                                },
-                            },
-                            {
-                                model: MessageStatus,
-                                as: 'message_status',
-                                required: true,
-                            },
-                        ],
-                        // Truy vấn để lấy tin nhắn mới nhất
-                        limit: 1, // chỉ lấy tin nhắn mới nhất
-                        order: [['created_at', 'DESC']], // sắp xếp tin nhắn mới nhất
-                    },
                 ],
                 where: {
                     id: {
@@ -87,6 +64,34 @@ class ConversationController {
                     WHERE messages.conversation_id = Conversation.id
                 )`),
             })
+
+            for (const conversation of conversations) {
+                const lastMessage = await Message.findOne({
+                    where: {
+                        conversation_id: conversation.id,
+                    },
+                    include: [
+                        {
+                            model: User,
+                            as: 'sender',
+                            required: true,
+                            attributes: {
+                                exclude: ['password', 'email'],
+                            },
+                        },
+                        {
+                            model: MessageStatus,
+                            as: 'message_status',
+                            required: true,
+                        },
+                    ],
+                    order: [['created_at', 'DESC']],
+                })
+
+                if (lastMessage) {
+                    conversation.dataValues.last_message = lastMessage
+                }
+            }
 
             res.json({ data: conversations })
         } catch (error: any) {
