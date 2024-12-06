@@ -47,11 +47,24 @@ const socketIO = (ioInstance: Server<ClientToServerEvents, ServerToClientEvents>
         socket = socketInstance
         io = ioInstance
 
-        socketInstance.on('disconnect', () => {
+        socketInstance.on('disconnect', async () => {
             console.log('\x1b[33m===>>>Socket disconnected!!!', '\x1b[0m')
             if (decoded) {
-                // redisClient.del(`socket_id_${decoded.sub}`)
-                redisClient.lRem(`${RedisKey.SOCKET_ID}${decoded.sub}`, 0, socketInstance.id)
+                // get all socket ids of user from Redis
+                const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${decoded.sub}`, 0, -1)
+
+                if (socketIds && socketIds.length > 0) {
+                    for (const socketId of socketIds) {
+                        // check if socket is connected
+                        const isConnected = io.sockets.sockets.has(socketId)
+
+                        if (!isConnected) {
+                            // if socket is not connected, remove it from Redis
+                            await redisClient.lRem(`${RedisKey.SOCKET_ID}${decoded.sub}`, 0, socketId)
+                        }
+                    }
+                }
+
                 User.update({ is_online: false }, { where: { id: Number(decoded.sub) } })
             }
         })

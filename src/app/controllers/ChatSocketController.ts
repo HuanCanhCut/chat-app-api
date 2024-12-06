@@ -17,26 +17,32 @@ const chatController = ({
     currentUserId: number
 }) => {
     socket.on(ChatEvent.JOIN_ROOM, async (conversationUuid: string) => {
-        // Lấy danh sách tất cả socket id của user từ Redis
+        // Get all socket ids of user from Redis
         const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${currentUserId}`, 0, -1)
 
         if (socketIds && socketIds.length > 0) {
             for (const socketId of socketIds) {
-                const userSocket = io.sockets.sockets.get(socketId) // Lấy socket từ socketId
+                const userSocket = io.sockets.sockets.get(socketId) // Get socket from socketId
                 if (userSocket) {
                     userSocket.join(conversationUuid) // Socket join room
                 }
             }
         }
 
-        // Lưu trạng thái user đã vào room vào Redis
+        // Save user status that has joined room to Redis
         await redisClient.set(`user_${currentUserId}_in_room_${conversationUuid}`, 'true')
     })
 
     socket.on(ChatEvent.NEW_MESSAGE, async ({ conversationUuid, message }) => {
-        const allUserInRoom = await User.findAll({
+        // get all users online in a conversation
+        const usersOnline = await User.findAll({
             attributes: ['id', 'is_online'],
-            where: { id: { [Op.ne]: currentUserId } },
+            where: {
+                id: {
+                    [Op.ne]: currentUserId,
+                },
+                is_online: true,
+            },
             include: [
                 {
                     model: ConversationMember,
@@ -54,86 +60,72 @@ const chatController = ({
             ],
         })
 
-        const userIds = allUserInRoom.map((user: any) => {
+        const conversation = await Conversation.findOne({
+            attributes: ['id'],
+            where: { uuid: conversationUuid },
+        })
+
+        if (!conversation?.dataValues?.id) {
+            // emit fail message status
+            return
+        }
+
+        const userIds = usersOnline.map((user: any) => {
             return {
                 id: user.get('id'),
-                is_online: user.get('is_online'),
-                conversation_id: user?.dataValues?.conversation_members[0]?.dataValues?.conversation_id,
             }
         })
 
-        if (!userIds.length) return
+        const newMessage = await saveMessageToDatabase({
+            conversationId: conversation.dataValues.id,
+            senderId: currentUserId,
+            userIds: userIds.map((user) => user.id),
+            message,
+            status: 'delivered',
+        })
+
+        if (!newMessage) {
+            // emit fail message status
+            return
+        }
+
+        // emit message to room
+        const conversationCache = await redisClient.get(`${RedisKey.CONVERSATION_UUID}${conversationUuid}`)
+
+        if (conversationCache) {
+            const conversation = {
+                ...JSON.parse(conversationCache),
+                last_message: newMessage,
+            }
+
+            io.to(conversationUuid).emit(ChatEvent.NEW_MESSAGE, { conversation })
+        } else {
+            // get conversation from database
+            const conversation = await getConversation({
+                conversationUuid,
+            })
+
+            if (conversation) {
+                redisClient.set(`${RedisKey.CONVERSATION_UUID}${conversationUuid}`, JSON.stringify(conversation))
+
+                const conversationData = {
+                    ...conversation.dataValues,
+                    last_message: newMessage,
+                }
+
+                io.to(conversationUuid).emit(ChatEvent.NEW_MESSAGE, { conversation: conversationData })
+            }
+        }
 
         for (const user of userIds) {
-            if (!user.id) return
+            const isUserInRoom = await redisClient.get(`user_${user.id}_in_room_${conversationUuid}`)
 
-            // if member online
-            if (user.is_online) {
-                const newMessage = await saveMessageToDatabase({
-                    conversationId: user.conversation_id,
-                    senderId: currentUserId,
-                    userId: user.id,
-                    message,
-                    status: 'delivered',
-                })
+            // user online but not in the room
+            if (!isUserInRoom) {
+                const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${user.id}`, 0, -1)
 
-                if (!newMessage) return
-
-                const isUserInRoom = await redisClient.get(`user_${user.id}_in_room_${conversationUuid}`)
-
-                // but not in the room
-                if (!isUserInRoom) {
-                    const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${user.id}`, 0, -1)
-
-                    // nếu lưu thành công thì emit lại cho user
-                    if (socketIds && socketIds.length > 0) {
-                        const conversationCache = await redisClient.get(
-                            `${RedisKey.CONVERSATION_UUID}${conversationUuid}`,
-                        )
-
-                        if (conversationCache) {
-                            const conversation = {
-                                ...JSON.parse(conversationCache),
-                                last_message: newMessage,
-                            }
-                            for (const socketId of socketIds) {
-                                io.to(socketId).emit(ChatEvent.NEW_MESSAGE, { conversation })
-                            }
-                        } else {
-                            try {
-                                // get conversation from database
-                                const conversation = await getConversation({
-                                    conversationUuid,
-                                    user,
-                                })
-
-                                if (conversation) {
-                                    redisClient.set(
-                                        `${RedisKey.CONVERSATION_UUID}${conversationUuid}`,
-                                        JSON.stringify(conversation),
-                                    )
-
-                                    const conversationData = {
-                                        ...conversation.dataValues,
-                                        last_message: newMessage,
-                                    }
-
-                                    for (const socketId of socketIds) {
-                                        io.to(socketId).emit(ChatEvent.NEW_MESSAGE, {
-                                            conversation: conversationData,
-                                        })
-                                    }
-                                }
-                            } catch (error) {
-                                console.log(error)
-                            }
-                        }
-                    } else {
-                        // delete socket id from redis if socket id not exist
-                        redisClient.lRem(`${RedisKey.SOCKET_ID}${user.id}`, 0, socket.id)
-                    }
-                } else {
-                    // user in the room
+                // if save message to database success
+                if (socketIds && socketIds.length > 0) {
                     const conversationCache = await redisClient.get(`${RedisKey.CONVERSATION_UUID}${conversationUuid}`)
 
                     if (conversationCache) {
@@ -141,47 +133,49 @@ const chatController = ({
                             ...JSON.parse(conversationCache),
                             last_message: newMessage,
                         }
-
-                        io.to(conversationUuid).emit(ChatEvent.NEW_MESSAGE, { conversation })
+                        for (const socketId of socketIds) {
+                            io.to(socketId).emit(ChatEvent.NEW_MESSAGE, { conversation })
+                        }
                     } else {
-                        // get conversation from database
-                        const conversation = await getConversation({
-                            conversationUuid,
-                            user,
-                        })
+                        try {
+                            // get conversation from database
+                            const conversation = await getConversation({
+                                conversationUuid,
+                                user,
+                            })
 
-                        if (conversation) {
-                            redisClient.set(
-                                `${RedisKey.CONVERSATION_UUID}${conversationUuid}`,
-                                JSON.stringify(conversation),
-                            )
+                            if (conversation) {
+                                redisClient.set(
+                                    `${RedisKey.CONVERSATION_UUID}${conversationUuid}`,
+                                    JSON.stringify(conversation),
+                                )
 
-                            const conversationData = {
-                                ...conversation.dataValues,
-                                last_message: newMessage,
+                                const conversationData = {
+                                    ...conversation.dataValues,
+                                    last_message: newMessage,
+                                }
+
+                                for (const socketId of socketIds) {
+                                    io.to(socketId).emit(ChatEvent.NEW_MESSAGE, {
+                                        conversation: conversationData,
+                                    })
+                                }
                             }
-
-                            io.to(conversationUuid).emit(ChatEvent.NEW_MESSAGE, { conversation: conversationData })
+                        } catch (error) {
+                            console.log(error)
                         }
                     }
+                } else {
+                    // delete socket id from redis if socket id not exist
+                    redisClient.lRem(`${RedisKey.SOCKET_ID}${user.id}`, 0, socket.id)
                 }
-            } else {
-                // user offline
-                // save message to database
-                await saveMessageToDatabase({
-                    conversationId: user.conversation_id,
-                    senderId: currentUserId,
-                    userId: user.id,
-                    message,
-                    status: 'sent',
-                })
             }
         }
     })
 
-    // Xử lý khi người dùng ngắt kết nối
+    // Handle when user disconnect
     socket.on('disconnect', () => {
-        // Xóa tất cả room mà user đã join khỏi Redis
+        // Delete all rooms that user has joined from Redis
         redisClient.keys(`user_${currentUserId}_in_room_*`).then((keys) => {
             keys.forEach((key) => redisClient.del(key))
         })
@@ -191,13 +185,13 @@ const chatController = ({
 const saveMessageToDatabase = async ({
     conversationId,
     senderId,
-    userId,
+    userIds,
     message,
     status,
 }: {
     conversationId: number
     senderId: number
-    userId: number
+    userIds: number[]
     message: string
     status: 'sent' | 'delivered' | 'read'
 }) => {
@@ -211,11 +205,13 @@ const saveMessageToDatabase = async ({
         })
 
         if (newMessage.id) {
-            await MessageStatus.create({
-                message_id: newMessage.id,
-                user_id: userId,
-                status,
-            })
+            for (const userId of userIds) {
+                await MessageStatus.create({
+                    message_id: newMessage.id,
+                    user_id: userId,
+                    status,
+                })
+            }
         }
 
         await transaction.commit()
@@ -247,8 +243,18 @@ const saveMessageToDatabase = async ({
     }
 }
 
-const getConversation = async ({ conversationUuid, user }: { conversationUuid: string; user: any }) => {
+const getConversation = async ({ conversationUuid, user }: { conversationUuid: string; user?: any }) => {
     try {
+        let whereCondition: any = {}
+
+        if (user) {
+            whereCondition = {
+                user_id: {
+                    [Op.ne]: user.id,
+                },
+            }
+        }
+
         // get conversation from database
         const conversation = await Conversation.findOne({
             where: {
@@ -256,11 +262,7 @@ const getConversation = async ({ conversationUuid, user }: { conversationUuid: s
             },
             include: [
                 {
-                    where: {
-                        user_id: {
-                            [Op.ne]: user.id,
-                        },
-                    },
+                    where: whereCondition,
                     model: ConversationMember,
                     as: 'conversation_members',
                     include: [
