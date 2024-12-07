@@ -5,8 +5,10 @@ import { sequelize } from '../../config/db'
 class MessageStatus extends Model<InferAttributes<MessageStatus>, InferCreationAttributes<MessageStatus>> {
     declare id?: number
     declare message_id: number
-    declare user_id: number
+    declare receiver_id: number
     declare status: 'read' | 'delivered' | 'sent'
+    declare is_revoked?: boolean
+    declare revoke_type?: 'oneway' | 'all' | 'none'
     declare created_at?: Date
     declare updated_at?: Date
 }
@@ -26,7 +28,7 @@ MessageStatus.init(
                 key: 'id',
             },
         },
-        user_id: {
+        receiver_id: {
             type: DataTypes.INTEGER,
             allowNull: false,
             references: {
@@ -37,6 +39,16 @@ MessageStatus.init(
         status: {
             type: DataTypes.ENUM('read', 'delivered', 'sent'),
             allowNull: false,
+        },
+        is_revoked: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false,
+        },
+        revoke_type: {
+            type: DataTypes.ENUM('oneway', 'all', 'none'),
+            allowNull: false,
+            defaultValue: 'none',
         },
     },
     {

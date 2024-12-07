@@ -35,13 +35,12 @@ const chatController = ({
 
     socket.on(ChatEvent.NEW_MESSAGE, async ({ conversationUuid, message }) => {
         // get all users online in a conversation
-        const usersOnline = await User.findAll({
+        const allUserOfConversation = await User.findAll({
             attributes: ['id', 'is_online'],
             where: {
                 id: {
                     [Op.ne]: currentUserId,
                 },
-                is_online: true,
             },
             include: [
                 {
@@ -70,9 +69,10 @@ const chatController = ({
             return
         }
 
-        const userIds = usersOnline.map((user: any) => {
+        const userIds = allUserOfConversation.map((user: any) => {
             return {
                 id: user.get('id'),
+                is_online: user.get('is_online'),
             }
         })
 
@@ -103,6 +103,7 @@ const chatController = ({
             // get conversation from database
             const conversation = await getConversation({
                 conversationUuid,
+                userId: currentUserId,
             })
 
             if (conversation) {
@@ -121,7 +122,7 @@ const chatController = ({
             const isUserInRoom = await redisClient.get(`user_${user.id}_in_room_${conversationUuid}`)
 
             // user online but not in the room
-            if (!isUserInRoom) {
+            if (!isUserInRoom && user.is_online) {
                 const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${user.id}`, 0, -1)
 
                 // if save message to database success
@@ -141,7 +142,7 @@ const chatController = ({
                             // get conversation from database
                             const conversation = await getConversation({
                                 conversationUuid,
-                                user,
+                                userId: user.id,
                             })
 
                             if (conversation) {
@@ -208,7 +209,7 @@ const saveMessageToDatabase = async ({
             for (const userId of userIds) {
                 await MessageStatus.create({
                     message_id: newMessage.id,
-                    user_id: userId,
+                    receiver_id: userId,
                     status,
                 })
             }
@@ -243,18 +244,8 @@ const saveMessageToDatabase = async ({
     }
 }
 
-const getConversation = async ({ conversationUuid, user }: { conversationUuid: string; user?: any }) => {
+const getConversation = async ({ conversationUuid, userId }: { conversationUuid: string; userId?: number }) => {
     try {
-        let whereCondition: any = {}
-
-        if (user) {
-            whereCondition = {
-                user_id: {
-                    [Op.ne]: user.id,
-                },
-            }
-        }
-
         // get conversation from database
         const conversation = await Conversation.findOne({
             where: {
@@ -262,7 +253,11 @@ const getConversation = async ({ conversationUuid, user }: { conversationUuid: s
             },
             include: [
                 {
-                    where: whereCondition,
+                    where: {
+                        user_id: {
+                            [Op.ne]: userId,
+                        },
+                    },
                     model: ConversationMember,
                     as: 'conversation_members',
                     include: [
