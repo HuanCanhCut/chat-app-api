@@ -54,8 +54,6 @@ MessageStatus.init(
     {
         sequelize,
         tableName: 'message_statuses',
-        timestamps: true,
-        underscored: true,
     },
 )
 

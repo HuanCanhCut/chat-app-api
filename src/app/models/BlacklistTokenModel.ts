@@ -28,8 +28,6 @@ BlacklistToken.init(
     {
         tableName: 'blacklist_tokens',
         sequelize,
-        underscored: true,
-        timestamps: true,
     },
 )
 

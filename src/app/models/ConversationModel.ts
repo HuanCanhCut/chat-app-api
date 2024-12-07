@@ -42,8 +42,6 @@ Conversation.init(
     {
         sequelize,
         tableName: 'conversations',
-        timestamps: true,
-        underscored: true,
     },
 )
 

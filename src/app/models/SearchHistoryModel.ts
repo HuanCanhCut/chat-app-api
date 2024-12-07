@@ -37,8 +37,6 @@ SearchHistory.init(
     {
         tableName: 'search_histories',
         sequelize,
-        underscored: true,
-        timestamps: true,
     },
 )
 

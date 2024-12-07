@@ -9,8 +9,8 @@ class Notification extends Model<InferAttributes<Notification>, InferCreationAtt
     declare is_read?: boolean
     declare is_seen?: boolean
     declare sender_id: number
-    declare createdAt?: Date
-    declare updatedAt?: Date
+    declare created_at?: Date
+    declare updated_at?: Date
 }
 
 Notification.init(
@@ -58,8 +58,6 @@ Notification.init(
     {
         tableName: 'notifications',
         sequelize,
-        underscored: true,
-        timestamps: true,
     },
 )
 

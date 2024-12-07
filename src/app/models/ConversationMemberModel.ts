@@ -59,11 +59,8 @@ ConversationMember.init(
                 fields: ['conversation_id'],
             },
         ],
-
         sequelize,
         tableName: 'conversation_members',
-        timestamps: true,
-        underscored: true,
     },
 )
 

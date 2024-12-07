@@ -7,8 +7,8 @@ class Message extends Model<InferAttributes<Message>, InferCreationAttributes<Me
     declare conversation_id: number
     declare sender_id: number
     declare content: string
-    declare createdAt?: Date
-    declare updatedAt?: Date
+    declare created_at?: Date
+    declare updated_at?: Date
 }
 
 Message.init(
@@ -48,8 +48,6 @@ Message.init(
         ],
         sequelize,
         tableName: 'messages',
-        timestamps: true,
-        underscored: true,
     },
 )
 

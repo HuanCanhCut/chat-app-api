@@ -12,7 +12,10 @@ const sequelize = new Sequelize(
         dialect: 'mysql',
         timezone: '+07:00',
         define: {
+            createdAt: 'created_at',
+            updatedAt: 'updated_at',
             underscored: true,
+            timestamps: true,
         },
     },
 )

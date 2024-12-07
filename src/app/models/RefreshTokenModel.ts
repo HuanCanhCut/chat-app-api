@@ -32,8 +32,6 @@ RefreshToken.init(
     {
         tableName: 'refresh_tokens',
         sequelize,
-        underscored: true,
-        timestamps: true,
     },
 )
 

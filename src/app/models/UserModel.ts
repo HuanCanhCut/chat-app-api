@@ -95,11 +95,8 @@ User.init(
                 name: 'idx_is_online',
             },
         ],
-
         tableName: 'users',
         sequelize,
-        underscored: true,
-        timestamps: true,
     },
 )
 
