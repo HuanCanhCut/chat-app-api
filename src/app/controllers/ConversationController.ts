@@ -65,10 +65,27 @@ class ConversationController {
                 )`),
             })
 
-            for (const conversation of conversations) {
-                const lastMessage = await Message.findOne({
+            const is_read_sql = `
+                CASE 
+                    WHEN EXISTS (
+                        SELECT 1
+                        FROM message_statuses
+                        WHERE message_statuses.message_id = Message.id
+                        AND message_statuses.receiver_id = ${decoded.sub}
+                        AND message_statuses.status = 'read'
+                    ) THEN TRUE 
+                    ELSE FALSE 
+                END
+            `
+
+            // Tạo một mảng các promises
+            const promises = conversations.map(async (conversation) => {
+                const lastMessage = await Message.findOne<any>({
                     where: {
                         conversation_id: conversation.id,
+                    },
+                    attributes: {
+                        include: [[sequelize.literal(is_read_sql), 'is_read']],
                     },
                     include: [
                         {
@@ -83,15 +100,30 @@ class ConversationController {
                             model: MessageStatus,
                             as: 'message_status',
                             required: true,
+                            include: [
+                                {
+                                    model: User,
+                                    as: 'receiver',
+                                    attributes: {
+                                        exclude: ['password', 'email'],
+                                    },
+                                },
+                            ],
                         },
                     ],
                     order: [['created_at', 'DESC']],
                 })
 
                 if (lastMessage) {
-                    conversation.dataValues.last_message = lastMessage
+                    conversation.dataValues.last_message = {
+                        ...lastMessage.dataValues,
+                        is_read: lastMessage.dataValues.is_read === 1,
+                    }
                 }
-            }
+            })
+
+            // Sử dụng Promise.all để chạy tất cả các truy vấn song song
+            await Promise.all(promises)
 
             res.json({ data: conversations })
         } catch (error: any) {

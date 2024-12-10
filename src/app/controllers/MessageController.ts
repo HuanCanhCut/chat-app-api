@@ -5,6 +5,7 @@ import { Conversation, ConversationMember, Message, MessageStatus, User } from '
 import { responseModel } from '../utils/responseMode'
 
 class MessageController {
+    // [GET] /api/messages/:conversationUuid
     async getMessages(req: IRequest, res: Response, next: NextFunction) {
         try {
             const { page, per_page } = req.query

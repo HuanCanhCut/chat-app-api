@@ -2,7 +2,7 @@ import { Socket, Server } from 'socket.io'
 import { ClientToServerEvents, ServerToClientEvents } from '~/config/socket/types'
 import { ChatEvent } from '~/enum/chat'
 import { Conversation, ConversationMember, Message, MessageStatus, User } from '../models'
-import { Op } from 'sequelize'
+import { Op, QueryTypes } from 'sequelize'
 import { redisClient } from '~/config/redis'
 import { RedisKey } from '~/enum/redis'
 import { sequelize } from '~/config/db'
@@ -31,6 +31,33 @@ const chatController = ({
 
         // Save user status that has joined room to Redis
         await redisClient.set(`user_${currentUserId}_in_room_${conversationUuid}`, 'true')
+    })
+
+    socket.on(ChatEvent.READ_MESSAGE, async ({ conversationUuid }) => {
+        // update message status to read
+        await sequelize.query(
+            `
+            UPDATE 
+                message_statuses
+            INNER JOIN 
+                messages ON messages.id = message_statuses.message_id
+            INNER JOIN 
+                conversations ON conversations.id = messages.conversation_id
+            SET 
+                message_statuses.status = 'read'
+            WHERE 
+                conversations.uuid = :conversationUuid
+            AND 
+                message_statuses.receiver_id = :receiverId
+        `,
+            {
+                replacements: {
+                    conversationUuid,
+                    receiverId: currentUserId,
+                },
+                type: QueryTypes.UPDATE,
+            },
+        )
     })
 
     socket.on(ChatEvent.NEW_MESSAGE, async ({ conversationUuid, message }) => {
@@ -217,25 +244,50 @@ const saveMessageToDatabase = async ({
 
         await transaction.commit()
 
+        const is_read_sql = `
+        CASE 
+            WHEN EXISTS (
+                SELECT 1
+                FROM message_statuses
+                WHERE message_statuses.message_id = Message.id
+                AND message_statuses.receiver_id = ${senderId}
+                AND message_statuses.status = 'read'
+            ) THEN TRUE 
+            ELSE FALSE 
+        END
+        `
+
         // last message
-        const messageResponse = await Message.findByPk(newMessage.id, {
+        const messageResponse = await Message.findByPk<any>(newMessage.id, {
             include: [
                 {
                     model: User,
                     as: 'sender',
                     required: true,
                     attributes: {
+                        include: [[sequelize.literal(is_read_sql), 'is_read']],
                         exclude: ['password', 'email'],
                     },
                 },
                 {
                     model: MessageStatus,
                     as: 'message_status',
+                    include: [
+                        {
+                            model: User,
+                            as: 'receiver',
+                            attributes: {
+                                exclude: ['password', 'email'],
+                            },
+                        },
+                    ],
                 },
             ],
         })
 
-        return messageResponse
+        const isRead = messageResponse.dataValues.is_read === 1
+
+        return { ...messageResponse.dataValues, is_read: isRead }
     } catch (error) {
         if (transaction) {
             await transaction.rollback()

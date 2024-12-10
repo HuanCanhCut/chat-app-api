@@ -39,6 +39,7 @@ MessageStatus.init(
         status: {
             type: DataTypes.ENUM('read', 'delivered', 'sent'),
             allowNull: false,
+            defaultValue: 'sent',
         },
         is_revoked: {
             type: DataTypes.BOOLEAN,
@@ -46,9 +47,8 @@ MessageStatus.init(
             defaultValue: false,
         },
         revoke_type: {
-            type: DataTypes.ENUM('oneway', 'all', 'none'),
-            allowNull: false,
-            defaultValue: 'none',
+            type: DataTypes.ENUM('oneway', 'all'),
+            allowNull: true,
         },
     },
     {
