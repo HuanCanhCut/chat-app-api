@@ -20,6 +20,13 @@ const chatController = ({
         // Get all socket ids of user from Redis
         const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${currentUserId}`, 0, -1)
 
+        // if user in room, not join again
+        const userInRoom = await redisClient.get(`user_${currentUserId}_in_room_${conversationUuid}`)
+
+        if (userInRoom) {
+            return
+        }
+
         if (socketIds && socketIds.length > 0) {
             for (const socketId of socketIds) {
                 const userSocket = io.sockets.sockets.get(socketId) // Get socket from socketId
@@ -130,7 +137,6 @@ const chatController = ({
             // get conversation from database
             const conversation = await getConversation({
                 conversationUuid,
-                userId: currentUserId,
             })
 
             if (conversation) {
@@ -169,7 +175,6 @@ const chatController = ({
                             // get conversation from database
                             const conversation = await getConversation({
                                 conversationUuid,
-                                userId: user.id,
                             })
 
                             if (conversation) {
@@ -277,6 +282,22 @@ const saveMessageToDatabase = async ({
                             model: User,
                             as: 'receiver',
                             attributes: {
+                                include: [
+                                    [
+                                        sequelize.literal(`
+                                            (
+                                                SELECT messages.id
+                                                FROM messages
+                                                INNER JOIN message_statuses ON message_statuses.message_id = messages.id
+                                                WHERE message_statuses.receiver_id = message_status.receiver_id AND
+                                                    message_statuses.status = 'read'
+                                                ORDER BY messages.id DESC
+                                                LIMIT 1
+                                            )
+                                        `),
+                                        'last_read_message_id',
+                                    ],
+                                ],
                                 exclude: ['password', 'email'],
                             },
                         },
@@ -296,7 +317,7 @@ const saveMessageToDatabase = async ({
     }
 }
 
-const getConversation = async ({ conversationUuid, userId }: { conversationUuid: string; userId?: number }) => {
+const getConversation = async ({ conversationUuid }: { conversationUuid: string }) => {
     try {
         // get conversation from database
         const conversation = await Conversation.findOne({
@@ -305,11 +326,6 @@ const getConversation = async ({ conversationUuid, userId }: { conversationUuid:
             },
             include: [
                 {
-                    where: {
-                        user_id: {
-                            [Op.ne]: userId,
-                        },
-                    },
                     model: ConversationMember,
                     as: 'conversation_members',
                     include: [

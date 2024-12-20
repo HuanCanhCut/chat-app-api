@@ -3,6 +3,7 @@ import { IRequest } from '~/type'
 import { BadRequest, ForBiddenError, InternalServerError } from '../errors/errors'
 import { Conversation, ConversationMember, Message, MessageStatus, User } from '../models'
 import { responseModel } from '../utils/responseMode'
+import { sequelize } from '~/config/db'
 
 class MessageController {
     // [GET] /api/messages/:conversationUuid
@@ -40,7 +41,7 @@ class MessageController {
                 return next(new ForBiddenError({ message: 'Permission denied' }))
             }
 
-            const { rows: messages, count } = await Message.findAndCountAll({
+            const { rows: messages, count } = await Message.findAndCountAll<any>({
                 where: {
                     conversation_id: hasMember.id,
                 },
@@ -54,6 +55,22 @@ class MessageController {
                                 model: User,
                                 as: 'receiver',
                                 attributes: {
+                                    include: [
+                                        [
+                                            sequelize.literal(`
+                                                (
+                                                    SELECT messages.id
+                                                    FROM messages
+                                                    INNER JOIN message_statuses ON message_statuses.message_id = messages.id
+                                                    WHERE message_statuses.receiver_id = message_status.receiver_id AND
+                                                        message_statuses.status = 'read'
+                                                    ORDER BY messages.id DESC
+                                                    LIMIT 1
+                                                )
+                                            `),
+                                            'last_read_message_id',
+                                        ],
+                                    ],
                                     exclude: ['password', 'email'],
                                 },
                             },
@@ -70,7 +87,7 @@ class MessageController {
                 ],
                 limit: Number(per_page),
                 offset: (Number(page) - 1) * Number(per_page),
-                order: [['created_at', 'DESC']], // Changed order to DESC to get the latest messages
+                order: [['id', 'DESC']],
             })
 
             const response = responseModel({

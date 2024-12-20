@@ -31,11 +31,6 @@ class ConversationController {
                                 attributes: {
                                     exclude: ['password', 'email'],
                                 },
-                                where: {
-                                    id: {
-                                        [Op.ne]: decoded.sub,
-                                    },
-                                },
                             },
                         ],
                     },
@@ -166,11 +161,6 @@ class ConversationController {
                         model: ConversationMember,
                         as: 'conversation_members',
                         required: true,
-                        where: {
-                            user_id: {
-                                [Op.ne]: decoded.sub,
-                            },
-                        },
                         include: [
                             {
                                 model: User,
