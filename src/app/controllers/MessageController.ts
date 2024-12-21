@@ -63,7 +63,8 @@ class MessageController {
                                                     FROM messages
                                                     INNER JOIN message_statuses ON message_statuses.message_id = messages.id
                                                     WHERE message_statuses.receiver_id = message_status.receiver_id AND
-                                                        message_statuses.status = 'read'
+                                                        message_statuses.status = 'read' 
+                                                        AND messages.conversation_id = ${hasMember.id}
                                                     ORDER BY messages.id DESC
                                                     LIMIT 1
                                                 )

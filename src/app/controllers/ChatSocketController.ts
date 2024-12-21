@@ -40,10 +40,11 @@ const chatController = ({
         await redisClient.set(`user_${currentUserId}_in_room_${conversationUuid}`, 'true')
     })
 
-    socket.on(ChatEvent.READ_MESSAGE, async ({ conversationUuid }) => {
-        // update message status to read
-        await sequelize.query(
-            `
+    socket.on(ChatEvent.READ_MESSAGE, async ({ conversationUuid, messageId }) => {
+        try {
+            // update message status to read
+            await sequelize.query(
+                `
             UPDATE 
                 message_statuses
             INNER JOIN 
@@ -56,15 +57,48 @@ const chatController = ({
                 conversations.uuid = :conversationUuid
             AND 
                 message_statuses.receiver_id = :receiverId
-        `,
-            {
-                replacements: {
-                    conversationUuid,
-                    receiverId: currentUserId,
+            `,
+                {
+                    replacements: {
+                        conversationUuid,
+                        receiverId: currentUserId,
+                    },
+                    type: QueryTypes.UPDATE,
                 },
-                type: QueryTypes.UPDATE,
-            },
-        )
+            )
+
+            const message = await Message.findByPk(messageId, {
+                include: [
+                    {
+                        model: MessageStatus,
+                        required: true,
+                        as: 'message_status',
+                        include: [
+                            {
+                                model: User,
+                                as: 'receiver',
+                                attributes: {
+                                    include: [[sequelize.literal(`${messageId}`), 'last_read_message_id']],
+                                    exclude: ['password', 'email'],
+                                },
+                            },
+                        ],
+                    },
+                    {
+                        model: User,
+                        as: 'sender',
+                        required: true,
+                        attributes: {
+                            exclude: ['password', 'email'],
+                        },
+                    },
+                ],
+            })
+
+            socket.to(conversationUuid).emit(ChatEvent.UPDATE_READ_MESSAGE, { message })
+        } catch (error) {
+            console.log(error)
+        }
     })
 
     socket.on(ChatEvent.NEW_MESSAGE, async ({ conversationUuid, message }) => {

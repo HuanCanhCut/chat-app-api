@@ -6,6 +6,7 @@ interface ServerToClientEvents {
     [NotificationEvent.REMOVE_NOTIFICATION]: (data: any) => void
     [ChatEvent.JOIN_ROOM]: (data: any) => void
     [ChatEvent.NEW_MESSAGE]: (data: any) => void
+    [ChatEvent.UPDATE_READ_MESSAGE]: (data: any) => void
 }
 
 interface ClientToServerEvents {
@@ -13,6 +14,7 @@ interface ClientToServerEvents {
     [NotificationEvent.REMOVE_NOTIFICATION]: (data: any) => void
     [ChatEvent.JOIN_ROOM]: (data: any) => void
     [ChatEvent.NEW_MESSAGE]: (data: any) => void
+    [ChatEvent.UPDATE_READ_MESSAGE]: (data: any) => void
 }
 
 interface InterServerEvents {
