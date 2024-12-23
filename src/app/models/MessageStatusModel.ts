@@ -9,6 +9,7 @@ class MessageStatus extends Model<InferAttributes<MessageStatus>, InferCreationA
     declare status: 'read' | 'delivered' | 'sent'
     declare is_revoked?: boolean
     declare revoke_type?: 'oneway' | 'all' | 'none'
+    declare read_at?: Date
     declare created_at?: Date
     declare updated_at?: Date
 }
@@ -49,6 +50,11 @@ MessageStatus.init(
         revoke_type: {
             type: DataTypes.ENUM('oneway', 'all'),
             allowNull: true,
+        },
+        read_at: {
+            type: DataTypes.DATE,
+            allowNull: true,
+            defaultValue: null,
         },
     },
     {

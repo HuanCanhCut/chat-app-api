@@ -52,7 +52,8 @@ const chatController = ({
             INNER JOIN 
                 conversations ON conversations.id = messages.conversation_id
             SET 
-                message_statuses.status = 'read'
+                message_statuses.status = 'read',
+                message_statuses.read_at = NOW()
             WHERE 
                 conversations.uuid = :conversationUuid
             AND 
