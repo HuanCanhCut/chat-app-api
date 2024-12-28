@@ -2,7 +2,7 @@ import { Socket, Server } from 'socket.io'
 import { ClientToServerEvents, ServerToClientEvents } from '~/config/socket/types'
 import { ChatEvent } from '~/enum/chat'
 import { Conversation, ConversationMember, Message, MessageStatus, User } from '../models'
-import { Op, QueryTypes } from 'sequelize'
+import { QueryTypes } from 'sequelize'
 import { redisClient } from '~/config/redis'
 import { RedisKey } from '~/enum/redis'
 import { sequelize } from '~/config/db'
@@ -106,11 +106,6 @@ const chatController = ({
         // get all users online in a conversation
         const allUserOfConversation = await User.findAll({
             attributes: ['id', 'is_online'],
-            where: {
-                id: {
-                    [Op.ne]: currentUserId,
-                },
-            },
             include: [
                 {
                     model: ConversationMember,
@@ -187,13 +182,16 @@ const chatController = ({
         }
 
         for (const user of userIds) {
+            if (user.id === currentUserId) {
+                continue
+            }
+
             const isUserInRoom = await redisClient.get(`user_${user.id}_in_room_${conversationUuid}`)
 
             // user online but not in the room
             if (!isUserInRoom && user.is_online) {
                 const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${user.id}`, 0, -1)
 
-                // if save message to database success
                 if (socketIds && socketIds.length > 0) {
                     const conversationCache = await redisClient.get(`${RedisKey.CONVERSATION_UUID}${conversationUuid}`)
 
@@ -280,13 +278,6 @@ const saveMessageToDatabase = async ({
                     status,
                 })
             }
-
-            await MessageStatus.create({
-                message_id: newMessage.id,
-                receiver_id: senderId,
-                status: 'read',
-                read_at: new Date(),
-            })
         }
 
         await transaction.commit()
