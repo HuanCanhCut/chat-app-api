@@ -71,21 +71,6 @@ class MessageController {
                                             `),
                                             'last_read_message_id',
                                         ],
-                                        [
-                                            sequelize.literal(`
-                                                (
-                                                    SELECT message_statuses.read_at
-                                                    FROM messages
-                                                    INNER JOIN message_statuses ON message_statuses.message_id = messages.id
-                                                    WHERE message_statuses.receiver_id = message_status.receiver_id AND
-                                                        message_statuses.status = 'read' 
-                                                        AND messages.conversation_id = ${hasMember.id}
-                                                    ORDER BY messages.id DESC
-                                                    LIMIT 1
-                                                )
-                                            `),
-                                            'read_at',
-                                        ],
                                     ],
                                     exclude: ['password', 'email'],
                                 },

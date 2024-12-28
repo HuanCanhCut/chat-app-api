@@ -96,7 +96,7 @@ const chatController = ({
                 ],
             })
 
-            socket.to(conversationUuid).emit(ChatEvent.UPDATE_READ_MESSAGE, { message })
+            io.to(conversationUuid).emit(ChatEvent.UPDATE_READ_MESSAGE, { message })
         } catch (error) {
             console.log(error)
         }
@@ -280,6 +280,13 @@ const saveMessageToDatabase = async ({
                     status,
                 })
             }
+
+            await MessageStatus.create({
+                message_id: newMessage.id,
+                receiver_id: senderId,
+                status: 'read',
+                read_at: new Date(),
+            })
         }
 
         await transaction.commit()
