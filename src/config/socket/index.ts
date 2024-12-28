@@ -4,9 +4,9 @@ import dotenv from 'dotenv'
 
 import { ClientToServerEvents, ServerToClientEvents } from './types'
 import { redisClient } from '../../config/redis'
-import chatSocketController from '~/app/controllers/ChatSocketController'
 import { RedisKey } from '~/enum/redis'
 import { User } from '~/app/models'
+import listen from './listen'
 
 dotenv.config()
 
@@ -41,7 +41,8 @@ const socketIO = (ioInstance: Server<ClientToServerEvents, ServerToClientEvents>
             }
         }
 
-        chatSocketController({ socket: socketInstance, io: ioInstance, currentUserId: Number(decoded?.sub) })
+        // chatSocketController({ socket: socketInstance, io: ioInstance, currentUserId: Number(decoded?.sub) })
+        listen({ socket: socketInstance, io: ioInstance, decoded })
 
         // Set socket to global
         socket = socketInstance
