@@ -1,5 +1,6 @@
 import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
 import { sequelize } from '../../config/db'
+import handleChildrenAfterFindHook from '../helper/childrenAfterFindHook'
 
 class Notification extends Model<InferAttributes<Notification>, InferCreationAttributes<Notification>> {
     declare id?: number
@@ -60,5 +61,7 @@ Notification.init(
         sequelize,
     },
 )
+
+Notification.addHook('afterFind', handleChildrenAfterFindHook)
 
 export default Notification

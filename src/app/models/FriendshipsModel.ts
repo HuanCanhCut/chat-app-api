@@ -1,8 +1,8 @@
 import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
 
 import { sequelize } from '../../config/db'
-import getFriendsCount from '../utils/friendsCount'
 import excludeWithInclude from '../utils/excludeWithInclude'
+import handleChildrenAfterFindHook from '../helper/childrenAfterFindHook'
 
 class Friendships extends Model<InferAttributes<Friendships>, InferCreationAttributes<Friendships>> {
     declare id?: number
@@ -55,16 +55,6 @@ Friendships.beforeFind((options) => {
     excludeWithInclude(options)
 })
 
-Friendships.afterFind(async (result: any, options: any) => {
-    // Đảm bảo chỉ xử lý khi có `include` và kết quả là một mảng
-    if (options.include && Array.isArray(result)) {
-        for (const includeModel of result) {
-            if (includeModel.dataValues && includeModel.dataValues.user) {
-                const count = await getFriendsCount(includeModel.user.id)
-                includeModel.dataValues.user.dataValues.friends_count = count
-            }
-        }
-    }
-})
+Friendships.addHook('afterFind', handleChildrenAfterFindHook)
 
 export default Friendships

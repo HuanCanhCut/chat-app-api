@@ -1,6 +1,7 @@
 import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
 
 import { sequelize } from '../../config/db'
+import handleChildrenAfterFindHook from '../helper/childrenAfterFindHook'
 
 class Message extends Model<InferAttributes<Message>, InferCreationAttributes<Message>> {
     declare id?: number
@@ -50,5 +51,7 @@ Message.init(
         tableName: 'messages',
     },
 )
+
+Message.addHook('afterFind', handleChildrenAfterFindHook)
 
 export default Message

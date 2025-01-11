@@ -92,6 +92,7 @@ class ChatSocketController {
                             {
                                 model: User,
                                 as: 'receiver',
+
                                 attributes: {
                                     include: [
                                         [
@@ -184,7 +185,7 @@ class ChatSocketController {
     async NEW_MESSAGE({ conversationUuid, message }: { conversationUuid: string; message: string }) {
         // get all users online in a conversation
         const allUserOfConversation = await User.findAll({
-            attributes: ['id', 'is_online'],
+            attributes: ['id'],
             include: [
                 {
                     model: ConversationMember,
@@ -212,12 +213,16 @@ class ChatSocketController {
             return
         }
 
-        const userIds = allUserOfConversation.map((user: any) => {
-            return {
-                id: user.get('id'),
-                is_online: user.get('is_online'),
-            }
-        })
+        const userIds = await Promise.all(
+            allUserOfConversation.map(async (user: any) => {
+                const isOnlineCache = await redisClient.get(`${RedisKey.USER_ONLINE}${user.get('id')}`)
+
+                return {
+                    id: user.get('id'),
+                    is_online: isOnlineCache ? JSON.parse(isOnlineCache).is_online : false,
+                }
+            }),
+        )
 
         const newMessage = await this.saveMessageToDatabase({
             conversationId: conversation.dataValues.id,

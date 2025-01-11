@@ -5,10 +5,12 @@ import dotenv from 'dotenv'
 import { ClientToServerEvents, ServerToClientEvents } from './types'
 import { redisClient } from '../../config/redis'
 import { RedisKey } from '~/enum/redis'
-import { User } from '~/app/models'
-import listen from './listen'
+import listen from './listen/chat'
 
 dotenv.config()
+
+const FIVE_MINUTES = 60 * 5
+const FOUR_MINUTES = 60 * 4
 
 let socket: Socket<ClientToServerEvents, ServerToClientEvents>
 let io: Server<ClientToServerEvents, ServerToClientEvents>
@@ -26,6 +28,9 @@ const socketIO = (ioInstance: Server<ClientToServerEvents, ServerToClientEvents>
 
         let decoded: string | jwt.JwtPayload | undefined
 
+        let userOnlineInterval: NodeJS.Timeout | undefined
+        let userOfflineTimeout: NodeJS.Timeout | undefined
+
         if (token) {
             try {
                 decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET as string)
@@ -33,8 +38,35 @@ const socketIO = (ioInstance: Server<ClientToServerEvents, ServerToClientEvents>
                     // lưu theo dạng list trường hợp nhiều user login 1 account
                     redisClient.rPush(`${RedisKey.SOCKET_ID}${decoded.sub}`, socketInstance.id)
 
-                    // set user online when connect to database
-                    User.update({ is_online: true }, { where: { id: Number(decoded.sub) } })
+                    // set user online to redis when user connect
+                    redisClient.set(
+                        `${RedisKey.USER_ONLINE}${decoded.sub}`,
+                        JSON.stringify({
+                            is_online: true,
+                            last_online_at: null,
+                        }),
+                        {
+                            EX: FIVE_MINUTES,
+                        },
+                    )
+
+                    if (userOfflineTimeout) {
+                        clearTimeout(userOfflineTimeout)
+                    }
+
+                    // if user still online, online time will be extended in 4 minutes
+                    userOnlineInterval = setInterval(() => {
+                        redisClient.set(
+                            `${RedisKey.USER_ONLINE}${decoded!.sub}`,
+                            JSON.stringify({
+                                is_online: true,
+                                last_online_at: null,
+                            }),
+                            {
+                                EX: FIVE_MINUTES,
+                            },
+                        )
+                    }, FIVE_MINUTES)
                 }
             } catch (error) {
                 console.log(error)
@@ -66,7 +98,23 @@ const socketIO = (ioInstance: Server<ClientToServerEvents, ServerToClientEvents>
                     }
                 }
 
-                User.update({ is_online: false }, { where: { id: Number(decoded.sub) } })
+                clearInterval(userOnlineInterval)
+
+                const TWELVE_HOURS = 60 * 60 * 12
+
+                // within 4 minutes user is not online again, remove user online from Redis
+                userOfflineTimeout = setTimeout(() => {
+                    redisClient.set(
+                        `${RedisKey.USER_ONLINE}${decoded.sub}`,
+                        JSON.stringify({
+                            is_online: false,
+                            last_online_at: new Date(Date.now()).toISOString(),
+                        }),
+                        {
+                            EX: TWELVE_HOURS,
+                        },
+                    )
+                }, FOUR_MINUTES * 1000)
             }
         })
     })

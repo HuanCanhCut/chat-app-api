@@ -1,9 +1,12 @@
 import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
 
+import handleChildrenAfterFindHook from '../helper/childrenAfterFindHook'
 import { sequelize } from '../../config/db'
 import getFriendsCount from '../utils/friendsCount'
 import excludeBeforeFind from '../utils/excludeBeforeFind'
 import { ConversationModel } from '~/type'
+import { redisClient } from '~/config/redis'
+import { RedisKey } from '~/enum/redis'
 
 class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
     declare id?: number
@@ -78,21 +81,12 @@ User.init(
             allowNull: false,
             defaultValue: '',
         },
-        is_online: {
-            type: DataTypes.BOOLEAN,
-            allowNull: false,
-            defaultValue: false,
-        },
     },
     {
         indexes: [
             {
                 fields: ['full_name', 'nickname'],
                 type: 'FULLTEXT',
-            },
-            {
-                fields: ['is_online'],
-                name: 'idx_is_online',
             },
         ],
         tableName: 'users',
@@ -103,6 +97,8 @@ User.init(
 User.beforeFind((options) => {
     excludeBeforeFind(options)
 })
+
+User.addHook('afterFind', handleChildrenAfterFindHook)
 
 // Thêm số lượng bạn bè vào user
 User.afterFind(async (users: any) => {
@@ -115,6 +111,22 @@ User.afterFind(async (users: any) => {
         } else {
             const friendsCount = await getFriendsCount(users.dataValues.id)
             users.dataValues.friends_count = friendsCount
+        }
+    }
+})
+
+User.afterFind(async (users: any) => {
+    if (users) {
+        if (Array.isArray(users)) {
+            for (const user of users) {
+                const isOnline = await redisClient.get(`${RedisKey.USER_ONLINE}${user.dataValues.id}`)
+                user.dataValues.is_online = isOnline ? JSON.parse(isOnline).is_online : false
+                user.dataValues.last_online_at = isOnline ? JSON.parse(isOnline).last_online_at : null
+            }
+        } else {
+            const isOnline = await redisClient.get(`${RedisKey.USER_ONLINE}${users.dataValues.id}`)
+            users.dataValues.is_online = isOnline ? JSON.parse(isOnline).is_online : false
+            users.dataValues.last_online_at = isOnline ? JSON.parse(isOnline).last_online_at : null
         }
     }
 })

@@ -152,7 +152,7 @@ class ConversationController {
                 return next(new ForBiddenError({ message: 'Permission denied' }))
             }
 
-            const conversation = await Conversation.findOne({
+            const conversation = await Conversation.findOne<any>({
                 where: {
                     uuid,
                 },

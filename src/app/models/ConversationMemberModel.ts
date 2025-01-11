@@ -1,6 +1,7 @@
 import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
 
 import { sequelize } from '../../config/db'
+import handleChildrenAfterFindHook from '../helper/childrenAfterFindHook'
 
 class ConversationMember extends Model<
     InferAttributes<ConversationMember>,
@@ -63,5 +64,7 @@ ConversationMember.init(
         tableName: 'conversation_members',
     },
 )
+
+ConversationMember.addHook('afterFind', handleChildrenAfterFindHook)
 
 export default ConversationMember

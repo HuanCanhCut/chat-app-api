@@ -2,6 +2,7 @@ import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequ
 
 import { sequelize } from '../../config/db'
 import Message from './MessageModel'
+import handleChildrenAfterFindHook from '../helper/childrenAfterFindHook'
 
 class Conversation extends Model<InferAttributes<Conversation>, InferCreationAttributes<Conversation>> {
     declare id?: number
@@ -44,5 +45,7 @@ Conversation.init(
         tableName: 'conversations',
     },
 )
+
+Conversation.addHook('afterFind', handleChildrenAfterFindHook)
 
 export default Conversation
