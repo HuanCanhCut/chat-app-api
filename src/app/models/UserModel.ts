@@ -2,7 +2,6 @@ import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequ
 
 import handleChildrenAfterFindHook from '../helper/childrenAfterFindHook'
 import { sequelize } from '../../config/db'
-import getFriendsCount from '../utils/friendsCount'
 import excludeBeforeFind from '../utils/excludeBeforeFind'
 import { ConversationModel } from '~/type'
 import { redisClient } from '~/config/redis'
@@ -20,6 +19,7 @@ class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
     declare cover_photo?: string
     declare sent_friend_request?: boolean
     declare is_friend?: boolean
+    declare friends_count?: number
     declare created_at?: Date
     declare updated_at?: Date
     declare friend_request?: boolean
@@ -99,21 +99,6 @@ User.beforeFind((options) => {
 })
 
 User.addHook('afterFind', handleChildrenAfterFindHook)
-
-// Thêm số lượng bạn bè vào user
-User.afterFind(async (users: any) => {
-    if (users) {
-        if (Array.isArray(users)) {
-            for (const user of users) {
-                const friendsCount = await getFriendsCount(user.dataValues.id)
-                user.dataValues.friends_count = friendsCount
-            }
-        } else {
-            const friendsCount = await getFriendsCount(users.dataValues.id)
-            users.dataValues.friends_count = friendsCount
-        }
-    }
-})
 
 User.afterFind(async (users: any) => {
     if (users) {

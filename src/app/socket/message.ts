@@ -1,7 +1,7 @@
-import { ServerToClientEvents } from '../types'
+import { ServerToClientEvents } from '../../config/socket/types'
 
 import { Server, Socket } from 'socket.io'
-import { ClientToServerEvents } from '../types'
+import { ClientToServerEvents } from '../../config/socket/types'
 import ChatSocketController from '~/app/controllers/ChatSocketController'
 import { ChatEvent } from '~/enum/chat'
 

@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express'
 import { QueryTypes } from 'sequelize'
 
+import { query } from '../query'
 import { BadRequest, InternalServerError, NotFoundError } from '../errors/errors'
 import { Conversation, ConversationMember, User } from '../models'
 import { IRequest } from '~/type'
@@ -33,6 +34,12 @@ class UserController {
                 return next(new NotFoundError({ message: 'User not found' }))
             }
 
+            const friendsCount: any = await sequelize.query(query.getFriendsCount(Number(user.id)), {
+                type: QueryTypes.SELECT,
+            })
+
+            user.dataValues.friends_count = friendsCount[0].count
+
             const [isFriend, friendRequest] = await Promise.all([
                 checkIsFriend(decoded.sub, Number(user.id)),
                 sentMakeFriendRequest({
@@ -47,6 +54,7 @@ class UserController {
 
                 if (isFriend) {
                     const conversation = await Conversation.findOne({
+                        attributes: ['uuid'],
                         where: {
                             is_group: false,
                         },
@@ -56,15 +64,18 @@ class UserController {
                                 as: 'conversation_members',
                                 required: true,
                                 where: { user_id: decoded.sub },
+                                attributes: ['id'],
                             },
                             {
                                 model: ConversationMember,
                                 as: 'conversation_members',
                                 required: true,
                                 where: { user_id: Number(user.id) },
+                                attributes: ['id'],
                             },
                         ],
                     })
+
                     if (conversation) {
                         user.dataValues.conversation = conversation
                     }

@@ -132,17 +132,38 @@ class FriendController {
                 where: {
                     status: 'accepted',
                 },
-                include: {
-                    attributes: {
-                        include: [[sequelize.literal(sql), 'is_friend']],
-                        exclude: ['password', 'email'],
+                include: [
+                    {
+                        attributes: {
+                            include: [
+                                [sequelize.literal(sql), 'is_friend'],
+                                [
+                                    sequelize.literal(`
+                                            (
+                                            SELECT 
+                                                COUNT(friendships.id)
+                                            FROM 
+                                                friendships
+                                            JOIN 
+                                                users ON users.id = friendships.user_id OR users.id = friendships.friend_id
+                                            WHERE 
+                                                friendships.status = 'accepted' 
+                                            AND 
+                                                (users.id = user.id)
+                                            )
+                                    `),
+                                    'friends_count',
+                                ],
+                            ],
+                            exclude: ['password', 'email'],
+                        },
+                        model: User,
+                        as: 'user',
+                        required: true,
+                        nested: true,
+                        on: friendShipJoinLiteral(Number(user_id)),
                     },
-                    model: User,
-                    as: 'user',
-                    required: true,
-                    nested: true,
-                    on: friendShipJoinLiteral(Number(user_id)),
-                },
+                ],
                 limit: Number(per_page),
                 offset: (Number(page) - 1) * Number(per_page),
             })

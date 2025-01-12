@@ -254,7 +254,10 @@ class ChatSocketController {
             })
 
             if (conversation) {
-                redisClient.set(`${RedisKey.CONVERSATION_UUID}${conversationUuid}`, JSON.stringify(conversation))
+                redisClient.set(`${RedisKey.CONVERSATION_UUID}${conversationUuid}`, JSON.stringify(conversation), {
+                    // 1 hour
+                    EX: 60 * 60,
+                })
 
                 const conversationData = {
                     ...conversation.dataValues,
@@ -298,6 +301,10 @@ class ChatSocketController {
                                 redisClient.set(
                                     `${RedisKey.CONVERSATION_UUID}${conversationUuid}`,
                                     JSON.stringify(conversation),
+                                    {
+                                        // 1 hour
+                                        EX: 60 * 60,
+                                    },
                                 )
 
                                 const conversationData = {
