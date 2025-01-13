@@ -1,4 +1,4 @@
-import { User } from '../models'
+import { User } from '..'
 
 // Remove password and email from User model
 export default function excludeWithInclude(options: any, exclude: string[] = ['password', 'email']) {

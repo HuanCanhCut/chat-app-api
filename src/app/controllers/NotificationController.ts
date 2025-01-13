@@ -4,7 +4,7 @@ import { IRequest } from '~/type'
 import { BadRequest, InternalServerError } from '../errors/errors'
 import Notification from '../models/NotificationModel'
 import User from '../models/UserModel'
-import { responseModel } from '../utils/responseMode'
+import { responseModel } from '~/app/utils/responseModel'
 
 class NotificationController {
     // [GET] /notifications?page=&per_page=&type=

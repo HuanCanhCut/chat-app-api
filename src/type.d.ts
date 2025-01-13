@@ -35,3 +35,27 @@ export interface MulterRequest extends Request, IRequest {
         cover_photo?: Express.Multer.File[]
     }
 }
+
+import { SocketEvent } from '~/enum/socketEvent'
+
+interface ServerToClientEvents {
+    [SocketEvent.NEW_NOTIFICATION]: (data: any) => void
+    [SocketEvent.REMOVE_NOTIFICATION]: (data: any) => void
+    [SocketEvent.JOIN_ROOM]: (data: any) => void
+    [SocketEvent.NEW_MESSAGE]: (data: any) => void
+    [SocketEvent.UPDATE_READ_MESSAGE]: (data: any) => void
+}
+
+interface ClientToServerEvents {
+    [SocketEvent.NEW_NOTIFICATION]: (data: any) => void
+    [SocketEvent.REMOVE_NOTIFICATION]: (data: any) => void
+    [SocketEvent.JOIN_ROOM]: (data: any) => void
+    [SocketEvent.NEW_MESSAGE]: (data: any) => void
+    [SocketEvent.UPDATE_READ_MESSAGE]: (data: any) => void
+}
+
+interface InterServerEvents {
+    ping: () => void
+}
+
+export { ServerToClientEvents, ClientToServerEvents, InterServerEvents }

@@ -7,7 +7,7 @@ import dotenv from 'dotenv'
 import http from 'http'
 import socketIO from './config/socket'
 import { Server } from 'socket.io'
-import { ClientToServerEvents, ServerToClientEvents, InterServerEvents } from './config/socket/types'
+import { ClientToServerEvents, ServerToClientEvents, InterServerEvents } from '~/type'
 
 import route from './routes/index'
 import * as db from './config/db/index'

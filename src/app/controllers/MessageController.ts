@@ -2,7 +2,7 @@ import { Response, NextFunction } from 'express'
 import { IRequest } from '~/type'
 import { BadRequest, ForBiddenError, InternalServerError } from '../errors/errors'
 import { Conversation, ConversationMember, Message, MessageStatus, User } from '../models'
-import { responseModel } from '../utils/responseMode'
+import { responseModel } from '../utils/responseModel'
 import { sequelize } from '~/config/db'
 
 class MessageController {

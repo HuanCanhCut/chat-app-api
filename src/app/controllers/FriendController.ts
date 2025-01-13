@@ -6,17 +6,24 @@ import { Sequelize } from 'sequelize'
 import { Op } from 'sequelize'
 import { v4 as uuidv4 } from 'uuid'
 
-import { NotificationEvent } from '../../enum/notification'
+import { SocketEvent } from '../../enum/socketEvent'
 import { RedisKey } from '../../enum/redis'
 import { redisClient } from '../../config/redis'
 import { IRequest } from '~/type'
-import { friendShipJoinLiteral } from '../utils/isFriend'
-import checkIsFriend from '../utils/isFriend'
-import sentMakeFriendRequest from '../utils/sentMakeFriendRequest'
+import { friendShipJoinLiteral } from '~/app/services/isFriend'
+import checkIsFriend from '~/app/services/isFriend'
+import sentMakeFriendRequest from '~/app/services/sentMakeFriendRequest'
 import { sequelize } from '~/config/db'
-import { io } from '~/config/socket'
-import createNotification from '../utils/createNotification'
+import { io } from '~/app/socket'
 
+type NotificationMessage = 'vừa gửi cho bạn một lời mời kết bạn' | 'đã chấp nhận lời mời kết bạn'
+
+interface ICreateNotification {
+    recipientId: number
+    type: 'friend_request' | 'accept_friend_request' | 'message'
+    currentUserId: number
+    message: NotificationMessage
+}
 class FriendController {
     // Delete notification when reject friend request
     async destroyNotification(recipient_id: number, sender_id: number) {
@@ -27,6 +34,35 @@ class FriendController {
                 type: 'friend_request',
             },
         })
+    }
+
+    async createNotification({ recipientId, type, currentUserId, message }: ICreateNotification) {
+        const currentUser = await User.findOne({
+            where: {
+                id: currentUserId,
+            },
+        })
+
+        if (!currentUser) {
+            throw new NotFoundError({ message: 'User not found' })
+        }
+
+        const notification = await Notification.create({
+            recipient_id: Number(recipientId),
+            type,
+            sender_id: currentUserId,
+            message: `${currentUser.full_name} ${message}`,
+        })
+
+        const notificationData = {
+            notification: {
+                ...notification?.dataValues,
+                sender_id: currentUserId,
+                sender_user: currentUser,
+            },
+        }
+
+        return notificationData
     }
 
     // [POST] /users/:id/add
@@ -75,7 +111,7 @@ class FriendController {
                 return next(new InternalServerError({ message: 'Failed to add friend' }))
             }
 
-            const notificationData = await createNotification({
+            const notificationData = await this.createNotification({
                 recipientId: Number(id),
                 type: 'friend_request',
                 currentUserId: decoded.sub,
@@ -87,7 +123,7 @@ class FriendController {
 
             if (socketIds && socketIds.length > 0) {
                 for (const socketId of socketIds) {
-                    io.to(socketId).emit(NotificationEvent.NEW_NOTIFICATION, notificationData)
+                    io.to(socketId).emit(SocketEvent.NEW_NOTIFICATION, notificationData)
                 }
             }
 
@@ -234,7 +270,7 @@ class FriendController {
                 },
             })
 
-            const notificationData = await createNotification({
+            const notificationData = await this.createNotification({
                 recipientId: Number(id),
                 type: 'accept_friend_request',
                 currentUserId: decoded.sub,
@@ -286,7 +322,7 @@ class FriendController {
 
             if (socketIds && socketIds.length > 0) {
                 for (const socketId of socketIds) {
-                    io.to(socketId).emit(NotificationEvent.NEW_NOTIFICATION, notificationData)
+                    io.to(socketId).emit(SocketEvent.NEW_NOTIFICATION, notificationData)
                 }
             }
 
@@ -339,7 +375,7 @@ class FriendController {
 
             if (socketIds && socketIds.length > 0) {
                 for (const socketId of socketIds) {
-                    io.to(socketId).emit(NotificationEvent.REMOVE_NOTIFICATION, { notificationId: notification?.id })
+                    io.to(socketId).emit(SocketEvent.REMOVE_NOTIFICATION, { notificationId: notification?.id })
                 }
             }
 
@@ -420,7 +456,7 @@ class FriendController {
 
             if (socketIds && socketIds.length > 0) {
                 for (const socketId of socketIds) {
-                    io.to(socketId).emit(NotificationEvent.REMOVE_NOTIFICATION, { notificationId: notification?.id })
+                    io.to(socketId).emit(SocketEvent.REMOVE_NOTIFICATION, { notificationId: notification?.id })
                 }
             }
 

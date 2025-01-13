@@ -1,7 +1,7 @@
 import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
 
 import { sequelize } from '../../config/db'
-import excludeWithInclude from '../utils/excludeWithInclude'
+import excludeWithInclude from './hooks/excludeWithInclude'
 import handleChildrenAfterFindHook from '../helper/childrenAfterFindHook'
 
 class Friendships extends Model<InferAttributes<Friendships>, InferCreationAttributes<Friendships>> {

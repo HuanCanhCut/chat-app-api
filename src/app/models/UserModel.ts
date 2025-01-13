@@ -2,7 +2,7 @@ import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequ
 
 import handleChildrenAfterFindHook from '../helper/childrenAfterFindHook'
 import { sequelize } from '../../config/db'
-import excludeBeforeFind from '../utils/excludeBeforeFind'
+import excludeBeforeFind from './hooks/excludeBeforeFind'
 import { ConversationModel } from '~/type'
 import { redisClient } from '~/config/redis'
 import { RedisKey } from '~/enum/redis'
