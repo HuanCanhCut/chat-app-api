@@ -10,6 +10,7 @@ const FOUR_MINUTES = 60 * 4
 
 // Map to track timeouts for each user
 const userOfflineTimeouts = new Map<number, NodeJS.Timeout>()
+const userOfflineInterval = new Map<number, NodeJS.Timeout>()
 
 const userStatus = async ({ currentUserId, socket }: { currentUserId: number; socket: Socket }) => {
     let userOnlineInterval: NodeJS.Timeout | undefined
@@ -49,8 +50,7 @@ const userStatus = async ({ currentUserId, socket }: { currentUserId: number; so
                     })
                 }
 
-                // Emit online status to friends
-                for (const friend of friends) {
+                const promises = friends.map(async (friend: any) => {
                     const friendOnline = await redisClient.get(`${RedisKey.USER_ONLINE}${friend.user.id}`)
 
                     if (friendOnline && JSON.parse(friendOnline).is_online) {
@@ -66,7 +66,9 @@ const userStatus = async ({ currentUserId, socket }: { currentUserId: number; so
                             }
                         }
                     }
-                }
+                })
+
+                await Promise.all(promises)
             }
 
             // Set user online status in Redis
@@ -83,6 +85,12 @@ const userStatus = async ({ currentUserId, socket }: { currentUserId: number; so
             if (userOfflineTimeouts.has(currentUserId)) {
                 clearTimeout(userOfflineTimeouts.get(currentUserId)!)
                 userOfflineTimeouts.delete(currentUserId)
+            }
+
+            // Clear previous interval if exists
+            if (userOfflineInterval.has(currentUserId)) {
+                clearInterval(userOfflineInterval.get(currentUserId)!)
+                userOfflineInterval.delete(currentUserId)
             }
 
             // Extend online status periodically
@@ -161,6 +169,44 @@ const userStatus = async ({ currentUserId, socket }: { currentUserId: number; so
                         }
                     }
                 }
+
+                const intervalFunc = async () => {
+                    const lastOnlineAt = await redisClient.get(`${RedisKey.USER_ONLINE}${currentUserId}`)
+
+                    if (lastOnlineAt) {
+                        const lastOnlineAtDate = JSON.parse(lastOnlineAt).last_online_at
+
+                        const promises = friends.map(async (friend: any) => {
+                            const friendOnline = await redisClient.get(`${RedisKey.USER_ONLINE}${friend.user.id}`)
+
+                            if (friendOnline && JSON.parse(friendOnline).is_online) {
+                                const socketIds = await redisClient.lRange(
+                                    `${RedisKey.SOCKET_ID}${friend.user.id}`,
+                                    0,
+                                    -1,
+                                )
+
+                                if (socketIds && socketIds.length > 0) {
+                                    for (const socketId of socketIds) {
+                                        socket.to(socketId).emit(SocketEvent.USER_OFFLINE_TIMER, {
+                                            user_id: currentUserId,
+                                            is_online: false,
+                                            last_online_at: lastOnlineAtDate,
+                                        })
+                                    }
+                                }
+                            }
+                        })
+
+                        await Promise.all(promises)
+                    }
+                }
+
+                intervalFunc()
+
+                const interval = setInterval(intervalFunc, 1000 * 60)
+
+                userOfflineInterval.set(currentUserId, interval)
             }, FOUR_MINUTES * 1000)
 
             // Store timeout in Map
