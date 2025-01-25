@@ -5,6 +5,7 @@ import { User } from '../models'
 import { IRequest, MulterRequest } from '~/type'
 import { InternalServerError, NotFoundError, BadRequest } from '../errors/errors'
 import { Op } from 'sequelize'
+import uploadSingleFile from '../helper/uploadToCloudinary'
 
 class MeController {
     // [GET] /auth/me
@@ -78,28 +79,6 @@ class MeController {
                 } catch (error: any) {
                     return next(new InternalServerError({ message: error.message }))
                 }
-            }
-
-            interface IUploadFile {
-                file: Express.Multer.File
-                folder: string
-                publicId: string
-                type: 'avatar' | 'cover_photo'
-            }
-
-            // Hàm upload từng file lên Cloudinary
-            const uploadSingleFile = ({ file, folder, publicId, type }: IUploadFile) => {
-                return new Promise((resolve, reject) => {
-                    cloudinary.v2.uploader
-                        .upload_stream(
-                            { resource_type: 'image', folder, public_id: `${publicId}-${folder}` },
-                            (error, result) => {
-                                if (error) reject(error)
-                                else resolve({ result, type })
-                            },
-                        )
-                        .end(file.buffer)
-                })
             }
 
             // Tạo các promise upload các file lên Cloudinary (nếu có)

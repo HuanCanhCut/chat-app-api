@@ -1,4 +1,7 @@
 import { Server, Socket } from 'socket.io'
+import { QueryTypes } from 'sequelize'
+import cloudinary from '~/config/cloudinary'
+
 import { ClientToServerEvents, ServerToClientEvents } from '~/type'
 import { SocketEvent } from '~/enum/socketEvent'
 import { redisClient } from '~/config/redis'
@@ -7,7 +10,6 @@ import { Conversation, Message, MessageStatus } from '../models'
 import { ConversationMember } from '../models'
 import { User } from '../models'
 import { sequelize } from '~/config/db'
-import { QueryTypes } from 'sequelize'
 
 const listen = ({
     socket,
@@ -25,6 +27,7 @@ const listen = ({
         senderId,
         userIds,
         message,
+        type = 'text',
         status,
     }: {
         conversationId: number
@@ -32,6 +35,7 @@ const listen = ({
         userIds: number[]
         message: string
         status: 'sent' | 'delivered' | 'read'
+        type: 'text' | 'image'
     }) => {
         const transaction = await sequelize.transaction()
         try {
@@ -40,6 +44,7 @@ const listen = ({
                 conversation_id: conversationId,
                 sender_id: senderId,
                 content: message,
+                type,
             })
 
             if (newMessage.id) {
@@ -177,6 +182,8 @@ const listen = ({
     }
 
     const NEW_MESSAGE = async ({ conversationUuid, message }: { conversationUuid: string; message: string }) => {
+        let messageType = 'text'
+
         // get all users online in a conversation
         const allUserOfConversation = await User.findAll({
             attributes: ['id'],
@@ -218,11 +225,29 @@ const listen = ({
             }),
         )
 
+        // check message is images
+        if (Array.isArray(message)) {
+            // upload images to cloudinary
+            const promise = message.map((image) => {
+                const { fileName, fileData } = image
+                return cloudinary.v2.uploader.upload(fileData as string, {
+                    public_id: `${conversationUuid}/${fileName.split('.').shift()}-${Math.random().toString().substring(2, 15)}`,
+                    folder: 'chat-app/message',
+                })
+            })
+
+            const uploadResult = await Promise.all(promise)
+
+            message = JSON.stringify(uploadResult.map((item) => item.secure_url))
+            messageType = 'image'
+        }
+
         const newMessage = await saveMessageToDatabase({
             conversationId: conversation.dataValues.id,
             senderId: currentUserId,
             userIds: userIds.map((user) => user.id),
             message,
+            type: messageType as 'text' | 'image',
             status: 'delivered',
         })
 

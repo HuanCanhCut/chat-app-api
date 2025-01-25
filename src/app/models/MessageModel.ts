@@ -8,6 +8,7 @@ class Message extends Model<InferAttributes<Message>, InferCreationAttributes<Me
     declare conversation_id: number
     declare sender_id: number
     declare content: string
+    declare type?: 'text' | 'image' | 'icon'
     declare created_at?: Date
     declare updated_at?: Date
 }
@@ -39,6 +40,11 @@ Message.init(
             type: DataTypes.TEXT,
             allowNull: false,
         },
+        type: {
+            type: DataTypes.ENUM('text', 'image', 'icon'),
+            allowNull: false,
+            defaultValue: 'text',
+        },
     },
     {
         indexes: [
@@ -47,8 +53,8 @@ Message.init(
                 type: 'FULLTEXT',
             },
         ],
-        sequelize,
         tableName: 'messages',
+        sequelize,
     },
 )
 
