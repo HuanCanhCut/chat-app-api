@@ -49,8 +49,8 @@ class AuthController {
 
         res.status(status)
             .setHeader('Set-Cookie', [
-                `token=${token}; httpOnly; path=/; sameSite=None; secure; Partitioned`,
-                `refreshToken=${refreshToken}; httpOnly; path=/; sameSite=None; secure; Partitioned`,
+                `access_token=${token}; httpOnly; path=/; sameSite=None; secure; Partitioned`,
+                `refresh_token=${refreshToken}; httpOnly; path=/; sameSite=None; secure; Partitioned`,
             ])
             .json({
                 data: user,
@@ -156,17 +156,17 @@ class AuthController {
     // [POST] /auth/logout
     async logout(req: Request, res: Response, next: NextFunction) {
         try {
-            const { token, refreshToken } = req.cookies
+            const { access_token, refresh_token } = req.cookies
 
-            if (token && refreshToken) {
+            if (access_token && refresh_token) {
                 // save token to blacklist and delete refreshToken in database
                 await Promise.all([
-                    BlacklistToken.create({ token, refresh_token: refreshToken }),
-                    RefreshToken.destroy({ where: { refresh_token: refreshToken } }),
+                    BlacklistToken.create({ token: access_token, refresh_token }),
+                    RefreshToken.destroy({ where: { refresh_token } }),
                 ])
             }
 
-            clearCookie({ res, cookies: ['token', 'refreshToken'] })
+            clearCookie({ res, cookies: ['access_token', 'refresh_token'] })
 
             res.sendStatus(204)
         } catch (error: any) {
@@ -229,14 +229,14 @@ class AuthController {
     // // [GET] /auth/refresh
     async refreshToken(req: Request, res: Response, next: NextFunction) {
         try {
-            const { token, refreshToken } = req.cookies
+            const { access_token, refresh_token } = req.cookies
 
-            if (!token || !refreshToken) {
+            if (!access_token || !refresh_token) {
                 return next(new UnauthorizedError({ message: 'Authorization token is required' }))
             }
 
             const inBlackList = await BlacklistToken.findOne({
-                where: { [Op.or]: [{ token }, { refresh_token: refreshToken }] },
+                where: { [Op.or]: [{ token: access_token }, { refresh_token }] },
             })
 
             if (inBlackList) {
@@ -246,15 +246,15 @@ class AuthController {
             let decoded: JwtPayload | null = null
 
             try {
-                decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET as string) as JwtPayload
+                decoded = jwt.verify(refresh_token, process.env.JWT_REFRESH_SECRET as string) as JwtPayload
             } catch (error: any) {
                 if (error.message === 'jwt expired') {
                     await Promise.all([
-                        BlacklistToken.create({ token: token, refresh_token: refreshToken }),
-                        RefreshToken.destroy({ where: { refresh_token: refreshToken } }),
+                        BlacklistToken.create({ token: access_token, refresh_token }),
+                        RefreshToken.destroy({ where: { refresh_token } }),
                     ])
 
-                    clearCookie({ res, cookies: ['refreshToken', 'token'] })
+                    clearCookie({ res, cookies: ['access_token', 'refresh_token'] })
 
                     return next(new UnauthorizedError({ message: 'Refresh token expired' }))
                 }
@@ -268,7 +268,7 @@ class AuthController {
 
             // Remove old refresh token
             await RefreshToken.destroy({
-                where: { [Op.and]: [{ refresh_token: { [Op.ne]: refreshToken } }, { user_id: decoded.sub }] },
+                where: { [Op.and]: [{ refresh_token: { [Op.ne]: refresh_token } }, { user_id: decoded.sub }] },
             })
 
             const hasRefreshToken = await RefreshToken.findOne({
@@ -277,7 +277,7 @@ class AuthController {
                 order: [['created_at', 'DESC']],
             })
             // if have'nt refreshToken in database
-            if (hasRefreshToken?.dataValues.refresh_token !== refreshToken) {
+            if (hasRefreshToken?.dataValues.refresh_token !== refresh_token) {
                 return next(new UnauthorizedError({ message: 'Invalid or expired token' }))
             }
 
@@ -305,10 +305,11 @@ class AuthController {
             )
 
             res.setHeader('Set-Cookie', [
-                `token=${newToken}; path=/; sameSite=None; secure; Partitioned`,
-                `refreshToken=${newRefreshToken}; path=/; sameSite=None; secure; Partitioned`,
+                `access_token=${newToken}; path=/; sameSite=None; secure; Partitioned`,
+                `refresh_token=${newRefreshToken}; path=/; sameSite=None; secure; Partitioned`,
             ])
                 .status(200)
+
                 .json({
                     // access token expire
                     exp: Math.floor(Date.now() / 1000) + Number(process.env.EXPIRED_TOKEN),

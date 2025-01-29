@@ -18,7 +18,7 @@ const onConnection = (socketInstance: Socket, ioInstance: Server<ClientToServerE
 
     const token = cookies
         ?.split('; ')
-        .find((row: string) => row.startsWith('refreshToken='))
+        .find((row: string) => row.startsWith('refresh_token='))
         ?.split('=')[1]
 
     let decoded: string | jwt.JwtPayload | undefined

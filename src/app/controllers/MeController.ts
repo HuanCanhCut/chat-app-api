@@ -6,6 +6,7 @@ import { IRequest, MulterRequest } from '~/type'
 import { InternalServerError, NotFoundError, BadRequest } from '../errors/errors'
 import { Op } from 'sequelize'
 import uploadSingleFile from '../helper/uploadToCloudinary'
+import clearCookie from '../utils/clearCookies'
 
 class MeController {
     // [GET] /auth/me
@@ -24,6 +25,8 @@ class MeController {
             })
 
             if (!user) {
+                clearCookie({ res, cookies: ['access_token', 'refresh_token'] })
+
                 return next(new NotFoundError({ message: 'User not found' }))
             }
 

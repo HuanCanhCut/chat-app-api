@@ -8,20 +8,20 @@ dotenv.config()
 
 const verifyToken = async (req: IRequest, res: any, next: NextFunction) => {
     try {
-        const { token } = req.cookies
+        const { access_token } = req.cookies
 
-        if (!token) {
-            clearCookie({ res, cookies: ['token', 'refreshToken'] })
+        if (!access_token) {
+            clearCookie({ res, cookies: ['access_token', 'refresh_token'] })
             return res.status(401).json({
                 message: 'Failed to authenticate because of bad credentials or an invalid authorization header.',
                 status: 401,
             })
         }
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET as string)
+        const decoded = jwt.verify(access_token, process.env.JWT_SECRET as string)
 
         if (!decoded) {
-            clearCookie({ res, cookies: ['token', 'refreshToken'] })
+            clearCookie({ res, cookies: ['access_token', 'refresh_token'] })
             return res.status(401).json({
                 message: 'Failed to authenticate because of bad credentials or an invalid authorization header.',
                 status: 401,
@@ -33,7 +33,7 @@ const verifyToken = async (req: IRequest, res: any, next: NextFunction) => {
         next()
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
-        clearCookie({ res, cookies: ['token', 'refreshToken'] })
+        clearCookie({ res, cookies: ['access_token', 'refresh_token'] })
         return res.status(401).json({
             message: 'Token signature could not be verified.',
             status: 401,
