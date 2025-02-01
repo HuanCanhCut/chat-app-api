@@ -1,6 +1,6 @@
 import { Response, NextFunction } from 'express'
 import { IRequest } from '~/type'
-import { BadRequest, ForBiddenError, InternalServerError } from '../errors/errors'
+import { BadRequest, ForBiddenError, InternalServerError, NotFoundError } from '../errors/errors'
 import { Conversation, ConversationMember, Message, MessageStatus, User } from '../models'
 import { responseModel } from '../utils/responseModel'
 import { sequelize } from '~/config/db'
@@ -95,6 +95,55 @@ class MessageController {
                 data: messages,
                 total: count,
                 count: messages.length,
+                current_page: Number(page),
+                total_pages: Math.ceil(count / Number(per_page)),
+                per_page: Number(per_page),
+            })
+
+            res.json(response)
+        } catch (error: any) {
+            return next(new InternalServerError(error))
+        }
+    }
+
+    async getMessageImages(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const { conversationUuid } = req.params
+            const { page, per_page } = req.query
+
+            if (!conversationUuid) {
+                return next(new BadRequest({ message: 'Conversation uuid is required' }))
+            }
+
+            if (!page || !per_page) {
+                return next(new BadRequest({ message: 'Page and per_page are required' }))
+            }
+
+            const conversation = await Conversation.findOne({
+                attributes: ['id'],
+                where: {
+                    uuid: conversationUuid,
+                },
+            })
+
+            if (!conversation) {
+                return next(new NotFoundError({ message: 'Conversation not found' }))
+            }
+
+            const { rows: messageImages, count } = await Message.findAndCountAll({
+                where: {
+                    type: 'image',
+                    conversation_id: conversation.id,
+                },
+                limit: Number(per_page),
+                offset: (Number(page) - 1) * Number(per_page),
+                order: [['id', 'DESC']],
+            })
+
+            const response = responseModel({
+                data: messageImages,
+                total: count,
+                count: messageImages.length,
                 current_page: Number(page),
                 total_pages: Math.ceil(count / Number(per_page)),
                 per_page: Number(per_page),
