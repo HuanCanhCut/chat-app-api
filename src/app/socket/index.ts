@@ -1,14 +1,11 @@
 import { Server, Socket } from 'socket.io'
 import jwt from 'jsonwebtoken'
-import dotenv from 'dotenv'
 
 import { ClientToServerEvents, ServerToClientEvents } from '~/type'
 import { redisClient } from '~/config/redis'
 import { RedisKey } from '~/enum/redis'
 import userStatus from '~/app/socket/userStatus'
 import message from '~/app/socket/message'
-
-dotenv.config()
 
 let socket: Socket<ClientToServerEvents, ServerToClientEvents>
 let io: Server<ClientToServerEvents, ServerToClientEvents>

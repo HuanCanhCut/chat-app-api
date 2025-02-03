@@ -12,7 +12,9 @@ dist
 dist-ssr
 *.local
 .env
-redis_logs.sh
+.env.*
+#ignore all env files in the project except .env.example
+!*.env.example
 
 # Editor directories and files
 .vscode/*

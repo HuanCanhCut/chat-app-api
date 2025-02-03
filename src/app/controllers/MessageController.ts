@@ -137,7 +137,7 @@ class MessageController {
                 },
                 limit: Number(per_page),
                 offset: (Number(page) - 1) * Number(per_page),
-                order: [['id', 'DESC']],
+                order: [['id', 'ASC']],
             })
 
             const response = responseModel({

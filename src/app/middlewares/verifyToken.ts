@@ -1,10 +1,7 @@
 import { NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
 import clearCookie from '../utils/clearCookies'
-import dotenv from 'dotenv'
 import { IRequest } from '~/type'
-
-dotenv.config()
 
 const verifyToken = async (req: IRequest, res: any, next: NextFunction) => {
     try {

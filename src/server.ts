@@ -1,9 +1,9 @@
+import './config/env'
 import express, { Request, Response } from 'express'
 import admin from 'firebase-admin'
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import 'express-async-errors'
-import dotenv from 'dotenv'
 import http from 'http'
 import socketIO from './config/socket'
 import { Server } from 'socket.io'
@@ -17,8 +17,6 @@ import errorHandler from './app/errors/errorHandler'
 
 const app = express()
 const server = http.createServer(app)
-
-dotenv.config()
 
 const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents>(server, {
     cors: {
