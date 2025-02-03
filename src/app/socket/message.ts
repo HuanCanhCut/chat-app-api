@@ -1,6 +1,5 @@
 import { Server, Socket } from 'socket.io'
 import { QueryTypes } from 'sequelize'
-import cloudinary from '~/config/cloudinary'
 
 import { ClientToServerEvents, ServerToClientEvents } from '~/type'
 import { SocketEvent } from '~/enum/socketEvent'
@@ -181,9 +180,15 @@ const listen = ({
         await redisClient.set(`user_${currentUserId}_in_room_${conversationUuid}`, 'true')
     }
 
-    const NEW_MESSAGE = async ({ conversationUuid, message }: { conversationUuid: string; message: string }) => {
-        let messageType = 'text'
-
+    const NEW_MESSAGE = async ({
+        conversationUuid,
+        message,
+        type = 'text',
+    }: {
+        conversationUuid: string
+        message: string
+        type: 'text' | 'image'
+    }) => {
         // get all users online in a conversation
         const allUserOfConversation = await User.findAll({
             attributes: ['id'],
@@ -225,29 +230,12 @@ const listen = ({
             }),
         )
 
-        // check message is images
-        if (Array.isArray(message)) {
-            // upload images to cloudinary
-            const promise = message.map((image) => {
-                const { fileName, fileData } = image
-                return cloudinary.v2.uploader.upload(fileData as string, {
-                    public_id: `${conversationUuid}/${fileName.split('.').shift()}-${Math.random().toString().substring(2, 15)}`,
-                    folder: 'chat-app/message',
-                })
-            })
-
-            const uploadResult = await Promise.all(promise)
-
-            message = JSON.stringify(uploadResult.map((item) => item.secure_url))
-            messageType = 'image'
-        }
-
         const newMessage = await saveMessageToDatabase({
             conversationId: conversation.dataValues.id,
             senderId: currentUserId,
             userIds: userIds.map((user) => user.id),
             message,
-            type: messageType as 'text' | 'image',
+            type,
             status: 'delivered',
         })
 
