@@ -10,6 +10,7 @@ import Conversation from './ConversationModel'
 import ConversationMember from './ConversationMemberModel'
 import Message from './MessageModel'
 import MessageStatus from './MessageStatusModel'
+import MessageReaction from './MessageReactionModel'
 
 // define relations
 User.hasMany(RefreshToken, { foreignKey: 'user_id' })
@@ -68,6 +69,15 @@ Message.belongsTo(User, { foreignKey: 'sender_id', as: 'sender' })
  */
 MessageStatus.belongsTo(User, { foreignKey: 'receiver_id', as: 'receiver' })
 User.hasMany(MessageStatus, { foreignKey: 'receiver_id', as: 'message_status' })
+
+/**
+ * Message react model
+ */
+MessageReaction.belongsTo(User, { foreignKey: 'user_id', as: 'user_reaction' })
+User.hasMany(MessageReaction, { foreignKey: 'user_id', as: 'reactions' })
+
+MessageReaction.belongsTo(Message, { foreignKey: 'message_id', as: 'message' })
+Message.hasMany(MessageReaction, { foreignKey: 'message_id', as: 'reactions' })
 
 // Sync all models with the database
 sequelize

@@ -73,7 +73,6 @@ class ConversationController {
                 END
             `
 
-            // Tạo một mảng các promises
             const promises = conversations.map(async (conversation) => {
                 const lastMessage = await Message.findOne<any>({
                     where: {
@@ -117,7 +116,6 @@ class ConversationController {
                 }
             })
 
-            // Sử dụng Promise.all để chạy tất cả các truy vấn song song
             await Promise.all(promises)
 
             res.json({ data: conversations })

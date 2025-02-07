@@ -19,16 +19,11 @@ class NotificationController {
 
             const decoded = req.decoded
 
-            const whereCondition: any = {
-                recipient_id: decoded.sub,
-            }
-
-            if (type === 'unread') {
-                whereCondition.is_read = false
-            }
-
             const { rows: notifications, count: total } = await Notification.findAndCountAll({
-                where: whereCondition,
+                where: {
+                    recipient_id: decoded.sub,
+                    ...(type === 'unread' && { is_read: false }),
+                },
                 include: [
                     {
                         model: User,

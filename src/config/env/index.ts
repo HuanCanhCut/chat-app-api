@@ -8,6 +8,6 @@ const envFiles = [`.env.local`, `.env.${environment}.local`, `.env.${environment
 envFiles.forEach((file) => {
     if (fs.existsSync(file)) {
         dotenv.config({ path: file })
-        console.log(`Loaded: ${file}`)
+        console.log(`Environments: ${file}`)
     }
 })
