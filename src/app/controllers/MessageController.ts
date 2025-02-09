@@ -4,7 +4,6 @@ import { BadRequest, ForBiddenError, InternalServerError, NotFoundError } from '
 import { Conversation, ConversationMember, Message, MessageStatus, User } from '../models'
 import { responseModel } from '../utils/responseModel'
 import { sequelize } from '~/config/db'
-import { QueryTypes } from 'sequelize'
 import MessageReaction from '../models/MessageReactionModel'
 
 class MessageController {
@@ -94,45 +93,43 @@ class MessageController {
             })
 
             const promises = messages.map(async (message) => {
-                const top_reaction_query = `
-                    SELECT react, users.full_name as user_reaction_name
-                    FROM message_reactions
-                    JOIN users ON users.id = message_reactions.user_id
-                    WHERE message_id = :message_id
-                    GROUP BY react
-                    ORDER BY COUNT(*) DESC
-                    LIMIT 2
-                `
-
-                const totalReactionQuery = `
-                    SELECT COUNT(id) AS count
-                    FROM message_reactions
-                    WHERE message_id = :message_id
-                `
-
-                const [top_reaction, reactionsCount] = await Promise.all([
-                    sequelize.query<{ react: string; user_reaction_name: string }>(top_reaction_query, {
-                        type: QueryTypes.SELECT,
-                        replacements: { message_id: message.id },
+                const [top_reactions, total_reactions] = await Promise.all([
+                    MessageReaction.findAll({
+                        where: {
+                            message_id: message.id,
+                        },
+                        include: [
+                            {
+                                model: User,
+                                as: 'user_reaction',
+                                attributes: {
+                                    exclude: ['password', 'email'],
+                                },
+                            },
+                        ],
+                        attributes: ['react'],
+                        group: ['react'],
+                        order: [[sequelize.fn('COUNT', sequelize.col('react')), 'DESC']],
+                        limit: 2,
                     }),
-                    sequelize.query<{ count: number }>(totalReactionQuery, {
-                        type: QueryTypes.SELECT,
-                        replacements: { message_id: message.id },
+
+                    MessageReaction.count({
+                        where: {
+                            message_id: message.id,
+                        },
                     }),
                 ])
 
-                if (top_reaction.length > 0) {
-                    message.dataValues.top_reaction = top_reaction.map((reaction) => {
+                if (top_reactions.length > 0) {
+                    message.dataValues.top_reactions = top_reactions.map((reaction) => {
                         return {
                             react: reaction.react,
-                            user_reaction_name: reaction.user_reaction_name,
+                            user_reaction: reaction.user_reaction,
                         }
                     })
                 }
 
-                if (reactionsCount.length > 0) {
-                    message.dataValues.total_reactions = reactionsCount[0].count
-                }
+                message.dataValues.total_reactions = total_reactions
 
                 return message
             })

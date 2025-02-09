@@ -1,7 +1,6 @@
 import { Server, Socket } from 'socket.io'
 import { QueryTypes } from 'sequelize'
 
-import { ClientToServerEvents, ServerToClientEvents } from '~/type'
 import { SocketEvent } from '~/enum/socketEvent'
 import { redisClient } from '~/config/redis'
 import { RedisKey } from '~/enum/redis'
@@ -9,16 +8,9 @@ import { Conversation, Message, MessageStatus } from '../models'
 import { ConversationMember } from '../models'
 import { User } from '../models'
 import { sequelize } from '~/config/db'
+import MessageReaction from '../models/MessageReactionModel'
 
-const listen = ({
-    socket,
-    io,
-    decoded,
-}: {
-    socket: Socket
-    io: Server<ClientToServerEvents, ServerToClientEvents>
-    decoded: any
-}) => {
+const listen = ({ socket, io, decoded }: { socket: Socket; io: Server; decoded: any }) => {
     const currentUserId = Number(decoded.sub)
 
     const saveMessageToDatabase = async ({
@@ -399,6 +391,188 @@ const listen = ({
         }
     }
 
+    const REACT_MESSAGE = async ({
+        conversation_uuid,
+        message_id,
+        react,
+        user_react_id,
+    }: {
+        conversation_uuid: string
+        message_id: number
+        react: string
+        user_react_id: number
+    }) => {
+        try {
+            const conversationMembers = await User.findAll({
+                attributes: ['id'],
+                include: [
+                    {
+                        model: ConversationMember,
+                        required: true,
+                        as: 'conversation_members',
+                        attributes: ['user_id'],
+                        include: [
+                            {
+                                model: Conversation,
+                                required: true,
+                                as: 'conversation',
+                                where: { uuid: conversation_uuid },
+                                attributes: ['id'],
+                            },
+                        ],
+                    },
+                ],
+            })
+
+            const isAMember = conversationMembers.some((member) => member.get('id') === user_react_id)
+
+            if (!isAMember) {
+                return
+            }
+
+            const hasReaction = await MessageReaction.findOne({
+                where: {
+                    message_id: message_id,
+                    user_id: user_react_id,
+                },
+            })
+
+            let messageReaction: any = null
+
+            if (hasReaction) {
+                hasReaction.react = react
+                messageReaction = await hasReaction.save()
+            } else {
+                messageReaction = await MessageReaction.create({
+                    message_id: message_id,
+                    react,
+                    user_id: user_react_id,
+                })
+            }
+
+            const [reaction, top_reactions, total_reactions] = await Promise.all([
+                MessageReaction.findByPk(messageReaction.id, {
+                    include: [
+                        {
+                            model: User,
+                            as: 'user_reaction',
+                            attributes: {
+                                exclude: ['password', 'email'],
+                            },
+                        },
+                    ],
+                }),
+
+                MessageReaction.findAll({
+                    where: {
+                        message_id: message_id,
+                    },
+                    include: [
+                        {
+                            model: User,
+                            as: 'user_reaction',
+                            attributes: {
+                                exclude: ['password', 'email'],
+                            },
+                        },
+                    ],
+                    attributes: ['react'],
+                    group: ['react'],
+                    order: [[sequelize.fn('COUNT', sequelize.col('react')), 'DESC']],
+                    limit: 2,
+                }),
+
+                MessageReaction.count({
+                    where: {
+                        message_id: message_id,
+                    },
+                }),
+            ])
+
+            io.to(conversation_uuid).emit(SocketEvent.REACT_MESSAGE, { reaction, top_reactions, total_reactions })
+        } catch (error) {
+            console.log(error)
+        }
+    }
+
+    const REMOVE_REACTION = async ({
+        conversation_uuid,
+        message_id,
+        user_reaction_id,
+        react,
+    }: {
+        conversation_uuid: string
+        message_id: number
+        user_reaction_id: number
+        react: string
+    }) => {
+        const conversationMembers = await User.findAll({
+            attributes: ['id'],
+            include: [
+                {
+                    model: ConversationMember,
+                    required: true,
+                    as: 'conversation_members',
+                    attributes: ['user_id'],
+                    include: [
+                        {
+                            model: Conversation,
+                            required: true,
+                            as: 'conversation',
+                            where: { uuid: conversation_uuid },
+                            attributes: ['id'],
+                        },
+                    ],
+                },
+            ],
+        })
+
+        const isAMember = conversationMembers.some((member) => member.get('id') === user_reaction_id)
+
+        if (!isAMember) {
+            return
+        }
+
+        const [, top_reactions, total_reactions] = await Promise.all([
+            await MessageReaction.destroy({
+                where: {
+                    message_id: message_id,
+                    user_id: user_reaction_id,
+                },
+            }),
+
+            MessageReaction.findAll({
+                where: {
+                    message_id: message_id,
+                },
+                include: [
+                    {
+                        model: User,
+                        as: 'user_reaction',
+                        attributes: [[sequelize.col('full_name'), 'user_reaction_name']],
+                    },
+                ],
+                attributes: ['react'],
+                group: ['react'],
+                order: [[sequelize.fn('COUNT', sequelize.col('react')), 'DESC']],
+                limit: 2,
+            }),
+
+            MessageReaction.count({
+                where: {
+                    message_id: message_id,
+                },
+            }),
+        ])
+
+        io.to(conversation_uuid).emit(SocketEvent.REMOVE_REACTION, {
+            message_id,
+            react,
+            top_reactions,
+            total_reactions,
+        })
+    }
+
     const DISCONNECT = async () => {
         // Delete all rooms that user has joined from Redis
         redisClient.keys(`user_${currentUserId}_in_room_*`).then((keys) => {
@@ -409,6 +583,8 @@ const listen = ({
     socket.on(SocketEvent.JOIN_ROOM, JOIN_ROOM)
     socket.on(SocketEvent.NEW_MESSAGE, NEW_MESSAGE)
     socket.on(SocketEvent.READ_MESSAGE, READ_MESSAGE)
+    socket.on(SocketEvent.REACT_MESSAGE, REACT_MESSAGE)
+    socket.on(SocketEvent.REMOVE_REACTION, REMOVE_REACTION)
 
     // Handle when user disconnect
     socket.on('disconnect', DISCONNECT)

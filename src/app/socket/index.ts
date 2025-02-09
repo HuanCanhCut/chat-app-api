@@ -1,16 +1,15 @@
 import { Server, Socket } from 'socket.io'
 import jwt from 'jsonwebtoken'
 
-import { ClientToServerEvents, ServerToClientEvents } from '~/type'
 import { redisClient } from '~/config/redis'
 import { RedisKey } from '~/enum/redis'
 import userStatus from '~/app/socket/userStatus'
 import message from '~/app/socket/message'
 
-let socket: Socket<ClientToServerEvents, ServerToClientEvents>
-let io: Server<ClientToServerEvents, ServerToClientEvents>
+let socket: Socket
+let io: Server
 
-const onConnection = (socketInstance: Socket, ioInstance: Server<ClientToServerEvents, ServerToClientEvents>) => {
+const onConnection = (socketInstance: Socket, ioInstance: Server) => {
     const cookies = socketInstance.handshake.headers.cookie
 
     const token = cookies

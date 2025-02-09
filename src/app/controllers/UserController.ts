@@ -1,7 +1,7 @@
 import { Response, NextFunction } from 'express'
 import { QueryTypes } from 'sequelize'
 
-import { query } from '../query'
+import { query } from '../rawQuery'
 import { BadRequest, InternalServerError, NotFoundError } from '../errors/errors'
 import { Conversation, ConversationMember, User } from '../models'
 import { IRequest } from '~/type'

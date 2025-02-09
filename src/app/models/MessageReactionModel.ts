@@ -2,6 +2,7 @@ import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequ
 
 import { sequelize } from '../../config/db'
 import handleChildrenAfterFindHook from '../helper/childrenAfterFindHook'
+import { UserModel } from '~/type'
 
 class MessageReaction extends Model<InferAttributes<MessageReaction>, InferCreationAttributes<MessageReaction>> {
     declare id?: number
@@ -10,6 +11,8 @@ class MessageReaction extends Model<InferAttributes<MessageReaction>, InferCreat
     declare react: string
     declare created_at?: Date
     declare updated_at?: Date
+
+    declare user_reaction?: UserModel
 }
 
 MessageReaction.init(

@@ -46,7 +46,7 @@ const userStatus = async ({ currentUserId, socket }: { currentUserId: number; so
                     })
 
                     redisClient.set(`${RedisKey.FRIENDS_ID_OF_USER}${currentUserId}`, JSON.stringify(friends), {
-                        EX: 60 * 60 * 12,
+                        EX: 60 * 60 * 12, // 12 hours
                     })
                 }
 
