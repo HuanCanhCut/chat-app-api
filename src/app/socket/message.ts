@@ -357,6 +357,11 @@ const listen = ({ socket, io, decoded }: { socket: Socket; io: Server; decoded: 
                 },
             )
 
+            const conversation = await Conversation.findOne({
+                where: { uuid: conversationUuid },
+                attributes: ['id'],
+            })
+
             const message = await Message.findByPk(messageId, {
                 include: [
                     {
@@ -368,7 +373,23 @@ const listen = ({ socket, io, decoded }: { socket: Socket; io: Server; decoded: 
                                 model: User,
                                 as: 'receiver',
                                 attributes: {
-                                    include: [[sequelize.literal(`${messageId}`), 'last_read_message_id']],
+                                    include: [
+                                        [
+                                            sequelize.literal(`
+                                                (
+                                                    SELECT messages.id
+                                                    FROM messages
+                                                    INNER JOIN message_statuses ON message_statuses.message_id = messages.id
+                                                    WHERE message_statuses.receiver_id = message_status.receiver_id AND
+                                                        message_statuses.status = 'read' 
+                                                        AND messages.conversation_id = ${conversation?.get('id')}
+                                                    ORDER BY messages.id DESC
+                                                    LIMIT 1
+                                                )
+                                            `),
+                                            'last_read_message_id',
+                                        ],
+                                    ],
                                     exclude: ['password', 'email'],
                                 },
                             },
@@ -385,7 +406,7 @@ const listen = ({ socket, io, decoded }: { socket: Socket; io: Server; decoded: 
                 ],
             })
 
-            io.to(conversationUuid).emit(SocketEvent.UPDATE_READ_MESSAGE, { message })
+            io.to(conversationUuid).emit(SocketEvent.UPDATE_READ_MESSAGE, { message, user_read_id: currentUserId })
         } catch (error) {
             console.log(error)
         }
