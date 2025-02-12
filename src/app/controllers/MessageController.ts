@@ -5,6 +5,7 @@ import { Conversation, ConversationMember, Message, MessageStatus, User } from '
 import { responseModel } from '../utils/responseModel'
 import { sequelize } from '~/config/db'
 import MessageReaction from '../models/MessageReactionModel'
+import { QueryTypes } from 'sequelize'
 
 class MessageController {
     // [GET] /api/messages/:conversationUuid
@@ -46,6 +47,24 @@ class MessageController {
                 where: {
                     conversation_id: hasMember.id,
                 },
+                attributes: {
+                    exclude: ['content'],
+                    include: [
+                        [
+                            sequelize.literal(`
+                                CASE 
+                                    WHEN EXISTS (
+                                        SELECT 1 FROM message_statuses 
+                                        WHERE message_statuses.message_id = Message.id 
+                                        AND message_statuses.is_revoked = 1
+                                    ) THEN NULL 
+                                    ELSE Message.content 
+                                END
+                            `),
+                            'content',
+                        ],
+                    ],
+                },
                 include: [
                     {
                         model: MessageStatus,
@@ -60,14 +79,14 @@ class MessageController {
                                         [
                                             sequelize.literal(`
                                                 (
-                                                    SELECT messages.id
-                                                    FROM messages
-                                                    INNER JOIN message_statuses ON message_statuses.message_id = messages.id
+                                                SELECT messages.id
+                                                FROM messages
+                                                INNER JOIN message_statuses ON message_statuses.message_id = messages.id
                                                     WHERE message_statuses.receiver_id = message_status.receiver_id AND
                                                         message_statuses.status = 'read' 
-                                                        AND messages.conversation_id = ${hasMember.id}
-                                                    ORDER BY messages.id DESC
-                                                    LIMIT 1
+                                                    AND messages.conversation_id = ${hasMember.id}
+                                                ORDER BY messages.id DESC
+                                                LIMIT 1
                                                 )
                                             `),
                                             'last_read_message_id',
@@ -266,6 +285,75 @@ class MessageController {
             })
 
             res.json(types)
+        } catch (error: any) {
+            return next(new InternalServerError(error))
+        }
+    }
+
+    // [PATCH] /api/messages/revoke
+    async revokeMessage(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const { revoke_type, message_id, conversation_uuid } = req.body
+            const decoded = req.decoded
+
+            if (!revoke_type || !message_id) {
+                return next(new BadRequest({ message: 'Revoke type and message id are required' }))
+            }
+
+            if (!conversation_uuid) {
+                return next(new BadRequest({ message: 'Conversation uuid is required' }))
+            }
+
+            const isMemberOfConversation = await Conversation.findOne({
+                attributes: ['id'],
+                where: {
+                    uuid: conversation_uuid,
+                },
+                include: {
+                    model: ConversationMember,
+                    as: 'conversation_members',
+                    attributes: ['id'],
+                    where: {
+                        user_id: decoded.sub,
+                    },
+                },
+            })
+
+            if (!isMemberOfConversation) {
+                return next(new ForBiddenError({ message: 'Permission denied' }))
+            }
+
+            const updateStatusQuery = `
+                UPDATE message_statuses
+                JOIN messages ON messages.id = message_statuses.message_id
+                JOIN conversations ON conversations.id = messages.conversation_id
+                SET message_statuses.is_revoked = 1,
+                    message_statuses.revoke_type = :revokeType
+                WHERE conversations.uuid = :conversationUuid
+                AND message_statuses.revoke_type IS NULL
+                AND message_statuses.message_id = :messageId ${
+                    revoke_type === 'oneway' ? `AND message_statuses.receiver_id = :receiverId` : ''
+                }
+
+            `
+
+            const [, metadata] = await sequelize.query(updateStatusQuery, {
+                replacements: {
+                    conversationUuid: conversation_uuid,
+                    messageId: message_id,
+                    receiverId: decoded.sub,
+                    revokeType: revoke_type,
+                },
+                type: QueryTypes.UPDATE,
+            })
+
+            if (metadata === 0) {
+                return next(new BadRequest({ message: 'Message not found or already revoked' }))
+            }
+
+            res.status(200).json({
+                message: 'Message revoked successfully',
+            })
         } catch (error: any) {
             return next(new InternalServerError(error))
         }

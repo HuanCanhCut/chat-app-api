@@ -36,7 +36,7 @@ class MeController {
         }
     }
 
-    // [POST] /auth/me/update
+    // [PATCH] /auth/me/update
     async updateCurrentUser(req: IRequest, res: Response, next: NextFunction) {
         const typedReq = req as MulterRequest
         try {

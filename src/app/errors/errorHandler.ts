@@ -12,7 +12,7 @@ const errorHandler = (err: CustomError, req: Request, res: any, next: NextFuncti
     err.status = err.status || 'error'
     err.error = err.error || {}
 
-    if (err.statusCode.toString().startsWith('5')) {
+    if (err.statusCode.toString().startsWith('5') && process.env.NODE_ENV === 'production') {
         logger.error(
             `Error occurred: ${err.message}\nStack trace: ${err.stack}\nRequest: ${JSON.stringify(
                 req.body,
@@ -22,7 +22,10 @@ const errorHandler = (err: CustomError, req: Request, res: any, next: NextFuncti
 
     return res.status(err.statusCode).json({
         status_code: err.statusCode,
-        message: err.statusCode.toString().startsWith('5') ? 'Something went wrong!' : err.message,
+        message:
+            err.statusCode.toString().startsWith('5') && process.env.NODE_ENV === 'production'
+                ? 'Something went wrong!'
+                : err.message,
         error: err.error,
     })
 }
