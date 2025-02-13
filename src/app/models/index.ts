@@ -73,11 +73,11 @@ User.hasMany(MessageStatus, { foreignKey: 'receiver_id', as: 'message_status' })
 /**
  * Message react model
  */
-MessageReaction.belongsTo(User, { foreignKey: 'user_id', as: 'user_reaction' })
 User.hasMany(MessageReaction, { foreignKey: 'user_id', as: 'reactions' })
+MessageReaction.belongsTo(User, { foreignKey: 'user_id', as: 'user_reaction' })
 
-MessageReaction.belongsTo(Message, { foreignKey: 'message_id', as: 'message' })
 Message.hasMany(MessageReaction, { foreignKey: 'message_id', as: 'reactions' })
+MessageReaction.belongsTo(Message, { foreignKey: 'message_id', as: 'message' })
 
 // Sync all models with the database
 sequelize

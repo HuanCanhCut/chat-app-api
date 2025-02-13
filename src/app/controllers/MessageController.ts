@@ -5,7 +5,7 @@ import { Conversation, ConversationMember, Message, MessageStatus, User } from '
 import { responseModel } from '../utils/responseModel'
 import { sequelize } from '~/config/db'
 import MessageReaction from '../models/MessageReactionModel'
-import { QueryTypes } from 'sequelize'
+import { Op, QueryTypes } from 'sequelize'
 
 class MessageController {
     // [GET] /api/messages/:conversationUuid
@@ -46,6 +46,20 @@ class MessageController {
             const { rows: messages, count } = await Message.findAndCountAll<any>({
                 where: {
                     conversation_id: hasMember.id,
+                    // Get all messages except messages that have been revoked oneway by the current user
+                    [Op.not]: {
+                        id: {
+                            [Op.in]: sequelize.literal(`
+                                (
+                                    SELECT message_id 
+                                    FROM message_statuses 
+                                    WHERE message_statuses.revoke_type = 'oneway'
+                                    AND message_statuses.message_id = Message.id
+                                    AND message_statuses.receiver_id = ${sequelize.escape(decoded.sub)}
+                                )
+                            `),
+                        },
+                    },
                 },
                 attributes: {
                     exclude: ['content'],
@@ -55,7 +69,8 @@ class MessageController {
                                 CASE 
                                     WHEN EXISTS (
                                         SELECT 1 FROM message_statuses 
-                                        WHERE message_statuses.message_id = Message.id 
+                                        WHERE message_statuses.message_id = Message.id
+                                        AND message_statuses.receiver_id = ${sequelize.escape(decoded.sub)}
                                         AND message_statuses.is_revoked = 1
                                     ) THEN NULL 
                                     ELSE Message.content 
@@ -70,6 +85,34 @@ class MessageController {
                         model: MessageStatus,
                         required: true,
                         as: 'message_status',
+                        attributes: {
+                            include: [
+                                [
+                                    sequelize.literal(`
+                                        CASE 
+                                            WHEN 
+                                                message_status.receiver_id != ${sequelize.escape(decoded.sub)} 
+                                                AND message_status.revoke_type = 'oneway' 
+                                            THEN 0
+                                            ELSE message_status.is_revoked 
+                                        END
+                                        `),
+                                    'is_revoked',
+                                ],
+                                [
+                                    sequelize.literal(`
+                                        CASE 
+                                            WHEN 
+                                                message_status.receiver_id != ${sequelize.escape(decoded.sub)} 
+                                                AND message_status.revoke_type = 'oneway'
+                                            THEN NULL
+                                            ELSE message_status.revoke_type 
+                                        END
+                                    `),
+                                    'revoke_type',
+                                ],
+                            ],
+                        },
                         include: [
                             {
                                 model: User,

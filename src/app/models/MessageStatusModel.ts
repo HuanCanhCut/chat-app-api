@@ -61,6 +61,12 @@ MessageStatus.init(
     {
         sequelize,
         tableName: 'message_statuses',
+        indexes: [
+            {
+                name: 'message_status_message_id_receiver_id_index',
+                fields: ['is_revoked', 'revoke_type'],
+            },
+        ],
     },
 )
 
