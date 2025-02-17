@@ -334,19 +334,18 @@ const listen = ({ socket, io, decoded }: { socket: Socket; io: Server; decoded: 
             // update message status to read
             await sequelize.query(
                 `
-            UPDATE 
-                message_statuses
-            INNER JOIN 
-                messages ON messages.id = message_statuses.message_id
-            INNER JOIN 
-                conversations ON conversations.id = messages.conversation_id
-            SET 
-                message_statuses.status = 'read',
-                message_statuses.read_at = NOW()
-            WHERE 
-                conversations.uuid = :conversationUuid
-            AND 
-                message_statuses.receiver_id = :receiverId
+                    UPDATE
+                        message_statuses
+                    INNER JOIN
+                        messages ON messages.id = message_statuses.message_id
+                    INNER JOIN
+                        conversations ON conversations.id = messages.conversation_id
+                    SET
+                        message_statuses.status = 'read',
+                        message_statuses.read_at = NOW()
+                    WHERE
+                        conversations.uuid = :conversationUuid
+                        AND message_statuses.receiver_id = :receiverId
             `,
                 {
                     replacements: {

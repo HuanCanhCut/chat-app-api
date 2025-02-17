@@ -46,14 +46,14 @@ class MessageController {
             const { rows: messages, count } = await Message.findAndCountAll<any>({
                 where: {
                     conversation_id: hasMember.id,
-                    // Get all messages except messages that have been revoked oneway by the current user
+                    // Get all messages except messages that have been revoked for-me by the current user
                     [Op.not]: {
                         id: {
                             [Op.in]: sequelize.literal(`
                                 (
-                                    SELECT message_id 
-                                    FROM message_statuses 
-                                    WHERE message_statuses.revoke_type = 'oneway'
+                                    SELECT message_id
+                                    FROM message_statuses
+                                    WHERE message_statuses.revoke_type = 'for-me'
                                     AND message_statuses.message_id = Message.id
                                     AND message_statuses.receiver_id = ${sequelize.escape(decoded.sub)}
                                 )
@@ -92,7 +92,7 @@ class MessageController {
                                         CASE 
                                             WHEN 
                                                 message_status.receiver_id != ${sequelize.escape(decoded.sub)} 
-                                                AND message_status.revoke_type = 'oneway' 
+                                                AND message_status.revoke_type = 'for-me' 
                                             THEN 0
                                             ELSE message_status.is_revoked 
                                         END
@@ -104,7 +104,7 @@ class MessageController {
                                         CASE 
                                             WHEN 
                                                 message_status.receiver_id != ${sequelize.escape(decoded.sub)} 
-                                                AND message_status.revoke_type = 'oneway'
+                                                AND message_status.revoke_type = 'for-me'
                                             THEN NULL
                                             ELSE message_status.revoke_type 
                                         END
@@ -122,14 +122,14 @@ class MessageController {
                                         [
                                             sequelize.literal(`
                                                 (
-                                                SELECT messages.id
-                                                FROM messages
-                                                INNER JOIN message_statuses ON message_statuses.message_id = messages.id
-                                                    WHERE message_statuses.receiver_id = message_status.receiver_id AND
-                                                        message_statuses.status = 'read' 
-                                                    AND messages.conversation_id = ${hasMember.id}
-                                                ORDER BY messages.id DESC
-                                                LIMIT 1
+                                                    SELECT messages.id
+                                                    FROM messages
+                                                    INNER JOIN message_statuses ON message_statuses.message_id = messages.id
+                                                        WHERE message_statuses.receiver_id = message_status.receiver_id AND
+                                                            message_statuses.status = 'read' 
+                                                        AND messages.conversation_id = ${hasMember.id}
+                                                    ORDER BY messages.id DESC
+                                                    LIMIT 1
                                                 )
                                             `),
                                             'last_read_message_id',
@@ -219,6 +219,8 @@ class MessageController {
             const { conversationUuid } = req.params
             const { page, per_page } = req.query
 
+            const decoded = req.decoded
+
             if (!conversationUuid) {
                 return next(new BadRequest({ message: 'Conversation uuid is required' }))
             }
@@ -242,6 +244,19 @@ class MessageController {
                 where: {
                     type: 'image',
                     conversation_id: conversation.id,
+                    [Op.not]: {
+                        id: {
+                            [Op.in]: sequelize.literal(`
+                                (
+                                    SELECT message_id 
+                                    FROM message_statuses 
+                                    WHERE message_statuses.is_revoked = 1
+                                    AND message_statuses.message_id = Message.id
+                                    AND message_statuses.receiver_id = ${sequelize.escape(decoded.sub)}
+                                )
+                            `),
+                        },
+                    },
                 },
                 limit: Number(per_page),
                 offset: (Number(page) - 1) * Number(per_page),
@@ -343,6 +358,10 @@ class MessageController {
                 return next(new BadRequest({ message: 'Revoke type and message id are required' }))
             }
 
+            if (revoke_type !== 'for-me' && revoke_type !== 'for-other') {
+                return next(new BadRequest({ message: 'Invalid revoke type, revoke type is for-me or for-other' }))
+            }
+
             if (!conversation_uuid) {
                 return next(new BadRequest({ message: 'Conversation uuid is required' }))
             }
@@ -369,20 +388,24 @@ class MessageController {
             const updateStatusQuery = `
                 UPDATE message_statuses
                 JOIN messages ON messages.id = message_statuses.message_id
-                JOIN conversations ON conversations.id = messages.conversation_id
                 SET message_statuses.is_revoked = 1,
                     message_statuses.revoke_type = :revokeType
-                WHERE conversations.uuid = :conversationUuid
-                AND message_statuses.revoke_type IS NULL
+                WHERE message_statuses.revoke_type IS NULL
                 AND message_statuses.message_id = :messageId ${
-                    revoke_type === 'oneway' ? `AND message_statuses.receiver_id = :receiverId` : ''
+                    revoke_type === 'for-me' ? `AND message_statuses.receiver_id = :receiverId` : ''
                 }
-
             `
+
+            // update read status for other members in the conversation if revoke type is for-me
+            if (revoke_type === 'for-me') {
+                await MessageStatus.update(
+                    { is_revoked: true, revoke_type: revoke_type },
+                    { where: { message_id: message_id, receiver_id: { [Op.ne]: decoded.sub } } },
+                )
+            }
 
             const [, metadata] = await sequelize.query(updateStatusQuery, {
                 replacements: {
-                    conversationUuid: conversation_uuid,
                     messageId: message_id,
                     receiverId: decoded.sub,
                     revokeType: revoke_type,

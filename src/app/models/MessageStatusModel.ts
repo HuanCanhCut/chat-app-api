@@ -9,7 +9,7 @@ class MessageStatus extends Model<InferAttributes<MessageStatus>, InferCreationA
     declare receiver_id: number
     declare status: 'read' | 'delivered' | 'sent'
     declare is_revoked?: boolean
-    declare revoke_type?: 'oneway' | 'all' | 'none'
+    declare revoke_type?: 'for-me' | 'for-other'
     declare read_at?: Date
     declare created_at?: Date
     declare updated_at?: Date
@@ -49,7 +49,7 @@ MessageStatus.init(
             defaultValue: false,
         },
         revoke_type: {
-            type: DataTypes.ENUM('oneway', 'all'),
+            type: DataTypes.ENUM('for-me', 'for-other'),
             allowNull: true,
         },
         read_at: {

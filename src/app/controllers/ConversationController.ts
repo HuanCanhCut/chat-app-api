@@ -77,9 +77,39 @@ class ConversationController {
                 const lastMessage = await Message.findOne<any>({
                     where: {
                         conversation_id: conversation.id,
+                        [Op.not]: {
+                            id: {
+                                [Op.in]: sequelize.literal(`
+                                    (
+                                        SELECT message_id
+                                        FROM message_statuses
+                                        WHERE message_statuses.revoke_type = 'for-me'
+                                        AND message_statuses.message_id = Message.id
+                                        AND message_statuses.receiver_id = ${sequelize.escape(decoded.sub)}
+                                    )
+                                `),
+                            },
+                        },
                     },
                     attributes: {
-                        include: [[sequelize.literal(is_read_sql), 'is_read']],
+                        exclude: ['content'],
+                        include: [
+                            [sequelize.literal(is_read_sql), 'is_read'],
+                            [
+                                sequelize.literal(`
+                                    CASE 
+                                        WHEN EXISTS (
+                                            SELECT 1 FROM message_statuses 
+                                            WHERE message_statuses.message_id = Message.id
+                                            AND message_statuses.receiver_id = ${sequelize.escape(decoded.sub)}
+                                            AND message_statuses.is_revoked = 1
+                                        ) THEN NULL
+                                        ELSE Message.content 
+                                    END
+                                `),
+                                'content',
+                            ],
+                        ],
                     },
                     include: [
                         {
@@ -112,6 +142,9 @@ class ConversationController {
                     conversation.dataValues.last_message = {
                         ...lastMessage.dataValues,
                         is_read: lastMessage.dataValues.is_read === 1,
+                        content: lastMessage.dataValues.content
+                            ? lastMessage.dataValues.content
+                            : `${lastMessage.dataValues.sender.id === decoded.sub ? 'Bạn' : lastMessage.dataValues.sender.full_name} đã thu hồi một tin nhắn`,
                     }
                 }
             })
