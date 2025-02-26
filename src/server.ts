@@ -7,7 +7,6 @@ import 'express-async-errors'
 import http from 'http'
 import socketIO from './config/socket'
 import { Server } from 'socket.io'
-import { ClientToServerEvents, ServerToClientEvents, InterServerEvents } from '~/type'
 
 import route from './routes/index'
 import * as db from './config/db/index'
@@ -18,7 +17,7 @@ import errorHandler from './app/errors/errorHandler'
 const app = express()
 const server = http.createServer(app)
 
-const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents>(server, {
+const io = new Server(server, {
     cors: {
         origin: process.env.ORIGIN_URL,
         credentials: true,

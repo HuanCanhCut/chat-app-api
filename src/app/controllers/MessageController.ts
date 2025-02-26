@@ -358,12 +358,39 @@ class MessageController {
                 return next(new BadRequest({ message: 'Revoke type and message id are required' }))
             }
 
-            if (revoke_type !== 'for-me' && revoke_type !== 'for-other') {
-                return next(new BadRequest({ message: 'Invalid revoke type, revoke type is for-me or for-other' }))
-            }
-
             if (!conversation_uuid) {
                 return next(new BadRequest({ message: 'Conversation uuid is required' }))
+            }
+
+            let updateStatusQuery = ''
+
+            switch (revoke_type) {
+                case 'for-me':
+                    updateStatusQuery = `
+                        UPDATE message_statuses
+                        JOIN messages ON messages.id = message_statuses.message_id
+                        SET message_statuses.is_revoked = 1,
+                            message_statuses.revoke_type = :revokeType
+                        WHERE message_statuses.message_id = :messageId
+                        AND message_statuses.receiver_id = :receiverId
+                    `
+                    break
+                case 'for-other':
+                    updateStatusQuery = `
+                        UPDATE message_statuses
+                        JOIN messages ON messages.id = message_statuses.message_id
+                        SET message_statuses.is_revoked = 1,
+                            message_statuses.revoke_type = :revokeType
+                        WHERE message_statuses.revoke_type IS NULL
+                        AND message_statuses.message_id = :messageId
+                    `
+                    break
+                default:
+                    break
+            }
+
+            if (updateStatusQuery === '') {
+                return next(new BadRequest({ message: 'Invalid revoke type, revoke type is for-me or for-other' }))
             }
 
             const isMemberOfConversation = await Conversation.findOne({
@@ -385,30 +412,11 @@ class MessageController {
                 return next(new ForBiddenError({ message: 'Permission denied' }))
             }
 
-            const updateStatusQuery = `
-                UPDATE message_statuses
-                JOIN messages ON messages.id = message_statuses.message_id
-                SET message_statuses.is_revoked = 1,
-                    message_statuses.revoke_type = :revokeType
-                WHERE message_statuses.revoke_type IS NULL
-                AND message_statuses.message_id = :messageId ${
-                    revoke_type === 'for-me' ? `AND message_statuses.receiver_id = :receiverId` : ''
-                }
-            `
-
-            // update read status for other members in the conversation if revoke type is for-me
-            if (revoke_type === 'for-me') {
-                await MessageStatus.update(
-                    { is_revoked: true, revoke_type: revoke_type },
-                    { where: { message_id: message_id, receiver_id: { [Op.ne]: decoded.sub } } },
-                )
-            }
-
             const [, metadata] = await sequelize.query(updateStatusQuery, {
                 replacements: {
+                    revokeType: revoke_type,
                     messageId: message_id,
                     receiverId: decoded.sub,
-                    revokeType: revoke_type,
                 },
                 type: QueryTypes.UPDATE,
             })

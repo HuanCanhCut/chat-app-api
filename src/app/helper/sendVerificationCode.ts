@@ -41,8 +41,6 @@ const sendVerificationCode = ({ email, code }: { email: string; code: number }) 
                     </div>
                 </body>
             </html>
-
-
         `,
     }
 

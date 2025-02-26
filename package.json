@@ -1,11 +1,11 @@
 {
     "name": "chat-app-api-ts",
     "version": "1.0.0",
-    "main": "index.js",
+    "main": "dist/server.js",
     "scripts": {
         "dev": "NODE_ENV=development npx nodemon",
         "build": "rimraf ./dist && tsc && tsc-alias",
-        "start": "NODE_ENV=production node dist/index.js",
+        "start": "NODE_ENV=production node dist/server.js",
         "lint": "eslint .",
         "lint:fix": "eslint . --fix",
         "prettier": "prettier --check .",

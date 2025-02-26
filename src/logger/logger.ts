@@ -4,7 +4,9 @@ import moment from 'moment-timezone'
 const { combine, timestamp, printf } = winston.format
 
 const customFormat = printf(({ level, message, timestamp }) => {
-    const vietnamTime = moment(timestamp).tz('Asia/Ho_Chi_Minh').format('YYYY-MM-DD HH:mm:ss.SSS')
+    const vietnamTime = moment(timestamp as string)
+        .tz('Asia/Ho_Chi_Minh')
+        .format('YYYY-MM-DD HH:mm:ss.SSS')
     return `
 ==============================================================================
 ${vietnamTime} 
