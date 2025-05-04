@@ -128,6 +128,20 @@ class MessageController {
                                                         WHERE message_statuses.receiver_id = message_status.receiver_id AND
                                                             message_statuses.status = 'read' 
                                                         AND messages.conversation_id = ${hasMember.id}
+                                                        AND (
+                                                            message_statuses.is_revoked = 0
+                                                            OR (
+                                                                message_statuses.receiver_id != ${sequelize.escape(decoded.sub)}
+                                                                AND message_statuses.revoke_type = 'for-me'
+                                                            )
+                                                        )
+                                                        AND NOT EXISTS (
+                                                            SELECT 1
+                                                            FROM message_statuses ms
+                                                            WHERE ms.message_id = messages.id
+                                                            AND ms.is_revoked = 1
+                                                            AND ms.receiver_id = ${sequelize.escape(decoded.sub)}
+                                                        )
                                                     ORDER BY messages.id DESC
                                                     LIMIT 1
                                                 )
