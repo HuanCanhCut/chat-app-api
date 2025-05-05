@@ -379,22 +379,26 @@ const listen = ({ socket, io, decoded }: { socket: Socket; io: Server; decoded: 
                                                     SELECT messages.id
                                                     FROM messages
                                                     INNER JOIN message_statuses ON message_statuses.message_id = messages.id
-                                                    WHERE message_statuses.receiver_id = message_status.receiver_id AND
-                                                        message_statuses.status = 'read' 
+                                                        WHERE message_statuses.receiver_id = message_status.receiver_id AND
+                                                            message_statuses.status = 'read' 
                                                         AND messages.conversation_id = ${conversation?.get('id')}
                                                         AND (
                                                             message_statuses.is_revoked = 0
                                                             OR (
-                                                                message_statuses.receiver_id != ${sequelize.escape(decoded.sub)}
+                                                                message_statuses.receiver_id != ${sequelize.escape(currentUserId)}
                                                                 AND message_statuses.revoke_type = 'for-me'
+                                                            )
+                                                            OR (
+                                                                message_statuses.revoke_type = 'for-other'
                                                             )
                                                         )
                                                         AND NOT EXISTS (
                                                             SELECT 1
-                                                            FROM message_statuses ms
-                                                            WHERE ms.message_id = messages.id
-                                                            AND ms.is_revoked = 1
-                                                            AND ms.receiver_id = ${sequelize.escape(decoded.sub)}
+                                                            FROM message_statuses
+                                                            WHERE message_statuses.message_id = messages.id
+                                                            AND message_statuses.is_revoked = 1
+                                                            AND message_statuses.receiver_id = ${sequelize.escape(currentUserId)}
+                                                            AND message_statuses.revoke_type = 'for-me'
                                                         )
                                                     ORDER BY messages.id DESC
                                                     LIMIT 1

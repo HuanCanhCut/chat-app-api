@@ -134,13 +134,17 @@ class MessageController {
                                                                 message_statuses.receiver_id != ${sequelize.escape(decoded.sub)}
                                                                 AND message_statuses.revoke_type = 'for-me'
                                                             )
+                                                            OR (
+                                                                message_statuses.revoke_type = 'for-other'
+                                                            )
                                                         )
                                                         AND NOT EXISTS (
                                                             SELECT 1
-                                                            FROM message_statuses ms
-                                                            WHERE ms.message_id = messages.id
-                                                            AND ms.is_revoked = 1
-                                                            AND ms.receiver_id = ${sequelize.escape(decoded.sub)}
+                                                            FROM message_statuses
+                                                            WHERE message_statuses.message_id = messages.id
+                                                            AND message_statuses.is_revoked = 1
+                                                            AND message_statuses.receiver_id = ${sequelize.escape(decoded.sub)}
+                                                            AND message_statuses.revoke_type = 'for-me'
                                                         )
                                                     ORDER BY messages.id DESC
                                                     LIMIT 1
