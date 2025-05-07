@@ -142,9 +142,7 @@ class ConversationController {
                     conversation.dataValues.last_message = {
                         ...lastMessage.dataValues,
                         is_read: lastMessage.dataValues.is_read === 1,
-                        content: lastMessage.dataValues.content
-                            ? lastMessage.dataValues.content
-                            : `${lastMessage.dataValues.sender.id === decoded.sub ? 'Bạn' : lastMessage.dataValues.sender.full_name} đã thu hồi một tin nhắn`,
+                        content: lastMessage.dataValues.content ? lastMessage.dataValues.content : null,
                     }
                 }
             })

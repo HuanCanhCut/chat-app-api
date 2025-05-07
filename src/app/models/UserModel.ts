@@ -95,7 +95,7 @@ User.init(
 )
 
 User.beforeFind((options) => {
-    excludeBeforeFind(options)
+    excludeBeforeFind(options, ['password', 'email'])
 })
 
 User.addHook('afterFind', handleChildrenAfterFindHook)

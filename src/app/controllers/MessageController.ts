@@ -6,6 +6,8 @@ import { responseModel } from '../utils/responseModel'
 import { sequelize } from '~/config/db'
 import MessageReaction from '../models/MessageReactionModel'
 import { Op, QueryTypes } from 'sequelize'
+import { io } from '~/app/socket'
+import { SocketEvent } from '~/enum/socketEvent'
 
 class MessageController {
     // [GET] /api/messages/:conversationUuid
@@ -441,6 +443,13 @@ class MessageController {
 
             if (metadata === 0) {
                 return next(new BadRequest({ message: 'Message not found or already revoked' }))
+            }
+
+            if (revoke_type === 'for-other') {
+                io.to(conversation_uuid).emit(SocketEvent.MESSAGE_REVOKE, {
+                    message_id,
+                    conversation_uuid,
+                })
             }
 
             res.status(200).json({

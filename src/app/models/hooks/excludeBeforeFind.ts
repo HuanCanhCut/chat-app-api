@@ -1,4 +1,4 @@
-const excludeBeforeFind = (options: any) => {
+const excludeBeforeFind = (options: any, fieldsToExclude: string[] = []) => {
     // Hàm để xử lý loại bỏ trường từ attributes
     const excludeFields = (opts: any) => {
         if (!opts.attributes) {
@@ -14,8 +14,7 @@ const excludeBeforeFind = (options: any) => {
         }
 
         // Loại bỏ field khỏi kết quả
-        const fields = ['password', 'email']
-        opts.attributes.exclude.push(...fields)
+        opts.attributes.exclude.push(...fieldsToExclude)
     }
 
     // Loại bỏ fields khỏi model User
