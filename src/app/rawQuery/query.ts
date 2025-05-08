@@ -1,4 +1,4 @@
-import { sequelize } from '~/config/db'
+import { sequelize } from '~/config/database'
 
 export const getFriendsCount = (userId: number) => {
     return `

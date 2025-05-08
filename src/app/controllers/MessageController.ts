@@ -3,7 +3,7 @@ import { IRequest } from '~/type'
 import { BadRequest, ForBiddenError, InternalServerError, NotFoundError } from '../errors/errors'
 import { Conversation, ConversationMember, Message, MessageStatus, User } from '../models'
 import { responseModel } from '../utils/responseModel'
-import { sequelize } from '~/config/db'
+import { sequelize } from '~/config/database'
 import MessageReaction from '../models/MessageReactionModel'
 import { Op, QueryTypes } from 'sequelize'
 import { io } from '~/app/socket'
@@ -166,6 +166,46 @@ class MessageController {
                         required: true,
                         attributes: {
                             exclude: ['password', 'email'],
+                        },
+                    },
+                    {
+                        model: Message,
+                        as: 'parent',
+                        required: false,
+                        where: {
+                            // Get all messages except messages that have been revoked for-me by the current user
+                            [Op.not]: {
+                                id: {
+                                    [Op.in]: sequelize.literal(`
+                                        (
+                                            SELECT message_id
+                                            FROM message_statuses
+                                            WHERE message_statuses.revoke_type = 'for-me'
+                                            AND message_statuses.message_id = parent.id
+                                            AND message_statuses.receiver_id = ${sequelize.escape(decoded.sub)}
+                                        )
+                                    `),
+                                },
+                            },
+                        },
+                        attributes: {
+                            exclude: ['content'],
+                            include: [
+                                [
+                                    sequelize.literal(`
+                                        CASE
+                                            WHEN EXISTS (
+                                                SELECT 1 FROM message_statuses
+                                                WHERE message_statuses.message_id = parent.id
+                                                AND message_statuses.receiver_id = ${sequelize.escape(decoded.sub)}
+                                                AND message_statuses.is_revoked = 1
+                                            ) THEN NULL
+                                            ELSE parent.content
+                                        END
+                                    `),
+                                    'content',
+                                ],
+                            ],
                         },
                     },
                 ],

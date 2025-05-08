@@ -9,7 +9,7 @@ import socketIO from './config/socket'
 import { Server } from 'socket.io'
 
 import route from './routes/index'
-import * as db from './config/db/index'
+import * as database from './config/database/index'
 import { redisClient } from './config/redis'
 import serviceAccount from './config/firebase/serviceAccount'
 import errorHandler from './app/errors/errorHandler'
@@ -29,7 +29,7 @@ admin.initializeApp({
 })
 
 // connect to db
-db.connect()
+database.connect()
 
 // connect to redis
 redisClient.connect()

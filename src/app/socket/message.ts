@@ -1,5 +1,6 @@
 import { Server, Socket } from 'socket.io'
 import { QueryTypes } from 'sequelize'
+import { Op } from 'sequelize'
 
 import { SocketEvent } from '~/enum/socketEvent'
 import { redisClient } from '~/config/redis'
@@ -7,7 +8,7 @@ import { RedisKey } from '~/enum/redis'
 import { Conversation, Message, MessageStatus } from '../models'
 import { ConversationMember } from '../models'
 import { User } from '../models'
-import { sequelize } from '~/config/db'
+import { sequelize } from '~/config/database'
 import MessageReaction from '../models/MessageReactionModel'
 
 const listen = ({ socket, io, decoded }: { socket: Socket; io: Server; decoded: any }) => {
@@ -20,6 +21,7 @@ const listen = ({ socket, io, decoded }: { socket: Socket; io: Server; decoded: 
         message,
         type = 'text',
         status,
+        parent_id = null,
     }: {
         conversationId: number
         senderId: number
@@ -27,6 +29,7 @@ const listen = ({ socket, io, decoded }: { socket: Socket; io: Server; decoded: 
         message: string
         status: 'sent' | 'delivered' | 'read'
         type: 'text' | 'image'
+        parent_id: number | null
     }) => {
         const transaction = await sequelize.transaction()
         try {
@@ -36,6 +39,7 @@ const listen = ({ socket, io, decoded }: { socket: Socket; io: Server; decoded: 
                 sender_id: senderId,
                 content: message,
                 type,
+                parent_id: parent_id || null,
             })
 
             if (newMessage.id) {
@@ -104,6 +108,46 @@ const listen = ({ socket, io, decoded }: { socket: Socket; io: Server; decoded: 
                                 },
                             },
                         ],
+                    },
+                    {
+                        model: Message,
+                        as: 'parent',
+                        required: false,
+                        where: {
+                            // Get all messages except messages that have been revoked for-me by the current user
+                            [Op.not]: {
+                                id: {
+                                    [Op.in]: sequelize.literal(`
+                                        (
+                                            SELECT message_id
+                                            FROM message_statuses
+                                            WHERE message_statuses.revoke_type = 'for-me'
+                                            AND message_statuses.message_id = parent.id
+                                            AND message_statuses.receiver_id = ${sequelize.escape(decoded.sub)}
+                                        )
+                                    `),
+                                },
+                            },
+                        },
+                        attributes: {
+                            exclude: ['content'],
+                            include: [
+                                [
+                                    sequelize.literal(`
+                                        CASE
+                                            WHEN EXISTS (
+                                                SELECT 1 FROM message_statuses
+                                                WHERE message_statuses.message_id = parent.id
+                                                AND message_statuses.receiver_id = ${sequelize.escape(decoded.sub)}
+                                                AND message_statuses.is_revoked = 1
+                                            ) THEN NULL
+                                            ELSE parent.content
+                                        END
+                                    `),
+                                    'content',
+                                ],
+                            ],
+                        },
                     },
                 ],
             })
@@ -176,10 +220,12 @@ const listen = ({ socket, io, decoded }: { socket: Socket; io: Server; decoded: 
         conversationUuid,
         message,
         type = 'text',
+        parent_id = null,
     }: {
         conversationUuid: string
         message: string
         type: 'text' | 'image'
+        parent_id: number | null
     }) => {
         // get all users online in a conversation
         const allUserOfConversation = await User.findAll({
@@ -229,6 +275,7 @@ const listen = ({ socket, io, decoded }: { socket: Socket; io: Server; decoded: 
             message,
             type,
             status: 'delivered',
+            parent_id,
         })
 
         if (!newMessage) {

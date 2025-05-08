@@ -1,6 +1,6 @@
 import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
 
-import { sequelize } from '../../config/db'
+import { sequelize } from '../../config/database'
 import handleChildrenAfterFindHook from '../helper/childrenAfterFindHook'
 
 class MessageStatus extends Model<InferAttributes<MessageStatus>, InferCreationAttributes<MessageStatus>> {

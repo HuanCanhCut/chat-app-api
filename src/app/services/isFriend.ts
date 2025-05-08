@@ -1,7 +1,7 @@
 import { literal, Op } from 'sequelize'
 import { Friendships } from '../models'
 import { User } from '../models'
-import { sequelize } from '~/config/db'
+import { sequelize } from '~/config/database'
 
 // escape userId để tránh SQL injection
 export const friendShipJoinLiteral = (userId: number) => {

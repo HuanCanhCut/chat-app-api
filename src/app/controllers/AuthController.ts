@@ -13,7 +13,7 @@ import createToken from '../utils/createToken'
 import hashValue from '../utils/hashValue'
 import sendVerificationCode from '../helper/sendVerificationCode'
 import { UserModel } from '~/type'
-import { sequelize } from '~/config/db'
+import { sequelize } from '~/config/database'
 
 class AuthController {
     resetCodeExpired = 60

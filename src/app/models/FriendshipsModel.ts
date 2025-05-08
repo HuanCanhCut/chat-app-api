@@ -1,6 +1,6 @@
 import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
 
-import { sequelize } from '../../config/db'
+import { sequelize } from '../../config/database'
 import excludeWithInclude from './hooks/excludeWithInclude'
 import handleChildrenAfterFindHook from '../helper/childrenAfterFindHook'
 

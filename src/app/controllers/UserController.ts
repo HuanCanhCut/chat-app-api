@@ -7,7 +7,7 @@ import { Conversation, ConversationMember, User } from '../models'
 import { IRequest } from '~/type'
 import checkIsFriend from '~/app/services/isFriend'
 import sentMakeFriendRequest from '~/app/services/sentMakeFriendRequest'
-import { sequelize } from '~/config/db'
+import { sequelize } from '~/config/database'
 import SearchHistory from '../models/SearchHistoryModel'
 
 class UserController {

@@ -1,9 +1,15 @@
+//
 const handleChildrenAfterFindHook = async (instances: any, options: any, level = 0): Promise<any> => {
     if (!instances) return Promise.resolve()
+
+    // Giới hạn độ sâu để tránh vòng lặp vô hạn
+    const MAX_LEVEL = 2
+    if (level > MAX_LEVEL) return Promise.resolve()
 
     if (Array.isArray(instances)) {
         return Promise.all(
             instances.map((instance: any) => {
+                if (!instance || !instance.constructor) return Promise.resolve()
                 const { options: instanceOptions } = instance.constructor
                 return handleChildrenAfterFindHook(instance, instanceOptions, level)
             }),
@@ -11,6 +17,7 @@ const handleChildrenAfterFindHook = async (instances: any, options: any, level =
     }
 
     const instance = instances
+    if (!instance || !instance.constructor) return Promise.resolve()
     const { constructor } = instance
 
     /**
@@ -22,7 +29,9 @@ const handleChildrenAfterFindHook = async (instances: any, options: any, level =
     }
 
     const { associations } = constructor
-    const associatedNames = Object.keys(instance).filter((attribute) => Object.keys(associations).includes(attribute))
+    const associatedNames = Object.keys(instance)
+        .filter((attribute) => associations && Object.keys(associations).includes(attribute))
+        .filter((name) => instance[name] !== null) // Bỏ qua các associations null
 
     if (associatedNames.length) {
         const childInstances = associatedNames.map((name) => instance[name])

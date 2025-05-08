@@ -1,5 +1,5 @@
 import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
-import { sequelize } from '../../config/db'
+import { sequelize } from '../../config/database'
 import handleChildrenAfterFindHook from '../helper/childrenAfterFindHook'
 
 class Notification extends Model<InferAttributes<Notification>, InferCreationAttributes<Notification>> {

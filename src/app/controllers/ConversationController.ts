@@ -4,7 +4,7 @@ import { BadRequest, ForBiddenError, InternalServerError } from '../errors/error
 import Conversation from '../models/ConversationModel'
 import { ConversationMember, Message, MessageStatus, User } from '../models'
 import { Op } from 'sequelize'
-import { sequelize } from '~/config/db'
+import { sequelize } from '~/config/database'
 
 class ConversationController {
     async getConversations(req: IRequest, res: Response, next: NextFunction) {

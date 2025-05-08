@@ -1,6 +1,6 @@
 import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
 
-import { sequelize } from '../../config/db'
+import { sequelize } from '../../config/database'
 import handleChildrenAfterFindHook from '../helper/childrenAfterFindHook'
 
 class Message extends Model<InferAttributes<Message>, InferCreationAttributes<Message>> {
@@ -11,6 +11,7 @@ class Message extends Model<InferAttributes<Message>, InferCreationAttributes<Me
     declare type?: 'text' | 'image' | 'icon'
     declare created_at?: Date
     declare updated_at?: Date
+    declare parent_id?: number | null
 }
 
 Message.init(
@@ -44,6 +45,15 @@ Message.init(
             type: DataTypes.ENUM('text', 'image', 'icon'),
             allowNull: false,
             defaultValue: 'text',
+        },
+        parent_id: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            defaultValue: null,
+            references: {
+                model: 'messages',
+                key: 'id',
+            },
         },
     },
     {

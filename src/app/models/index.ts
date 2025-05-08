@@ -1,4 +1,4 @@
-import { sequelize } from '../../config/db'
+import { sequelize } from '../../config/database'
 // Import models
 import User from './UserModel'
 import RefreshToken from './RefreshTokenModel'
@@ -78,6 +78,9 @@ MessageReaction.belongsTo(User, { foreignKey: 'user_id', as: 'user_reaction' })
 
 Message.hasMany(MessageReaction, { foreignKey: 'message_id', as: 'reactions' })
 MessageReaction.belongsTo(Message, { foreignKey: 'message_id', as: 'message' })
+
+Message.hasMany(Message, { foreignKey: 'parent_id', as: 'children' })
+Message.belongsTo(Message, { foreignKey: 'parent_id', as: 'parent' })
 
 // Sync all models with the database
 sequelize

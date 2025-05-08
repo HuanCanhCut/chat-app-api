@@ -1,5 +1,5 @@
 import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
-import { sequelize } from '../../config/db'
+import { sequelize } from '../../config/database'
 
 class BlacklistToken extends Model<InferAttributes<BlacklistToken>, InferCreationAttributes<BlacklistToken>> {
     declare id?: number

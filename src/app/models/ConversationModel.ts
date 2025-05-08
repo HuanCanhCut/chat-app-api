@@ -1,6 +1,6 @@
 import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
 
-import { sequelize } from '../../config/db'
+import { sequelize } from '../../config/database'
 import Message from './MessageModel'
 import handleChildrenAfterFindHook from '../helper/childrenAfterFindHook'
 

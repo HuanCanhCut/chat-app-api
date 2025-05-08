@@ -13,7 +13,7 @@ import { IRequest } from '~/type'
 import { friendShipJoinLiteral } from '~/app/services/isFriend'
 import checkIsFriend from '~/app/services/isFriend'
 import sentMakeFriendRequest from '~/app/services/sentMakeFriendRequest'
-import { sequelize } from '~/config/db'
+import { sequelize } from '~/config/database'
 import { io } from '~/app/socket'
 
 type NotificationMessage = 'vừa gửi cho bạn một lời mời kết bạn' | 'đã chấp nhận lời mời kết bạn'
