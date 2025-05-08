@@ -258,6 +258,18 @@ class MessageController {
 
             await Promise.all(promises)
 
+            // Manually set parent to null for messages with for-other revoke type
+            for (const message of messages) {
+                if (
+                    message.message_status &&
+                    message.message_status.some(
+                        (status: any) => status.is_revoked && status.revoke_type === 'for-other',
+                    )
+                ) {
+                    message.dataValues.parent = null
+                }
+            }
+
             const response = responseModel({
                 data: messages,
                 total: count,

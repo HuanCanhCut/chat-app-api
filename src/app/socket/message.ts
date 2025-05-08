@@ -123,7 +123,7 @@ const listen = ({ socket, io, decoded }: { socket: Socket; io: Server; decoded: 
                                             FROM message_statuses
                                             WHERE message_statuses.revoke_type = 'for-me'
                                             AND message_statuses.message_id = parent.id
-                                            AND message_statuses.receiver_id = ${sequelize.escape(decoded.sub)}
+                                            AND message_statuses.receiver_id = ${sequelize.escape(currentUserId)}
                                         )
                                     `),
                                 },
@@ -138,7 +138,7 @@ const listen = ({ socket, io, decoded }: { socket: Socket; io: Server; decoded: 
                                             WHEN EXISTS (
                                                 SELECT 1 FROM message_statuses
                                                 WHERE message_statuses.message_id = parent.id
-                                                AND message_statuses.receiver_id = ${sequelize.escape(decoded.sub)}
+                                                AND message_statuses.receiver_id = ${sequelize.escape(currentUserId)}
                                                 AND message_statuses.is_revoked = 1
                                             ) THEN NULL
                                             ELSE parent.content
