@@ -2,6 +2,7 @@ import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequ
 
 import { sequelize } from '../../config/database'
 import handleChildrenAfterFindHook from '../helper/childrenAfterFindHook'
+import excludeBeforeFind from './hooks/excludeBeforeFind'
 
 class Message extends Model<InferAttributes<Message>, InferCreationAttributes<Message>> {
     declare id?: number
@@ -67,6 +68,10 @@ Message.init(
         sequelize,
     },
 )
+
+Message.beforeFind((options) => {
+    excludeBeforeFind(options, ['parent_id'])
+})
 
 Message.addHook('afterFind', handleChildrenAfterFindHook)
 

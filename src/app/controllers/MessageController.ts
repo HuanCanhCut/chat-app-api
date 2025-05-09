@@ -207,6 +207,13 @@ class MessageController {
                                 ],
                             ],
                         },
+                        include: [
+                            {
+                                model: User,
+                                as: 'sender',
+                                attributes: { exclude: ['password', 'email'] },
+                            },
+                        ],
                     },
                 ],
                 limit: Number(per_page),
