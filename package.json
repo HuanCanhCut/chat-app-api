@@ -48,6 +48,7 @@
         "@types/cors": "^2.8.17",
         "@types/http-status-codes": "^1.2.0",
         "bcrypt": "^5.1.1",
+        "bullmq": "^5.52.2",
         "cloudinary": "^2.5.0",
         "cookie-parser": "^1.4.6",
         "cors": "^2.8.5",

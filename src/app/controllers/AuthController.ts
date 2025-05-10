@@ -11,7 +11,7 @@ import { BadRequest, ConflictError, InternalServerError, NotFoundError, Unauthor
 import { User, BlacklistToken, RefreshToken } from '../models'
 import createToken from '../utils/createToken'
 import hashValue from '../utils/hashValue'
-import sendVerificationCode from '../helper/sendVerificationCode'
+import { addMailJob } from '../queue/mail'
 import { UserModel } from '~/type'
 import { sequelize } from '~/config/database'
 
@@ -319,7 +319,7 @@ class AuthController {
         }
     }
 
-    // // [GET] /auth/verify
+    // [GET] /auth/verify
     async sendVerifyCode(req: Request, res: Response, next: NextFunction) {
         try {
             const { email } = req.body
@@ -343,7 +343,7 @@ class AuthController {
 
             redisClient.set(`resetCode-${email}`, resetCode, { EX: this.resetCodeExpired })
 
-            sendVerificationCode({ email, code: resetCode })
+            await addMailJob({ email, code: resetCode })
 
             res.sendStatus(204)
         } catch (error: any) {

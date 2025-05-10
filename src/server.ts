@@ -13,6 +13,7 @@ import * as database from './config/database/index'
 import { redisClient } from './config/redis'
 import serviceAccount from './config/firebase/serviceAccount'
 import errorHandler from './app/errors/errorHandler'
+import './app/queue/mail'
 
 const app = express()
 const server = http.createServer(app)
