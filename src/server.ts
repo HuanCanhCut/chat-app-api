@@ -25,6 +25,28 @@ const io = new Server(server, {
     },
 })
 
+// Danh sách các domain được phép truy cập
+const allowedOrigins: string[] = ['https://huancanhcut.click', 'https://chatapp.local', 'https://localhost:5500']
+
+const corsOptions: cors.CorsOptions = {
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+        // allow requests from any origin
+        if (!origin) return callback(null, true)
+
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true)
+        } else {
+            callback(new Error('Bị chặn bởi CORS!'))
+        }
+    },
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    credentials: true,
+    maxAge: 86400,
+}
+
+app.use(cors(corsOptions))
+
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
 })
@@ -34,13 +56,6 @@ database.connect()
 
 // connect to redis
 redisClient.connect()
-
-app.use(
-    cors({
-        origin: process.env.ORIGIN_URL,
-        credentials: true,
-    }),
-)
 
 app.use(
     express.urlencoded({
