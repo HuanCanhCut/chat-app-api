@@ -9,7 +9,7 @@ interface IClearCookie {
 const clearCookie = ({ res, cookies = [], path = '/' }: IClearCookie) => {
     cookies = cookies.map(
         (cookie) =>
-            `${cookie}=; Max-Age=0; path=${path}; sameSite=None; secure; Partitioned; domain=${process.env.DOMAIN}`,
+            `${cookie}=; Max-Age=0; path=${path}; sameSite=None; secure; Partitioned${process.env.NODE_ENV === 'production' ? `; domain=${process.env.DOMAIN}` : ''}`,
     )
 
     res.setHeader('Set-Cookie', cookies)
