@@ -49,8 +49,8 @@ class AuthController {
 
         res.status(status)
             .setHeader('Set-Cookie', [
-                `access_token=${token}; httpOnly; path=/; sameSite=None; secure; Partitioned${process.env.NODE_ENV === 'production' ? `; domain=${process.env.DOMAIN}` : ''}`,
-                `refresh_token=${refreshToken}; httpOnly; path=/; sameSite=None; secure; Partitioned${process.env.NODE_ENV === 'production' ? `; domain=${process.env.DOMAIN}` : ''}`,
+                `access_token=${token}; httpOnly; path=/; sameSite=None; secure; Partitioned; domain=${process.env.DOMAIN}`,
+                `refresh_token=${refreshToken}; httpOnly; path=/; sameSite=None; secure; Partitioned; domain=${process.env.DOMAIN}`,
             ])
             .json({
                 data: user,
@@ -305,8 +305,8 @@ class AuthController {
             )
 
             res.setHeader('Set-Cookie', [
-                `access_token=${newToken}; path=/; sameSite=None; secure; Partitioned${process.env.NODE_ENV === 'production' ? `; domain=${process.env.DOMAIN}` : ''}`,
-                `refresh_token=${newRefreshToken}; path=/; sameSite=None; secure; Partitioned${process.env.NODE_ENV === 'production' ? `; domain=${process.env.DOMAIN}` : ''}`,
+                `access_token=${newToken}; path=/; sameSite=None; secure; Partitioned; domain=${process.env.DOMAIN}`,
+                `refresh_token=${newRefreshToken}; path=/; sameSite=None; secure; Partitioned; domain=${process.env.DOMAIN}`,
             ])
                 .status(200)
 
