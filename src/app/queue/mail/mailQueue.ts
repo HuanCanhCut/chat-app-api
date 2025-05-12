@@ -1,5 +1,5 @@
 import { Queue } from 'bullmq'
-import { connection } from '../index'
+import { connection } from '~/config/redis'
 import { QueueEnum } from '../../../enum/queue'
 
 // Queue cho việc gửi email

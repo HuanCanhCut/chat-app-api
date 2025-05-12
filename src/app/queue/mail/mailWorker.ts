@@ -1,5 +1,5 @@
 import { Worker, Job } from 'bullmq'
-import { connection } from '../index'
+import { connection } from '~/config/redis'
 import sendVerificationCode from '../../helper/sendVerificationCode'
 import { QueueEnum } from '../../../enum/queue'
 
