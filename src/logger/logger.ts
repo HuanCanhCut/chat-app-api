@@ -5,7 +5,7 @@ import path from 'path'
 
 const { combine, timestamp, printf } = winston.format
 
-const logDir = 'log'
+const logDir = 'logs'
 const logFile = path.join(logDir, 'error.log')
 
 if (!fs.existsSync(logDir)) {
