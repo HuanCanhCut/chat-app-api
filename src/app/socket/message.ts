@@ -28,7 +28,7 @@ const listen = ({ socket, io, decoded }: { socket: Socket; io: Server; decoded: 
         userIds: number[]
         message: string
         status: 'sent' | 'delivered' | 'read'
-        type: 'text' | 'image'
+        type: 'text' | 'image' | 'icon'
         parent_id: number | null
     }) => {
         const transaction = await sequelize.transaction()
@@ -226,7 +226,7 @@ const listen = ({ socket, io, decoded }: { socket: Socket; io: Server; decoded: 
     }: {
         conversationUuid: string
         message: string
-        type: 'text' | 'image'
+        type: 'text' | 'image' | 'icon'
         parent_id: number | null
     }) => {
         // get all users online in a conversation

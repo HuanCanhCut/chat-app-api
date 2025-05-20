@@ -10,9 +10,7 @@ import { SocketEvent } from '../../enum/socketEvent'
 import { RedisKey } from '../../enum/redis'
 import { redisClient } from '../../config/redis'
 import { IRequest } from '~/type'
-import { friendShipJoinLiteral } from '~/app/services/isFriend'
-import checkIsFriend from '~/app/services/isFriend'
-import sentMakeFriendRequest from '~/app/services/sentMakeFriendRequest'
+import FriendService from '~/app/services/FriendService'
 import { sequelize } from '~/config/database'
 import { io } from '~/app/socket'
 
@@ -86,13 +84,13 @@ class FriendController {
                 return next(new ConflictError({ message: 'You cannot add yourself as a friend' }))
             }
 
-            const isFriend = await checkIsFriend(decoded.sub, Number(id))
+            const isFriend = await FriendService.checkIsFriend(decoded.sub, Number(id))
 
             if (isFriend) {
                 return next(new ConflictError({ message: 'User is already your friend' }))
             }
 
-            const isMakeFriendRequest = await sentMakeFriendRequest({
+            const isMakeFriendRequest = await FriendService.sendMakeFriendRequest({
                 userId: decoded.sub,
                 friendId: Number(id),
                 toWay: true,
@@ -197,7 +195,7 @@ class FriendController {
                         as: 'user',
                         required: true,
                         nested: true,
-                        on: friendShipJoinLiteral(Number(user_id)),
+                        on: FriendService.friendShipJoinLiteral(Number(user_id)),
                     },
                 ],
                 limit: Number(per_page),
@@ -243,8 +241,8 @@ class FriendController {
             }
 
             const [isFriend, isMakeFriendRequest] = await Promise.all([
-                checkIsFriend(decoded.sub, Number(id)),
-                sentMakeFriendRequest({ userId: Number(id), friendId: decoded.sub }),
+                FriendService.checkIsFriend(decoded.sub, Number(id)),
+                FriendService.sendMakeFriendRequest({ userId: Number(id), friendId: decoded.sub }),
             ])
 
             if (isFriend) {
@@ -347,7 +345,7 @@ class FriendController {
             }
 
             // Check if the user has sent a friend request to the this user
-            const isMakeFriendRequest = await sentMakeFriendRequest({
+            const isMakeFriendRequest = await FriendService.sendMakeFriendRequest({
                 userId: Number(sender_id),
                 friendId: decoded.sub,
                 toWay: false,
@@ -399,7 +397,7 @@ class FriendController {
                 return next(new BadRequest({ message: 'You cannot unfriend yourself' }))
             }
 
-            const isFriend = await checkIsFriend(decoded.sub, Number(id))
+            const isFriend = await FriendService.checkIsFriend(decoded.sub, Number(id))
 
             if (!isFriend) {
                 return next(new BadRequest({ message: 'User is not your friend' }))
@@ -434,7 +432,7 @@ class FriendController {
                 return next(new BadRequest({ message: 'You cannot cancel friend request to yourself' }))
             }
 
-            const isMakeFriendRequest = await sentMakeFriendRequest({
+            const isMakeFriendRequest = await FriendService.sendMakeFriendRequest({
                 userId: decoded.sub,
                 friendId: Number(id),
             })

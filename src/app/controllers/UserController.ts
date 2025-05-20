@@ -1,12 +1,10 @@
 import { Response, NextFunction } from 'express'
-import { QueryTypes } from 'sequelize'
+import { Op, QueryTypes } from 'sequelize'
 
-import { query } from '../rawQuery'
 import { BadRequest, InternalServerError, NotFoundError } from '../errors/errors'
-import { Conversation, ConversationMember, User } from '../models'
+import { Conversation, ConversationMember, Friendships, User } from '../models'
 import { IRequest } from '~/type'
-import checkIsFriend from '~/app/services/isFriend'
-import sentMakeFriendRequest from '~/app/services/sentMakeFriendRequest'
+import FriendService from '~/app/services/FriendService'
 import { sequelize } from '~/config/database'
 import SearchHistory from '../models/SearchHistoryModel'
 
@@ -34,15 +32,22 @@ class UserController {
                 return next(new NotFoundError({ message: 'User not found' }))
             }
 
-            const friendsCount: any = await sequelize.query(query.getFriendsCount(Number(user.id)), {
-                type: QueryTypes.SELECT,
+            // const friendsCount: any = await sequelize.query(query.getFriendsCount(Number(user.id)), {
+            //     type: QueryTypes.SELECT,
+            // })
+
+            const friendsCount = await Friendships.count({
+                where: {
+                    status: 'accepted',
+                    [Op.or]: [{ friend_id: Number(user.id) }, { user_id: Number(user.id) }],
+                },
             })
 
-            user.dataValues.friends_count = friendsCount[0].count
+            user.dataValues.friends_count = friendsCount
 
             const [isFriend, friendRequest] = await Promise.all([
-                checkIsFriend(decoded.sub, Number(user.id)),
-                sentMakeFriendRequest({
+                FriendService.checkIsFriend(decoded.sub, Number(user.id)),
+                FriendService.sendMakeFriendRequest({
                     userId: Number(user.id),
                     friendId: decoded.sub,
                 }),
@@ -87,7 +92,7 @@ class UserController {
                 if (!user.id) {
                     return next(new InternalServerError({ message: 'User id is undefined' }))
                 }
-                user.dataValues.sent_friend_request = (await sentMakeFriendRequest({
+                user.dataValues.sent_friend_request = (await FriendService.sendMakeFriendRequest({
                     userId: decoded.sub,
                     friendId: user.id,
                 }))

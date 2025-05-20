@@ -3,7 +3,7 @@ import { RedisKey } from '~/enum/redis'
 import { Socket } from 'socket.io'
 import { SocketEvent } from '~/enum/socketEvent'
 import { Friendships, User } from '../models'
-import { friendShipJoinLiteral } from '~/app/services/isFriend'
+import FriendService from '~/app/services/FriendService'
 
 const FIVE_MINUTES = 60 * 5
 const FOUR_MINUTES = 60 * 4
@@ -40,7 +40,7 @@ const userStatus = async ({ currentUserId, socket }: { currentUserId: number; so
                                 as: 'user',
                                 required: true,
                                 nested: true,
-                                on: friendShipJoinLiteral(Number(currentUserId)),
+                                on: FriendService.friendShipJoinLiteral(Number(currentUserId)),
                             },
                         ],
                     })
@@ -142,7 +142,7 @@ const userStatus = async ({ currentUserId, socket }: { currentUserId: number; so
                                 model: User,
                                 as: 'user',
                                 required: true,
-                                on: friendShipJoinLiteral(Number(currentUserId)),
+                                on: FriendService.friendShipJoinLiteral(Number(currentUserId)),
                             },
                         ],
                     })
