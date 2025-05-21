@@ -44,6 +44,7 @@ class MessageController {
         }
 
         const { rows: messages, count } = await Message.findAndCountAll<any>({
+            distinct: true,
             where: {
                 conversation_id: hasMember.id,
                 // Get all messages except messages that have been revoked for-me by the current user
@@ -273,6 +274,8 @@ class MessageController {
             }
         }
 
+        console.log('=============================>', count)
+
         return {
             messages,
             count,
@@ -457,6 +460,7 @@ class MessageController {
             }
 
             const { rows: messageImages, count } = await Message.findAndCountAll({
+                distinct: true,
                 where: {
                     type: 'image',
                     conversation_id: conversation.id,
@@ -509,6 +513,7 @@ class MessageController {
             }
 
             const { rows: reactions, count } = await MessageReaction.findAndCountAll({
+                distinct: true,
                 where: {
                     message_id: messageId,
                     ...(type !== 'all' && {

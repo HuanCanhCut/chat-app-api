@@ -20,6 +20,7 @@ class NotificationController {
             const decoded = req.decoded
 
             const { rows: notifications, count: total } = await Notification.findAndCountAll({
+                distinct: true,
                 where: {
                     recipient_id: decoded.sub,
                     ...(type === 'unread' && { is_read: false }),

@@ -163,6 +163,7 @@ class FriendController {
             `
 
             const { rows: friends, count } = await Friendships.findAndCountAll<any>({
+                distinct: true,
                 where: {
                     status: 'accepted',
                 },
@@ -489,6 +490,7 @@ class FriendController {
 
             // Danh sách lời mời kết bạn
             const { rows: friendInvitations, count } = await Friendships.findAndCountAll<any>({
+                distinct: true,
                 where: {
                     [Op.and]: [{ status: 'pending' }, { friend_id: decoded.sub }],
                 },
