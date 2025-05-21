@@ -10,6 +10,275 @@ import socketManager from '~/app/socket/socketManager'
 import { SocketEvent } from '~/enum/socketEvent'
 
 class MessageController {
+    handleGetMessages = async ({
+        conversationUuid,
+        currentUserId,
+        limit,
+        offset,
+        sort = 'DESC',
+    }: {
+        conversationUuid: string
+        currentUserId: string
+        limit: number
+        offset: number
+        sort?: 'ASC' | 'DESC'
+    }) => {
+        // check if user is a member of the conversation
+        const hasMember = await Conversation.findOne({
+            attributes: ['id'],
+            where: {
+                uuid: conversationUuid,
+            },
+            include: {
+                model: ConversationMember,
+                as: 'conversation_members',
+                attributes: ['id'],
+                where: {
+                    user_id: currentUserId,
+                },
+            },
+        })
+
+        if (!hasMember) {
+            throw new ForBiddenError({ message: 'Permission denied' })
+        }
+
+        const { rows: messages, count } = await Message.findAndCountAll<any>({
+            where: {
+                conversation_id: hasMember.id,
+                // Get all messages except messages that have been revoked for-me by the current user
+                [Op.not]: {
+                    id: {
+                        [Op.in]: sequelize.literal(`
+                        (
+                            SELECT message_id
+                            FROM message_statuses
+                            WHERE message_statuses.revoke_type = 'for-me'
+                            AND message_statuses.message_id = Message.id
+                            AND message_statuses.receiver_id = ${sequelize.escape(currentUserId)}
+                        )
+                    `),
+                    },
+                },
+            },
+            attributes: {
+                exclude: ['content'],
+                include: [
+                    [
+                        sequelize.literal(`
+                        CASE 
+                            WHEN EXISTS (
+                                SELECT 1 FROM message_statuses 
+                                WHERE message_statuses.message_id = Message.id
+                                AND message_statuses.receiver_id = ${sequelize.escape(currentUserId)}
+                                AND message_statuses.is_revoked = 1
+                            ) THEN NULL 
+                            ELSE Message.content 
+                        END
+                    `),
+                        'content',
+                    ],
+                ],
+            },
+            include: [
+                {
+                    model: MessageStatus,
+                    required: true,
+                    as: 'message_status',
+                    attributes: {
+                        include: [
+                            [
+                                sequelize.literal(`
+                                CASE 
+                                    WHEN 
+                                        message_status.receiver_id != ${sequelize.escape(currentUserId)} 
+                                        AND message_status.revoke_type = 'for-me' 
+                                    THEN 0
+                                    ELSE message_status.is_revoked 
+                                END
+                                `),
+                                'is_revoked',
+                            ],
+                            [
+                                sequelize.literal(`
+                                CASE 
+                                    WHEN 
+                                        message_status.receiver_id != ${sequelize.escape(currentUserId)} 
+                                        AND message_status.revoke_type = 'for-me'
+                                    THEN NULL
+                                    ELSE message_status.revoke_type 
+                                END
+                            `),
+                                'revoke_type',
+                            ],
+                        ],
+                    },
+                    include: [
+                        {
+                            model: User,
+                            as: 'receiver',
+                            attributes: {
+                                include: [
+                                    [
+                                        sequelize.literal(`
+                                        (
+                                            SELECT messages.id
+                                            FROM messages
+                                            INNER JOIN message_statuses ON message_statuses.message_id = messages.id
+                                                WHERE message_statuses.receiver_id = message_status.receiver_id AND
+                                                    message_statuses.status = 'read' 
+                                                AND messages.conversation_id = ${hasMember.id}
+                                                AND (
+                                                    message_statuses.is_revoked = 0
+                                                    OR (
+                                                        message_statuses.receiver_id != ${sequelize.escape(currentUserId)}
+                                                        AND message_statuses.revoke_type = 'for-me'
+                                                    )
+                                                    OR (
+                                                        message_statuses.revoke_type = 'for-other'
+                                                    )
+                                                )
+                                                AND NOT EXISTS (
+                                                    SELECT 1
+                                                    FROM message_statuses
+                                                    WHERE message_statuses.message_id = messages.id
+                                                    AND message_statuses.is_revoked = 1
+                                                    AND message_statuses.receiver_id = ${sequelize.escape(currentUserId)}
+                                                    AND message_statuses.revoke_type = 'for-me'
+                                                )
+                                            ORDER BY messages.id DESC
+                                            LIMIT 1
+                                        )
+                                    `),
+                                        'last_read_message_id',
+                                    ],
+                                ],
+                                exclude: ['password', 'email'],
+                            },
+                        },
+                    ],
+                },
+                {
+                    model: User,
+                    as: 'sender',
+                    required: true,
+                    attributes: {
+                        exclude: ['password', 'email'],
+                    },
+                },
+                {
+                    model: Message,
+                    as: 'parent',
+                    required: false,
+                    where: {
+                        // Get all messages except messages that have been revoked for-me by the current user
+                        [Op.not]: {
+                            id: {
+                                [Op.in]: sequelize.literal(`
+                                (
+                                    SELECT message_id
+                                    FROM message_statuses
+                                    WHERE message_statuses.revoke_type = 'for-me'
+                                    AND message_statuses.message_id = parent.id
+                                    AND message_statuses.receiver_id = ${sequelize.escape(currentUserId)}
+                                )
+                            `),
+                            },
+                        },
+                    },
+                    attributes: {
+                        exclude: ['content'],
+                        include: [
+                            [
+                                sequelize.literal(`
+                                CASE
+                                    WHEN EXISTS (
+                                        SELECT 1 FROM message_statuses
+                                        WHERE message_statuses.message_id = parent.id
+                                        AND message_statuses.receiver_id = ${sequelize.escape(currentUserId)}
+                                        AND message_statuses.is_revoked = 1
+                                    ) THEN NULL
+                                    ELSE parent.content
+                                END
+                            `),
+                                'content',
+                            ],
+                        ],
+                    },
+                    include: [
+                        {
+                            model: User,
+                            as: 'sender',
+                            attributes: { exclude: ['password', 'email'] },
+                        },
+                    ],
+                },
+            ],
+            limit,
+            offset,
+            order: [['id', sort]],
+        })
+
+        const promises = messages.map(async (message) => {
+            const [top_reactions, total_reactions] = await Promise.all([
+                MessageReaction.findAll({
+                    where: {
+                        message_id: message.id,
+                    },
+                    include: [
+                        {
+                            model: User,
+                            as: 'user_reaction',
+                            attributes: {
+                                exclude: ['password', 'email'],
+                            },
+                        },
+                    ],
+                    attributes: ['react'],
+                    group: ['react'],
+                    order: [[sequelize.fn('COUNT', sequelize.col('react')), 'DESC']],
+                    limit: 2,
+                }),
+
+                MessageReaction.count({
+                    where: {
+                        message_id: message.id,
+                    },
+                }),
+            ])
+
+            if (top_reactions.length > 0) {
+                message.dataValues.top_reactions = top_reactions.map((reaction) => {
+                    return {
+                        react: reaction.react,
+                        user_reaction: reaction.user_reaction,
+                    }
+                })
+            }
+
+            message.dataValues.total_reactions = total_reactions
+
+            return message
+        })
+
+        await Promise.all(promises)
+
+        // Manually set parent to null for messages with for-other revoke type
+        for (const message of messages) {
+            if (
+                message.message_status &&
+                message.message_status.some((status: any) => status.is_revoked && status.revoke_type === 'for-other')
+            ) {
+                message.dataValues.parent = null
+            }
+        }
+
+        return {
+            messages,
+            count,
+        }
+    }
+
     // [GET] /api/messages/:conversationUuid
     async getMessages(req: IRequest, res: Response, next: NextFunction) {
         try {
@@ -25,267 +294,12 @@ class MessageController {
                 return next(new BadRequest({ message: 'Page and per_page are required' }))
             }
 
-            const handleGetMessages = async () => {
-                // check if user is a member of the conversation
-                const hasMember = await Conversation.findOne({
-                    attributes: ['id'],
-                    where: {
-                        uuid: conversationUuid,
-                    },
-                    include: {
-                        model: ConversationMember,
-                        as: 'conversation_members',
-                        attributes: ['id'],
-                        where: {
-                            user_id: decoded.sub,
-                        },
-                    },
-                })
-
-                if (!hasMember) {
-                    next(new ForBiddenError({ message: 'Permission denied' }))
-                    return
-                }
-
-                const { rows: messages, count } = await Message.findAndCountAll<any>({
-                    where: {
-                        conversation_id: hasMember.id,
-                        // Get all messages except messages that have been revoked for-me by the current user
-                        [Op.not]: {
-                            id: {
-                                [Op.in]: sequelize.literal(`
-                                (
-                                    SELECT message_id
-                                    FROM message_statuses
-                                    WHERE message_statuses.revoke_type = 'for-me'
-                                    AND message_statuses.message_id = Message.id
-                                    AND message_statuses.receiver_id = ${sequelize.escape(decoded.sub)}
-                                )
-                            `),
-                            },
-                        },
-                    },
-                    attributes: {
-                        exclude: ['content'],
-                        include: [
-                            [
-                                sequelize.literal(`
-                                CASE 
-                                    WHEN EXISTS (
-                                        SELECT 1 FROM message_statuses 
-                                        WHERE message_statuses.message_id = Message.id
-                                        AND message_statuses.receiver_id = ${sequelize.escape(decoded.sub)}
-                                        AND message_statuses.is_revoked = 1
-                                    ) THEN NULL 
-                                    ELSE Message.content 
-                                END
-                            `),
-                                'content',
-                            ],
-                        ],
-                    },
-                    include: [
-                        {
-                            model: MessageStatus,
-                            required: true,
-                            as: 'message_status',
-                            attributes: {
-                                include: [
-                                    [
-                                        sequelize.literal(`
-                                        CASE 
-                                            WHEN 
-                                                message_status.receiver_id != ${sequelize.escape(decoded.sub)} 
-                                                AND message_status.revoke_type = 'for-me' 
-                                            THEN 0
-                                            ELSE message_status.is_revoked 
-                                        END
-                                        `),
-                                        'is_revoked',
-                                    ],
-                                    [
-                                        sequelize.literal(`
-                                        CASE 
-                                            WHEN 
-                                                message_status.receiver_id != ${sequelize.escape(decoded.sub)} 
-                                                AND message_status.revoke_type = 'for-me'
-                                            THEN NULL
-                                            ELSE message_status.revoke_type 
-                                        END
-                                    `),
-                                        'revoke_type',
-                                    ],
-                                ],
-                            },
-                            include: [
-                                {
-                                    model: User,
-                                    as: 'receiver',
-                                    attributes: {
-                                        include: [
-                                            [
-                                                sequelize.literal(`
-                                                (
-                                                    SELECT messages.id
-                                                    FROM messages
-                                                    INNER JOIN message_statuses ON message_statuses.message_id = messages.id
-                                                        WHERE message_statuses.receiver_id = message_status.receiver_id AND
-                                                            message_statuses.status = 'read' 
-                                                        AND messages.conversation_id = ${hasMember.id}
-                                                        AND (
-                                                            message_statuses.is_revoked = 0
-                                                            OR (
-                                                                message_statuses.receiver_id != ${sequelize.escape(decoded.sub)}
-                                                                AND message_statuses.revoke_type = 'for-me'
-                                                            )
-                                                            OR (
-                                                                message_statuses.revoke_type = 'for-other'
-                                                            )
-                                                        )
-                                                        AND NOT EXISTS (
-                                                            SELECT 1
-                                                            FROM message_statuses
-                                                            WHERE message_statuses.message_id = messages.id
-                                                            AND message_statuses.is_revoked = 1
-                                                            AND message_statuses.receiver_id = ${sequelize.escape(decoded.sub)}
-                                                            AND message_statuses.revoke_type = 'for-me'
-                                                        )
-                                                    ORDER BY messages.id DESC
-                                                    LIMIT 1
-                                                )
-                                            `),
-                                                'last_read_message_id',
-                                            ],
-                                        ],
-                                        exclude: ['password', 'email'],
-                                    },
-                                },
-                            ],
-                        },
-                        {
-                            model: User,
-                            as: 'sender',
-                            required: true,
-                            attributes: {
-                                exclude: ['password', 'email'],
-                            },
-                        },
-                        {
-                            model: Message,
-                            as: 'parent',
-                            required: false,
-                            where: {
-                                // Get all messages except messages that have been revoked for-me by the current user
-                                [Op.not]: {
-                                    id: {
-                                        [Op.in]: sequelize.literal(`
-                                        (
-                                            SELECT message_id
-                                            FROM message_statuses
-                                            WHERE message_statuses.revoke_type = 'for-me'
-                                            AND message_statuses.message_id = parent.id
-                                            AND message_statuses.receiver_id = ${sequelize.escape(decoded.sub)}
-                                        )
-                                    `),
-                                    },
-                                },
-                            },
-                            attributes: {
-                                exclude: ['content'],
-                                include: [
-                                    [
-                                        sequelize.literal(`
-                                        CASE
-                                            WHEN EXISTS (
-                                                SELECT 1 FROM message_statuses
-                                                WHERE message_statuses.message_id = parent.id
-                                                AND message_statuses.receiver_id = ${sequelize.escape(decoded.sub)}
-                                                AND message_statuses.is_revoked = 1
-                                            ) THEN NULL
-                                            ELSE parent.content
-                                        END
-                                    `),
-                                        'content',
-                                    ],
-                                ],
-                            },
-                            include: [
-                                {
-                                    model: User,
-                                    as: 'sender',
-                                    attributes: { exclude: ['password', 'email'] },
-                                },
-                            ],
-                        },
-                    ],
-                    limit: Number(per_page),
-                    offset: (Number(page) - 1) * Number(per_page),
-                    order: [['id', 'DESC']],
-                })
-
-                const promises = messages.map(async (message) => {
-                    const [top_reactions, total_reactions] = await Promise.all([
-                        MessageReaction.findAll({
-                            where: {
-                                message_id: message.id,
-                            },
-                            include: [
-                                {
-                                    model: User,
-                                    as: 'user_reaction',
-                                    attributes: {
-                                        exclude: ['password', 'email'],
-                                    },
-                                },
-                            ],
-                            attributes: ['react'],
-                            group: ['react'],
-                            order: [[sequelize.fn('COUNT', sequelize.col('react')), 'DESC']],
-                            limit: 2,
-                        }),
-
-                        MessageReaction.count({
-                            where: {
-                                message_id: message.id,
-                            },
-                        }),
-                    ])
-
-                    if (top_reactions.length > 0) {
-                        message.dataValues.top_reactions = top_reactions.map((reaction) => {
-                            return {
-                                react: reaction.react,
-                                user_reaction: reaction.user_reaction,
-                            }
-                        })
-                    }
-
-                    message.dataValues.total_reactions = total_reactions
-
-                    return message
-                })
-
-                await Promise.all(promises)
-
-                // Manually set parent to null for messages with for-other revoke type
-                for (const message of messages) {
-                    if (
-                        message.message_status &&
-                        message.message_status.some(
-                            (status: any) => status.is_revoked && status.revoke_type === 'for-other',
-                        )
-                    ) {
-                        message.dataValues.parent = null
-                    }
-                }
-
-                return {
-                    messages,
-                    count,
-                }
-            }
-
-            const messagesData = await handleGetMessages()
+            const messagesData = await this.handleGetMessages({
+                conversationUuid,
+                currentUserId: decoded.sub,
+                limit: Number(per_page),
+                offset: (Number(page) - 1) * Number(per_page),
+            })
 
             if (!messagesData) {
                 return next(new ForBiddenError({ message: 'Permission denied' }))
@@ -304,6 +318,113 @@ class MessageController {
 
             res.json(response)
         } catch (error: any) {
+            if (error instanceof ForBiddenError) {
+                return next(error)
+            }
+            return next(new InternalServerError(error))
+        }
+    }
+
+    // [GET] /api/messages/around/:messageId
+    async getAroundMessages(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const { messageId } = req.params
+            const { conversation_uuid } = req.query
+            const { per_page = 6 } = req.query
+
+            const decoded = req.decoded
+
+            if (!messageId) {
+                return next(new BadRequest({ message: 'Message id is required' }))
+            }
+
+            if (!conversation_uuid) {
+                return next(new BadRequest({ message: 'Conversation uuid is required' }))
+            }
+
+            const conversation = await Conversation.findOne({
+                attributes: ['id'],
+                where: {
+                    uuid: conversation_uuid as string,
+                },
+            })
+
+            if (!conversation) {
+                return next(new NotFoundError({ message: 'Conversation not found' }))
+            }
+
+            // Tìm vị trí của tin nhắn hiện tại
+            const targetMessageIndex = await Message.count({
+                where: {
+                    [Op.and]: [
+                        {
+                            id: {
+                                [Op.lt]: Number(messageId),
+                            },
+                        },
+                        {
+                            conversation_id: conversation.get('id'),
+                        },
+                    ],
+                },
+            })
+
+            // Tính toán số lượng tin nhắn cần lấy trước và sau
+            const halfPerPage = Math.floor(Number(per_page) / 2)
+            const beforeCount = Math.min(halfPerPage, targetMessageIndex)
+            const afterCount = Number(per_page) - beforeCount - 1 // -1 cho tin nhắn hiện tại
+
+            // Lấy tin nhắn trước, hiện tại và sau cùng lúc bằng Promise.all
+            const [{ messages: beforeMessages, count: totalMessages }, currentMessageData, afterMessages] =
+                await Promise.all([
+                    targetMessageIndex > 0
+                        ? this.handleGetMessages({
+                              conversationUuid: conversation_uuid as string,
+                              currentUserId: decoded.sub,
+                              limit: beforeCount,
+                              offset: targetMessageIndex - beforeCount,
+                              sort: 'ASC',
+                          })
+                        : Promise.resolve({ messages: [], count: 0 }),
+
+                    this.handleGetMessages({
+                        conversationUuid: conversation_uuid as string,
+                        currentUserId: decoded.sub,
+                        limit: 1,
+                        offset: targetMessageIndex,
+                        sort: 'ASC',
+                    }),
+
+                    this.handleGetMessages({
+                        conversationUuid: conversation_uuid as string,
+                        currentUserId: decoded.sub,
+                        limit: afterCount,
+                        offset: targetMessageIndex + 1,
+                        sort: 'ASC',
+                    }),
+                ])
+
+            if (!currentMessageData.messages.length) {
+                return next(new NotFoundError({ message: 'Không tìm thấy tin nhắn' }))
+            }
+
+            // Kết hợp và sắp xếp tin nhắn
+            const combinedMessages = [...beforeMessages, currentMessageData.messages[0], ...afterMessages.messages]
+
+            const response = responseModel({
+                data: combinedMessages,
+                total: totalMessages,
+                count: combinedMessages.length,
+                current_page: Math.max(1, Math.ceil((targetMessageIndex + 1) / Number(per_page))),
+                total_pages: Math.ceil(totalMessages / Number(per_page)),
+                per_page: Number(per_page),
+            })
+
+            res.json(response)
+        } catch (error: any) {
+            if (error instanceof ForBiddenError) {
+                return next(error)
+            }
             return next(new InternalServerError(error))
         }
     }
