@@ -8,7 +8,7 @@ router.get('/:messageId/reactions', verifyToken, MessageController.getReactions.
 router.patch('/revoke', verifyToken, MessageController.revokeMessage.bind(MessageController))
 router.get('/:messageId/reaction/types', verifyToken, MessageController.getReactionsTypes.bind(MessageController))
 router.get('/:conversationUuid/images', verifyToken, MessageController.getMessageImages.bind(MessageController))
-router.get('/around/:messageId', verifyToken, MessageController.getAroundMessages.bind(MessageController))
+router.get('/:messageId/around', verifyToken, MessageController.getAroundMessages.bind(MessageController))
 router.get('/:conversationUuid', verifyToken, MessageController.getMessages.bind(MessageController))
 
 export default router

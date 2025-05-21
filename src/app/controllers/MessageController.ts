@@ -328,7 +328,7 @@ class MessageController {
         }
     }
 
-    // [GET] /api/messages/around/:messageId
+    // [GET] /api/messages/:messageId/around
     async getAroundMessages(req: IRequest, res: Response, next: NextFunction) {
         try {
             const { messageId } = req.params
@@ -354,6 +354,12 @@ class MessageController {
 
             if (!conversation) {
                 return next(new NotFoundError({ message: 'Conversation not found' }))
+            }
+
+            const hasMessage = await Message.findByPk(messageId)
+
+            if (!hasMessage) {
+                return next(new NotFoundError({ message: 'Message not found' }))
             }
 
             // Tìm vị trí của tin nhắn hiện tại
@@ -406,10 +412,6 @@ class MessageController {
                         sort: 'ASC',
                     }),
                 ])
-
-            if (!currentMessageData.messages.length) {
-                return next(new NotFoundError({ message: 'Không tìm thấy tin nhắn' }))
-            }
 
             // Kết hợp và sắp xếp tin nhắn
             const combinedMessages = [...beforeMessages, currentMessageData.messages[0], ...afterMessages.messages]
