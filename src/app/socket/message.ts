@@ -1,4 +1,3 @@
-import { Server, Socket } from 'socket.io'
 import { QueryTypes } from 'sequelize'
 import { Op } from 'sequelize'
 
@@ -10,9 +9,12 @@ import { ConversationMember } from '../models'
 import { User } from '../models'
 import { sequelize } from '~/config/database'
 import MessageReaction from '../models/MessageReactionModel'
+import socketManager from './socketManager'
 
-const listen = ({ socket, io, decoded }: { socket: Socket; io: Server; decoded: any }) => {
-    const currentUserId = Number(decoded.sub)
+const listen = () => {
+    const socket = socketManager.socket
+    const io = socketManager.io
+    const currentUserId = socketManager.decoded.sub
 
     const saveMessageToDatabase = async ({
         conversationId,
@@ -483,7 +485,7 @@ const listen = ({ socket, io, decoded }: { socket: Socket; io: Server; decoded: 
                                             FROM message_statuses
                                             WHERE message_statuses.revoke_type = 'for-me'
                                             AND message_statuses.message_id = parent.id
-                                            AND message_statuses.receiver_id = ${sequelize.escape(decoded.sub)}
+                                            AND message_statuses.receiver_id = ${sequelize.escape(currentUserId)}
                                         )
                                     `),
                                 },
@@ -498,7 +500,7 @@ const listen = ({ socket, io, decoded }: { socket: Socket; io: Server; decoded: 
                                             WHEN EXISTS (
                                                 SELECT 1 FROM message_statuses
                                                 WHERE message_statuses.message_id = parent.id
-                                                AND message_statuses.receiver_id = ${sequelize.escape(decoded.sub)}
+                                                AND message_statuses.receiver_id = ${sequelize.escape(currentUserId)}
                                                 AND message_statuses.is_revoked = 1
                                             ) THEN NULL
                                             ELSE parent.content

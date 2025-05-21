@@ -22,7 +22,6 @@ class ConversationController {
                     {
                         model: ConversationMember,
                         as: 'conversation_members',
-                        required: true,
                         include: [
                             {
                                 model: User,
@@ -58,6 +57,8 @@ class ConversationController {
                     FROM messages
                     WHERE messages.conversation_id = Conversation.id
                 )`),
+                limit: Number(per_page),
+                offset: (Number(page) - 1) * Number(per_page),
             })
 
             const is_read_sql = `

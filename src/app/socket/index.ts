@@ -5,9 +5,7 @@ import { redisClient } from '~/config/redis'
 import { RedisKey } from '~/enum/redis'
 import userStatus from '~/app/socket/userStatus'
 import message from '~/app/socket/message'
-
-let socket: Socket
-let io: Server
+import socketManager from './socketManager'
 
 const onConnection = (socketInstance: Socket, ioInstance: Server) => {
     const cookies = socketInstance.handshake.headers.cookie
@@ -31,13 +29,15 @@ const onConnection = (socketInstance: Socket, ioInstance: Server) => {
     }
 
     // Set socket to global
-    socket = socketInstance
-    io = ioInstance
+    socketManager.setSocket(socketInstance)
+    socketManager.setIO(ioInstance)
 
-    // Listen event
     if (decoded) {
-        message({ socket: socketInstance, io: ioInstance, decoded })
-        userStatus({ currentUserId: Number(decoded.sub), socket: socketInstance })
+        socketManager.setDecoded(decoded)
+
+        // Listen event
+        message()
+        userStatus()
     }
 
     socketInstance.on('disconnect', async () => {
@@ -48,7 +48,7 @@ const onConnection = (socketInstance: Socket, ioInstance: Server) => {
             if (socketIds && socketIds.length > 0) {
                 for (const socketId of socketIds) {
                     // check if socket is connected
-                    const isConnected = io.sockets.sockets.has(socketId)
+                    const isConnected = ioInstance.sockets.sockets.has(socketId)
 
                     if (!isConnected) {
                         // if socket is not connected, remove it from Redis
@@ -59,7 +59,5 @@ const onConnection = (socketInstance: Socket, ioInstance: Server) => {
         }
     })
 }
-
-export { socket, io }
 
 export default onConnection

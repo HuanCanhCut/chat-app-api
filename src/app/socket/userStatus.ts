@@ -1,9 +1,9 @@
 import { redisClient } from '~/config/redis'
 import { RedisKey } from '~/enum/redis'
-import { Socket } from 'socket.io'
 import { SocketEvent } from '~/enum/socketEvent'
 import { Friendships, User } from '../models'
 import FriendService from '~/app/services/FriendService'
+import socketManager from './socketManager'
 
 const FIVE_MINUTES = 60 * 5
 const FOUR_MINUTES = 60 * 4
@@ -12,7 +12,10 @@ const FOUR_MINUTES = 60 * 4
 const userOfflineTimeouts = new Map<number, NodeJS.Timeout>()
 const userOfflineInterval = new Map<number, NodeJS.Timeout>()
 
-const userStatus = async ({ currentUserId, socket }: { currentUserId: number; socket: Socket }) => {
+const userStatus = async () => {
+    const socket = socketManager.socket
+    const currentUserId = socketManager.decoded.sub
+
     let userOnlineInterval: NodeJS.Timeout | undefined
 
     const CONNECT = async () => {

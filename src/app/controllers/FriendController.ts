@@ -12,7 +12,7 @@ import { redisClient } from '../../config/redis'
 import { IRequest } from '~/type'
 import FriendService from '~/app/services/FriendService'
 import { sequelize } from '~/config/database'
-import { io } from '~/app/socket'
+import socketManager from '~/app/socket/socketManager'
 
 type NotificationMessage = 'vừa gửi cho bạn một lời mời kết bạn' | 'đã chấp nhận lời mời kết bạn'
 
@@ -121,7 +121,7 @@ class FriendController {
 
             if (socketIds && socketIds.length > 0) {
                 for (const socketId of socketIds) {
-                    io.to(socketId).emit(SocketEvent.NEW_NOTIFICATION, notificationData)
+                    socketManager.io?.to(socketId).emit(SocketEvent.NEW_NOTIFICATION, notificationData)
                 }
             }
 
@@ -320,7 +320,7 @@ class FriendController {
 
             if (socketIds && socketIds.length > 0) {
                 for (const socketId of socketIds) {
-                    io.to(socketId).emit(SocketEvent.NEW_NOTIFICATION, notificationData)
+                    socketManager.io?.to(socketId).emit(SocketEvent.NEW_NOTIFICATION, notificationData)
                 }
             }
 
@@ -373,7 +373,9 @@ class FriendController {
 
             if (socketIds && socketIds.length > 0) {
                 for (const socketId of socketIds) {
-                    io.to(socketId).emit(SocketEvent.REMOVE_NOTIFICATION, { notificationId: notification?.id })
+                    socketManager.io
+                        ?.to(socketId)
+                        .emit(SocketEvent.REMOVE_NOTIFICATION, { notificationId: notification?.id })
                 }
             }
 
@@ -454,7 +456,9 @@ class FriendController {
 
             if (socketIds && socketIds.length > 0) {
                 for (const socketId of socketIds) {
-                    io.to(socketId).emit(SocketEvent.REMOVE_NOTIFICATION, { notificationId: notification?.id })
+                    socketManager.io
+                        ?.to(socketId)
+                        .emit(SocketEvent.REMOVE_NOTIFICATION, { notificationId: notification?.id })
                 }
             }
 
