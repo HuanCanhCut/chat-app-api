@@ -417,7 +417,7 @@ class MessageController {
                         total: totalMessages,
                         count: combinedMessages.length,
                         limit: Number(limit),
-                        offset: targetMessageIndex - beforeCount - 1,
+                        offset: targetMessageIndex - beforeCount,
                     },
                 },
             })
