@@ -274,8 +274,6 @@ class MessageController {
             }
         }
 
-        console.log('=============================>', count)
-
         return {
             messages,
             count,
@@ -285,7 +283,7 @@ class MessageController {
     // [GET] /api/messages/:conversationUuid
     async getMessages(req: IRequest, res: Response, next: NextFunction) {
         try {
-            const { page, per_page } = req.query
+            const { limit, offset } = req.query
             const decoded = req.decoded
             const conversationUuid = req.params.conversationUuid
 
@@ -293,15 +291,15 @@ class MessageController {
                 return next(new BadRequest({ message: 'Conversation uuid is required' }))
             }
 
-            if (!page || !per_page) {
-                return next(new BadRequest({ message: 'Page and per_page are required' }))
+            if (!limit || !offset) {
+                return next(new BadRequest({ message: 'Limit and offset are required' }))
             }
 
             const messagesData = await this.handleGetMessages({
                 conversationUuid,
                 currentUserId: decoded.sub,
-                limit: Number(per_page),
-                offset: (Number(page) - 1) * Number(per_page),
+                limit: Number(limit),
+                offset: Number(offset),
             })
 
             if (!messagesData) {
@@ -310,16 +308,17 @@ class MessageController {
 
             const { messages, count } = messagesData
 
-            const response = responseModel({
+            res.json({
                 data: messages,
-                total: count,
-                count: messages.length,
-                current_page: Number(page),
-                total_pages: Math.ceil(count / Number(per_page)),
-                per_page: Number(per_page),
+                meta: {
+                    pagination: {
+                        total: count,
+                        count: messages.length,
+                        limit: Number(limit),
+                        offset: Number(offset),
+                    },
+                },
             })
-
-            res.json(response)
         } catch (error: any) {
             if (error instanceof ForBiddenError) {
                 return next(error)
@@ -332,8 +331,7 @@ class MessageController {
     async getAroundMessages(req: IRequest, res: Response, next: NextFunction) {
         try {
             const { messageId } = req.params
-            const { conversation_uuid } = req.query
-            const { per_page = 6 } = req.query
+            const { conversation_uuid, limit = 20 } = req.query
 
             const decoded = req.decoded
 
@@ -365,67 +363,64 @@ class MessageController {
             // Tìm vị trí của tin nhắn hiện tại
             const targetMessageIndex = await Message.count({
                 where: {
-                    [Op.and]: [
-                        {
-                            id: {
-                                [Op.lt]: Number(messageId),
-                            },
-                        },
-                        {
-                            conversation_id: conversation.get('id'),
-                        },
-                    ],
+                    id: {
+                        [Op.gt]: Number(messageId),
+                    },
+                    conversation_id: conversation.get('id'),
                 },
             })
 
             // Tính toán số lượng tin nhắn cần lấy trước và sau
-            const halfPerPage = Math.floor(Number(per_page) / 2)
+            const halfPerPage = Math.floor(Number(limit) / 2)
             const beforeCount = Math.min(halfPerPage, targetMessageIndex)
-            const afterCount = Number(per_page) - beforeCount - 1 // -1 cho tin nhắn hiện tại
+            const afterCount = Number(limit) - beforeCount - 1 // -1 cho tin nhắn hiện tại
 
             // Lấy tin nhắn trước, hiện tại và sau cùng lúc bằng Promise.all
-            const [{ messages: beforeMessages, count: totalMessages }, currentMessageData, afterMessages] =
-                await Promise.all([
-                    targetMessageIndex > 0
-                        ? this.handleGetMessages({
-                              conversationUuid: conversation_uuid as string,
-                              currentUserId: decoded.sub,
-                              limit: beforeCount,
-                              offset: targetMessageIndex - beforeCount,
-                              sort: 'ASC',
-                          })
-                        : Promise.resolve({ messages: [], count: 0 }),
+            const [beforeMessages, currentMessageData, afterMessages] = await Promise.all([
+                targetMessageIndex > 0
+                    ? this.handleGetMessages({
+                          conversationUuid: conversation_uuid as string,
+                          currentUserId: decoded.sub,
+                          limit: beforeCount,
+                          offset: targetMessageIndex - beforeCount,
+                      })
+                    : Promise.resolve({ messages: [], count: 0 }),
 
-                    this.handleGetMessages({
-                        conversationUuid: conversation_uuid as string,
-                        currentUserId: decoded.sub,
-                        limit: 1,
-                        offset: targetMessageIndex,
-                        sort: 'ASC',
-                    }),
+                this.handleGetMessages({
+                    conversationUuid: conversation_uuid as string,
+                    currentUserId: decoded.sub,
+                    limit: 1,
+                    offset: targetMessageIndex,
+                }),
 
-                    this.handleGetMessages({
-                        conversationUuid: conversation_uuid as string,
-                        currentUserId: decoded.sub,
-                        limit: afterCount,
-                        offset: targetMessageIndex + 1,
-                        sort: 'ASC',
-                    }),
-                ])
+                this.handleGetMessages({
+                    conversationUuid: conversation_uuid as string,
+                    currentUserId: decoded.sub,
+                    limit: afterCount,
+                    offset: targetMessageIndex + 1,
+                }),
+            ])
 
             // Kết hợp và sắp xếp tin nhắn
-            const combinedMessages = [...beforeMessages, currentMessageData.messages[0], ...afterMessages.messages]
+            const combinedMessages = [
+                ...beforeMessages.messages,
+                currentMessageData.messages[0],
+                ...afterMessages.messages,
+            ]
 
-            const response = responseModel({
+            const totalMessages = beforeMessages.count || afterMessages.count
+
+            res.json({
                 data: combinedMessages,
-                total: totalMessages,
-                count: combinedMessages.length,
-                current_page: Math.max(1, Math.ceil((targetMessageIndex + 1) / Number(per_page))),
-                total_pages: Math.ceil(totalMessages / Number(per_page)),
-                per_page: Number(per_page),
+                meta: {
+                    pagination: {
+                        total: totalMessages,
+                        count: combinedMessages.length,
+                        limit: Number(limit),
+                        offset: targetMessageIndex - beforeCount - 1,
+                    },
+                },
             })
-
-            res.json(response)
         } catch (error: any) {
             if (error instanceof ForBiddenError) {
                 return next(error)
