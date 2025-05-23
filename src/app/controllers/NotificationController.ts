@@ -1,7 +1,7 @@
 import { NextFunction, Response } from 'express'
 
 import { IRequest } from '~/type'
-import { BadRequest, InternalServerError } from '../errors/errors'
+import { UnprocessableEntityError, InternalServerError } from '../errors/errors'
 import Notification from '../models/NotificationModel'
 import User from '../models/UserModel'
 import { responseModel } from '~/app/utils/responseModel'
@@ -14,7 +14,7 @@ class NotificationController {
             const { page = 1, per_page = 10, type } = req.query
 
             if (type !== 'all' && type !== 'unread') {
-                return next(new BadRequest({ message: 'Invalid type' }))
+                return next(new UnprocessableEntityError({ message: 'Invalid type' }))
             }
 
             const decoded = req.decoded
@@ -61,7 +61,7 @@ class NotificationController {
             const { notification_id } = req.body
 
             if (!notification_id) {
-                return next(new BadRequest({ message: 'Notification id is required' }))
+                return next(new UnprocessableEntityError({ message: 'Notification id is required' }))
             }
 
             await Notification.update({ is_read: true }, { where: { id: notification_id } })
@@ -91,7 +91,7 @@ class NotificationController {
             const { notification_id } = req.body
 
             if (!notification_id) {
-                return next(new BadRequest({ message: 'Notification id is required' }))
+                return next(new UnprocessableEntityError({ message: 'Notification id is required' }))
             }
 
             await Notification.update({ is_read: false }, { where: { id: notification_id } })
@@ -108,7 +108,7 @@ class NotificationController {
             const { id: notification_id } = req.params
 
             if (!notification_id) {
-                return next(new BadRequest({ message: 'Notification id is required' }))
+                return next(new UnprocessableEntityError({ message: 'Notification id is required' }))
             }
 
             await Notification.destroy({ where: { id: notification_id } })

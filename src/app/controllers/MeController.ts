@@ -3,7 +3,7 @@ import cloudinary from '~/config/cloudinary'
 
 import { User } from '../models'
 import { IRequest, MulterRequest } from '~/type'
-import { InternalServerError, NotFoundError, BadRequest } from '../errors/errors'
+import { InternalServerError, NotFoundError, UnprocessableEntityError } from '../errors/errors'
 import { Op } from 'sequelize'
 import uploadSingleFile from '../helper/uploadToCloudinary'
 import clearCookie from '../utils/clearCookies'
@@ -45,15 +45,15 @@ class MeController {
             const { first_name, last_name, nickname } = req.body
 
             if (!first_name && !last_name) {
-                return next(new BadRequest({ message: 'First name, last name are required' }))
+                return next(new UnprocessableEntityError({ message: 'First name, last name are required' }))
             }
 
             if (!nickname) {
-                return next(new BadRequest({ message: 'Nickname is required' }))
+                return next(new UnprocessableEntityError({ message: 'Nickname is required' }))
             }
 
             if (nickname.trim().split(' ').length > 2) {
-                return next(new BadRequest({ message: 'Nickname must be in the format: first last' }))
+                return next(new UnprocessableEntityError({ message: 'Nickname must be in the format: first last' }))
             }
 
             const user = await User.findOne({
@@ -66,7 +66,7 @@ class MeController {
             })
 
             if (user) {
-                return next(new BadRequest({ message: 'Nickname already exists' }))
+                return next(new UnprocessableEntityError({ message: 'Nickname already exists' }))
             }
 
             // Nếu không có file được upload, chỉ cập nhật thông tin của user mà không thay đổi avatar

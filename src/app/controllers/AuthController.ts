@@ -7,7 +7,13 @@ import jwt, { JwtPayload } from 'jsonwebtoken'
 
 import { redisClient } from '../../config/redis'
 import clearCookie from '../utils/clearCookies'
-import { BadRequest, ConflictError, InternalServerError, NotFoundError, UnauthorizedError } from '../errors/errors'
+import {
+    UnprocessableEntityError,
+    ConflictError,
+    InternalServerError,
+    NotFoundError,
+    UnauthorizedError,
+} from '../errors/errors'
 import { User, BlacklistToken, RefreshToken } from '../models'
 import createToken from '../utils/createToken'
 import hashValue from '../utils/hashValue'
@@ -67,7 +73,7 @@ class AuthController {
         const { email, password } = req.body
         try {
             if (!email || !password) {
-                return next(new BadRequest({ message: 'Email and password are required' }))
+                return next(new UnprocessableEntityError({ message: 'Email and password are required' }))
             }
 
             const passwordHashed = await hashValue(password)
@@ -108,7 +114,7 @@ class AuthController {
             const { email, password } = req.body
 
             if (!email || !password) {
-                return next(new BadRequest({ message: 'Email và mật khẩu là bắt buộc' }))
+                return next(new UnprocessableEntityError({ message: 'Email và mật khẩu là bắt buộc' }))
             }
 
             const sql = `SELECT password FROM users WHERE email = ?`
@@ -259,7 +265,7 @@ class AuthController {
                     return next(new UnauthorizedError({ message: 'Refresh token expired' }))
                 }
 
-                return next(new BadRequest(error.message))
+                return next(new UnprocessableEntityError(error.message))
             }
 
             if (!decoded) {
@@ -325,11 +331,11 @@ class AuthController {
             const { email } = req.body
 
             if (!email) {
-                return next(new BadRequest({ message: 'Email is required' }))
+                return next(new UnprocessableEntityError({ message: 'Email is required' }))
             }
 
             if (!/^\w+([\\.-]?\w+)*@\w+([\\.-]?\w+)*(\.\w{2,3})+$/.test(email)) {
-                return next(new BadRequest({ message: 'Email is invalid' }))
+                return next(new UnprocessableEntityError({ message: 'Email is invalid' }))
             }
 
             // 6 number
@@ -360,7 +366,7 @@ class AuthController {
             const { email, code, password } = req.body
 
             if (!email || !code || !password) {
-                return next(new BadRequest({ message: 'Email, code and password are required' }))
+                return next(new UnprocessableEntityError({ message: 'Email, code and password are required' }))
             }
 
             const hasCode = await redisClient.get(`resetCode-${email}`)

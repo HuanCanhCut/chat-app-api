@@ -1,6 +1,6 @@
 import { Response, NextFunction } from 'express'
 
-import { BadRequest, ConflictError, InternalServerError, NotFoundError } from '../errors/errors'
+import { UnprocessableEntityError, ConflictError, InternalServerError, NotFoundError } from '../errors/errors'
 import { Friendships, User, Notification, Conversation, ConversationMember } from '../models'
 import { Sequelize } from 'sequelize'
 import { Op } from 'sequelize'
@@ -71,7 +71,7 @@ class FriendController {
             const decoded = req.decoded
 
             if (!id) {
-                return next(new BadRequest({ message: 'User ID is required' }))
+                return next(new UnprocessableEntityError({ message: 'User ID is required' }))
             }
 
             const hasUser = await User.findOne<any>({ where: { id } })
@@ -137,7 +137,7 @@ class FriendController {
             const { page, per_page, user_id } = req.query
 
             if (!page || !per_page) {
-                return next(new BadRequest({ message: 'Page and per_page are required' }))
+                return next(new UnprocessableEntityError({ message: 'Page and per_page are required' }))
             }
 
             const decoded = req.decoded
@@ -234,11 +234,11 @@ class FriendController {
             const decoded = req.decoded
 
             if (!id) {
-                return next(new BadRequest({ message: 'User ID is required' }))
+                return next(new UnprocessableEntityError({ message: 'User ID is required' }))
             }
 
             if (decoded.sub === Number(id)) {
-                return next(new BadRequest({ message: 'You cannot accept yourself' }))
+                return next(new UnprocessableEntityError({ message: 'You cannot accept yourself' }))
             }
 
             const [isFriend, isMakeFriendRequest] = await Promise.all([
@@ -338,11 +338,11 @@ class FriendController {
             const decoded = req.decoded
 
             if (!sender_id) {
-                return next(new BadRequest({ message: 'User ID is required' }))
+                return next(new UnprocessableEntityError({ message: 'User ID is required' }))
             }
 
             if (decoded.sub === Number(sender_id)) {
-                return next(new BadRequest({ message: 'You cannot reject yourself' }))
+                return next(new UnprocessableEntityError({ message: 'You cannot reject yourself' }))
             }
 
             // Check if the user has sent a friend request to the this user
@@ -393,17 +393,17 @@ class FriendController {
             const decoded = req.decoded
 
             if (!id) {
-                return next(new BadRequest({ message: 'User ID is required' }))
+                return next(new UnprocessableEntityError({ message: 'User ID is required' }))
             }
 
             if (decoded.sub === Number(id)) {
-                return next(new BadRequest({ message: 'You cannot unfriend yourself' }))
+                return next(new UnprocessableEntityError({ message: 'You cannot unfriend yourself' }))
             }
 
             const isFriend = await FriendService.checkIsFriend(decoded.sub, Number(id))
 
             if (!isFriend) {
-                return next(new BadRequest({ message: 'User is not your friend' }))
+                return next(new UnprocessableEntityError({ message: 'User is not your friend' }))
             }
 
             await Friendships.destroy({
@@ -428,11 +428,11 @@ class FriendController {
             const decoded = req.decoded
 
             if (!id) {
-                return next(new BadRequest({ message: 'User ID is required' }))
+                return next(new UnprocessableEntityError({ message: 'User ID is required' }))
             }
 
             if (decoded.sub === Number(id)) {
-                return next(new BadRequest({ message: 'You cannot cancel friend request to yourself' }))
+                return next(new UnprocessableEntityError({ message: 'You cannot cancel friend request to yourself' }))
             }
 
             const isMakeFriendRequest = await FriendService.sendMakeFriendRequest({
@@ -485,7 +485,7 @@ class FriendController {
             const { page, per_page } = req.query
 
             if (!page || !per_page) {
-                return next(new BadRequest({ message: 'Page and per_page are required' }))
+                return next(new UnprocessableEntityError({ message: 'Page and per_page are required' }))
             }
 
             // Danh sách lời mời kết bạn

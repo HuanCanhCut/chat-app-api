@@ -1,6 +1,6 @@
 import { Response, NextFunction } from 'express'
 import { IRequest } from '~/type'
-import { BadRequest, ForBiddenError, InternalServerError, NotFoundError } from '../errors/errors'
+import { UnprocessableEntityError, ForBiddenError, InternalServerError, NotFoundError } from '../errors/errors'
 import { Conversation, ConversationMember, Message, MessageStatus, User } from '../models'
 import { responseModel } from '../utils/responseModel'
 import { sequelize } from '~/config/database'
@@ -302,11 +302,11 @@ class MessageController {
             const conversationUuid = req.params.conversationUuid
 
             if (!conversationUuid) {
-                return next(new BadRequest({ message: 'Conversation uuid is required' }))
+                return next(new UnprocessableEntityError({ message: 'Conversation uuid is required' }))
             }
 
             if (!limit || !offset) {
-                return next(new BadRequest({ message: 'Limit and offset are required' }))
+                return next(new UnprocessableEntityError({ message: 'Limit and offset are required' }))
             }
 
             const messagesData = await this.handleGetMessages({
@@ -350,11 +350,11 @@ class MessageController {
             const decoded = req.decoded
 
             if (!messageId) {
-                return next(new BadRequest({ message: 'Message id is required' }))
+                return next(new UnprocessableEntityError({ message: 'Message id is required' }))
             }
 
             if (!conversation_uuid) {
-                return next(new BadRequest({ message: 'Conversation uuid is required' }))
+                return next(new UnprocessableEntityError({ message: 'Conversation uuid is required' }))
             }
 
             const conversation = await Conversation.findOne({
@@ -452,11 +452,11 @@ class MessageController {
             const decoded = req.decoded
 
             if (!conversationUuid) {
-                return next(new BadRequest({ message: 'Conversation uuid is required' }))
+                return next(new UnprocessableEntityError({ message: 'Conversation uuid is required' }))
             }
 
             if (!page || !per_page) {
-                return next(new BadRequest({ message: 'Page and per_page are required' }))
+                return next(new UnprocessableEntityError({ message: 'Page and per_page are required' }))
             }
 
             const conversation = await Conversation.findOne({
@@ -516,11 +516,11 @@ class MessageController {
             const { page, per_page, type = 'all' } = req.query
 
             if (!messageId) {
-                return next(new BadRequest({ message: 'Message id is required' }))
+                return next(new UnprocessableEntityError({ message: 'Message id is required' }))
             }
 
             if (!page || !per_page) {
-                return next(new BadRequest({ message: 'Page and per_page are required' }))
+                return next(new UnprocessableEntityError({ message: 'Page and per_page are required' }))
             }
 
             const { rows: reactions, count } = await MessageReaction.findAndCountAll({
@@ -587,11 +587,11 @@ class MessageController {
             const decoded = req.decoded
 
             if (!revoke_type || !message_id) {
-                return next(new BadRequest({ message: 'Revoke type and message id are required' }))
+                return next(new UnprocessableEntityError({ message: 'Revoke type and message id are required' }))
             }
 
             if (!conversation_uuid) {
-                return next(new BadRequest({ message: 'Conversation uuid is required' }))
+                return next(new UnprocessableEntityError({ message: 'Conversation uuid is required' }))
             }
 
             let updateStatusQuery = ''
@@ -622,7 +622,11 @@ class MessageController {
             }
 
             if (updateStatusQuery === '') {
-                return next(new BadRequest({ message: 'Invalid revoke type, revoke type is for-me or for-other' }))
+                return next(
+                    new UnprocessableEntityError({
+                        message: 'Invalid revoke type, revoke type is for-me or for-other',
+                    }),
+                )
             }
 
             const isMemberOfConversation = await Conversation.findOne({
@@ -654,7 +658,7 @@ class MessageController {
             })
 
             if (metadata === 0) {
-                return next(new BadRequest({ message: 'Message not found or already revoked' }))
+                return next(new UnprocessableEntityError({ message: 'Message not found or already revoked' }))
             }
 
             if (revoke_type === 'for-other') {

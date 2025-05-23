@@ -1,6 +1,6 @@
 import { Response, NextFunction } from 'express'
 import { IRequest } from '~/type'
-import { BadRequest, ForBiddenError, InternalServerError } from '../errors/errors'
+import { UnprocessableEntityError, ForBiddenError, InternalServerError } from '../errors/errors'
 import Conversation from '../models/ConversationModel'
 import { ConversationMember, Message, MessageStatus, User } from '../models'
 import { Op } from 'sequelize'
@@ -14,7 +14,7 @@ class ConversationController {
             const { page, per_page } = req.query
 
             if (!page || !per_page) {
-                return next(new BadRequest({ message: 'Page and per page are required' }))
+                return next(new UnprocessableEntityError({ message: 'Page and per page are required' }))
             }
 
             const conversations = await Conversation.findAll({

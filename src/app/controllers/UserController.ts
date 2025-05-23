@@ -1,7 +1,7 @@
 import { Response, NextFunction } from 'express'
 import { Op, QueryTypes } from 'sequelize'
 
-import { BadRequest, InternalServerError, NotFoundError } from '../errors/errors'
+import { UnprocessableEntityError, InternalServerError, NotFoundError } from '../errors/errors'
 import { Conversation, ConversationMember, Friendships, User } from '../models'
 import { IRequest } from '~/type'
 import FriendService from '~/app/services/FriendService'
@@ -17,11 +17,11 @@ class UserController {
             const decoded = req.decoded
 
             if (!nickname) {
-                return next(new BadRequest({ message: 'Nickname is required' }))
+                return next(new UnprocessableEntityError({ message: 'Nickname is required' }))
             }
 
             if (!nickname.startsWith('@')) {
-                return next(new BadRequest({ message: 'Nickname must start with @' }))
+                return next(new UnprocessableEntityError({ message: 'Nickname must start with @' }))
             }
 
             const user = await User.findOne({
@@ -111,11 +111,11 @@ class UserController {
             const { q, type } = req.query
 
             if (!q || !type) {
-                return next(new BadRequest({ message: 'Query and type are required' }))
+                return next(new UnprocessableEntityError({ message: 'Query and type are required' }))
             }
 
             if (type !== 'less' && type !== 'more') {
-                return next(new BadRequest({ message: 'Type must be less or more' }))
+                return next(new UnprocessableEntityError({ message: 'Type must be less or more' }))
             }
 
             const query = `
@@ -147,7 +147,7 @@ class UserController {
             const { user_search_id } = req.body
 
             if (!user_search_id) {
-                return next(new BadRequest({ message: 'User search id is required' }))
+                return next(new UnprocessableEntityError({ message: 'User search id is required' }))
             }
 
             const userSearchExist = await User.findByPk(user_search_id)

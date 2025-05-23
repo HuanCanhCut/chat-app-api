@@ -20,7 +20,7 @@ class AppError extends Error {
 }
 
 // 400: Bad Request
-class BadRequest extends AppError {
+class UnprocessableEntityError extends AppError {
     constructor({ message = ReasonPhrases.BAD_REQUEST }: Message) {
         super(message, StatusCodes.BAD_REQUEST)
     }
@@ -55,7 +55,7 @@ class ConflictError extends AppError {
 }
 
 interface ErrorProps extends Message {
-    error: any
+    error?: any
 }
 
 // 422: Unprocessable Entity
@@ -76,7 +76,7 @@ export {
     UnauthorizedError,
     ForBiddenError,
     NotFoundError,
-    BadRequest,
+    UnprocessableEntityError,
     ConflictError,
     UnprocessableEntityError,
     InternalServerError,
