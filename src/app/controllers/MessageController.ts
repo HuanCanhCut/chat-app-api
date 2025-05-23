@@ -43,6 +43,19 @@ class MessageController {
             throw new ForBiddenError({ message: 'Permission denied' })
         }
 
+        const is_read_sql = `
+            CASE 
+                WHEN EXISTS (
+                    SELECT 1
+                    FROM message_statuses
+                    WHERE message_statuses.message_id = Message.id
+                    AND message_statuses.receiver_id = ${sequelize.escape(currentUserId)}
+                    AND message_statuses.status = 'read'
+                ) THEN TRUE 
+                ELSE FALSE 
+            END
+        `
+
         const { rows: messages, count } = await Message.findAndCountAll<any>({
             distinct: true,
             where: {
@@ -65,6 +78,7 @@ class MessageController {
             attributes: {
                 exclude: ['content'],
                 include: [
+                    [sequelize.literal(is_read_sql), 'is_read'],
                     [
                         sequelize.literal(`
                         CASE 
