@@ -2,7 +2,6 @@ import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequ
 
 import { sequelize } from '../../config/database'
 import handleChildrenAfterFindHook from '../helper/childrenAfterFindHook'
-import excludeBeforeFind from './hooks/excludeBeforeFind'
 
 class Message extends Model<InferAttributes<Message>, InferCreationAttributes<Message>> {
     declare id?: number
@@ -43,7 +42,16 @@ Message.init(
             allowNull: false,
         },
         type: {
-            type: DataTypes.ENUM('text', 'image', 'icon'),
+            type: DataTypes.ENUM(
+                'text',
+                'image',
+                'icon',
+                'system_change_group_name',
+                'system_set_nickname',
+                'system_change_theme',
+                'system_add_user',
+                'system_remove_user',
+            ),
             allowNull: false,
             defaultValue: 'text',
         },
@@ -68,10 +76,6 @@ Message.init(
         sequelize,
     },
 )
-
-Message.beforeFind((options) => {
-    excludeBeforeFind(options, ['parent_id'])
-})
 
 Message.addHook('afterFind', handleChildrenAfterFindHook)
 

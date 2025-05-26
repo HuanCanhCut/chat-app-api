@@ -5,6 +5,7 @@ import Conversation from '../models/ConversationModel'
 import { ConversationMember, Message, MessageStatus, User } from '../models'
 import { Op } from 'sequelize'
 import { sequelize } from '~/config/database'
+import MessageService from '../services/MessageService'
 
 class ConversationController {
     async getConversations(req: IRequest, res: Response, next: NextFunction) {
@@ -61,19 +62,6 @@ class ConversationController {
                 offset: (Number(page) - 1) * Number(per_page),
             })
 
-            const is_read_sql = `
-                CASE 
-                    WHEN EXISTS (
-                        SELECT 1
-                        FROM message_statuses
-                        WHERE message_statuses.message_id = Message.id
-                        AND message_statuses.receiver_id = ${decoded.sub}
-                        AND message_statuses.status = 'read'
-                    ) THEN TRUE 
-                    ELSE FALSE 
-                END
-            `
-
             const promises = conversations.map(async (conversation) => {
                 const lastMessage = await Message.findOne<any>({
                     where: {
@@ -95,7 +83,7 @@ class ConversationController {
                     attributes: {
                         exclude: ['content'],
                         include: [
-                            [sequelize.literal(is_read_sql), 'is_read'],
+                            [MessageService.isReadLiteral(decoded.sub), 'is_read'],
                             [
                                 sequelize.literal(`
                                     CASE 

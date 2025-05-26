@@ -8,6 +8,7 @@ import MessageReaction from '../models/MessageReactionModel'
 import { Op, QueryTypes } from 'sequelize'
 import socketManager from '~/app/socket/socketManager'
 import { SocketEvent } from '~/enum/socketEvent'
+import MessageService from '../services/MessageService'
 
 class MessageController {
     handleGetMessages = async ({
@@ -43,19 +44,6 @@ class MessageController {
             throw new ForBiddenError({ message: 'Permission denied' })
         }
 
-        const is_read_sql = `
-            CASE 
-                WHEN EXISTS (
-                    SELECT 1
-                    FROM message_statuses
-                    WHERE message_statuses.message_id = Message.id
-                    AND message_statuses.receiver_id = ${sequelize.escape(currentUserId)}
-                    AND message_statuses.status = 'read'
-                ) THEN TRUE 
-                ELSE FALSE 
-            END
-        `
-
         const { rows: messages, count } = await Message.findAndCountAll<any>({
             distinct: true,
             where: {
@@ -78,7 +66,7 @@ class MessageController {
             attributes: {
                 exclude: ['content'],
                 include: [
-                    [sequelize.literal(is_read_sql), 'is_read'],
+                    [MessageService.isReadLiteral(Number(currentUserId)), 'is_read'],
                     [
                         sequelize.literal(`
                         CASE 
@@ -135,36 +123,7 @@ class MessageController {
                             attributes: {
                                 include: [
                                     [
-                                        sequelize.literal(`
-                                        (
-                                            SELECT messages.id
-                                            FROM messages
-                                            INNER JOIN message_statuses ON message_statuses.message_id = messages.id
-                                                WHERE message_statuses.receiver_id = message_status.receiver_id AND
-                                                    message_statuses.status = 'read' 
-                                                AND messages.conversation_id = ${hasMember.id}
-                                                AND (
-                                                    message_statuses.is_revoked = 0
-                                                    OR (
-                                                        message_statuses.receiver_id != ${sequelize.escape(currentUserId)}
-                                                        AND message_statuses.revoke_type = 'for-me'
-                                                    )
-                                                    OR (
-                                                        message_statuses.revoke_type = 'for-other'
-                                                    )
-                                                )
-                                                AND NOT EXISTS (
-                                                    SELECT 1
-                                                    FROM message_statuses
-                                                    WHERE message_statuses.message_id = messages.id
-                                                    AND message_statuses.is_revoked = 1
-                                                    AND message_statuses.receiver_id = ${sequelize.escape(currentUserId)}
-                                                    AND message_statuses.revoke_type = 'for-me'
-                                                )
-                                            ORDER BY messages.id DESC
-                                            LIMIT 1
-                                        )
-                                    `),
+                                        MessageService.lastReadMessageIdLiteral(Number(currentUserId), hasMember.id!),
                                         'last_read_message_id',
                                     ],
                                 ],

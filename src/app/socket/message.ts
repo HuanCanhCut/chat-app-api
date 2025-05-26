@@ -10,7 +10,7 @@ import { User } from '../models'
 import { sequelize } from '~/config/database'
 import MessageReaction from '../models/MessageReactionModel'
 import socketManager from './socketManager'
-
+import MessageService from '../services/MessageService'
 const listen = () => {
     const socket = socketManager.socket
     const io = socketManager.io
@@ -56,20 +56,6 @@ const listen = () => {
 
             await transaction.commit()
 
-            const is_read_sql = `
-            CASE 
-                WHEN EXISTS (
-                    SELECT 1
-                    FROM message_statuses
-                    WHERE message_statuses.message_id = Message.id
-                    AND message_statuses.receiver_id = ${senderId}
-                    AND message_statuses.status = 'read'
-                ) THEN TRUE 
-                ELSE FALSE 
-            END
-            `
-
-            // last message
             const messageResponse = await Message.findByPk<any>(newMessage.id, {
                 attributes: {
                     exclude: ['parent_id'],
@@ -80,7 +66,7 @@ const listen = () => {
                         as: 'sender',
                         required: true,
                         attributes: {
-                            include: [[sequelize.literal(is_read_sql), 'is_read']],
+                            include: [[MessageService.isReadLiteral(senderId), 'is_read']],
                             exclude: ['password', 'email'],
                         },
                     },
@@ -412,7 +398,14 @@ const listen = () => {
                 attributes: ['id'],
             })
 
+            if (!conversation?.dataValues?.id) {
+                return
+            }
+
             const message = await Message.findByPk(messageId, {
+                attributes: {
+                    include: [[MessageService.isReadLiteral(currentUserId), 'is_read']],
+                },
                 include: [
                     {
                         model: MessageStatus,
@@ -425,36 +418,10 @@ const listen = () => {
                                 attributes: {
                                     include: [
                                         [
-                                            sequelize.literal(`
-                                                (
-                                                    SELECT messages.id
-                                                    FROM messages
-                                                    INNER JOIN message_statuses ON message_statuses.message_id = messages.id
-                                                        WHERE message_statuses.receiver_id = message_status.receiver_id AND
-                                                            message_statuses.status = 'read' 
-                                                        AND messages.conversation_id = ${conversation?.get('id')}
-                                                        AND (
-                                                            message_statuses.is_revoked = 0
-                                                            OR (
-                                                                message_statuses.receiver_id != ${sequelize.escape(currentUserId)}
-                                                                AND message_statuses.revoke_type = 'for-me'
-                                                            )
-                                                            OR (
-                                                                message_statuses.revoke_type = 'for-other'
-                                                            )
-                                                        )
-                                                        AND NOT EXISTS (
-                                                            SELECT 1
-                                                            FROM message_statuses
-                                                            WHERE message_statuses.message_id = messages.id
-                                                            AND message_statuses.is_revoked = 1
-                                                            AND message_statuses.receiver_id = ${sequelize.escape(currentUserId)}
-                                                            AND message_statuses.revoke_type = 'for-me'
-                                                        )
-                                                    ORDER BY messages.id DESC
-                                                    LIMIT 1
-                                                )
-                                            `),
+                                            MessageService.lastReadMessageIdLiteral(
+                                                currentUserId,
+                                                conversation.get('id')!,
+                                            ),
                                             'last_read_message_id',
                                         ],
                                     ],
