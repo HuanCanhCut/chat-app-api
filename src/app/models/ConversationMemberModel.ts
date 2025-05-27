@@ -10,6 +10,8 @@ class ConversationMember extends Model<
     declare id?: number
     declare conversation_id: number
     declare user_id: number
+    declare nickname?: string
+    declare role: 'admin' | 'leader' | 'member'
     declare joined_at?: Date
     declare created_at?: Date
     declare updated_at?: Date
@@ -29,6 +31,15 @@ ConversationMember.init(
                 model: 'conversations',
                 key: 'id',
             },
+        },
+        nickname: {
+            type: DataTypes.STRING,
+            allowNull: true,
+        },
+        role: {
+            type: DataTypes.ENUM('admin', 'leader', 'member'),
+            allowNull: false,
+            defaultValue: 'member',
         },
         user_id: {
             type: DataTypes.INTEGER,

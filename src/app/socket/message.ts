@@ -22,14 +22,12 @@ const listen = () => {
         userIds,
         message,
         type = 'text',
-        status,
         parent_id = null,
     }: {
         conversationId: number
         senderId: number
-        userIds: number[]
+        userIds: { id: number; is_online: boolean }[]
         message: string
-        status: 'sent' | 'delivered' | 'read'
         type: 'text' | 'image' | 'icon'
         parent_id: number | null
     }) => {
@@ -48,8 +46,8 @@ const listen = () => {
                 for (const userId of userIds) {
                     await MessageStatus.create({
                         message_id: newMessage.id,
-                        receiver_id: userId,
-                        status,
+                        receiver_id: userId.id,
+                        status: userId.is_online ? 'delivered' : 'sent',
                     })
                 }
             }
@@ -252,8 +250,8 @@ const listen = () => {
                 const isOnlineCache = await redisClient.get(`${RedisKey.USER_ONLINE}${user.get('id')}`)
 
                 return {
-                    id: user.get('id'),
-                    is_online: isOnlineCache ? JSON.parse(isOnlineCache).is_online : false,
+                    id: user.get('id') as number,
+                    is_online: isOnlineCache ? (JSON.parse(isOnlineCache).is_online as boolean) : false,
                 }
             }),
         )
@@ -261,10 +259,9 @@ const listen = () => {
         const newMessage = await saveMessageToDatabase({
             conversationId: conversation.dataValues.id,
             senderId: currentUserId,
-            userIds: userIds.map((user) => user.id),
+            userIds,
             message,
             type,
-            status: 'delivered',
             parent_id,
         })
 
