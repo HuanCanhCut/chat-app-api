@@ -212,24 +212,19 @@ class ConversationController {
             }
 
             const conversations = await Conversation.findAll({
-                include: {
-                    model: ConversationMember,
-                    as: 'conversation_members',
-                    where: {
-                        nickname: {
-                            [Op.like]: `%${q}%`,
-                        },
-                    },
-                    include: [
-                        {
-                            model: User,
-                            as: 'user',
-                            attributes: {
-                                exclude: ['password', 'email'],
+                include: [
+                    {
+                        model: ConversationMember,
+                        as: 'conversation_members',
+                        include: [
+                            {
+                                model: User,
+                                as: 'user',
+                                required: true,
                             },
-                        },
-                    ],
-                },
+                        ],
+                    },
+                ],
                 where: {
                     id: {
                         [Op.in]: sequelize.literal(`(
@@ -238,8 +233,23 @@ class ConversationController {
                             WHERE user_id = ${decoded.sub}
                         )`),
                     },
+                    [Op.or]: [
+                        {
+                            name: {
+                                [Op.like]: `%${q}%`,
+                            },
+                        },
+                        sequelize.literal(`EXISTS (
+                            SELECT 1
+                            FROM conversation_members
+                            WHERE conversation_members.conversation_id = Conversation.id
+                            AND conversation_members.nickname LIKE ${sequelize.escape(`%${q}%`)}
+                        )`),
+                    ],
                 },
+                limit: 20,
             })
+
             res.json({ data: conversations })
         } catch (error: any) {
             return next(new InternalServerError(error))
