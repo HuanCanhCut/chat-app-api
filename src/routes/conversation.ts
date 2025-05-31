@@ -5,6 +5,6 @@ import verifyToken from '../app/middlewares/verifyToken'
 import ConversationController from '../app/controllers/ConversationController'
 
 router.get('/', verifyToken, ConversationController.getConversations.bind(ConversationController))
+router.get('/search', verifyToken, ConversationController.searchConversation.bind(ConversationController))
 router.get('/:uuid', verifyToken, ConversationController.getConversationByUuid.bind(ConversationController))
-
 export default router

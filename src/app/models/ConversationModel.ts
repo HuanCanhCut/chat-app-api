@@ -43,6 +43,16 @@ Conversation.init(
     {
         sequelize,
         tableName: 'conversations',
+        indexes: [
+            {
+                unique: true,
+                fields: ['uuid'],
+            },
+            {
+                fields: ['name'],
+                type: 'FULLTEXT',
+            },
+        ],
     },
 )
 

@@ -124,7 +124,10 @@ class ConversationController {
                             ],
                         },
                     ],
-                    order: [['created_at', 'DESC']],
+                    order: [
+                        ['created_at', 'DESC'],
+                        ['id', 'DESC'],
+                    ],
                 })
 
                 if (lastMessage) {
@@ -193,6 +196,51 @@ class ConversationController {
             })
 
             res.json({ data: conversation })
+        } catch (error: any) {
+            return next(new InternalServerError(error))
+        }
+    }
+
+    async searchConversation(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const decoded = req.decoded
+
+            const { q } = req.query
+
+            if (!q) {
+                return next(new UnprocessableEntityError({ message: 'Search query is required' }))
+            }
+
+            const conversations = await Conversation.findAll({
+                include: {
+                    model: ConversationMember,
+                    as: 'conversation_members',
+                    where: {
+                        nickname: {
+                            [Op.like]: `%${q}%`,
+                        },
+                    },
+                    include: [
+                        {
+                            model: User,
+                            as: 'user',
+                            attributes: {
+                                exclude: ['password', 'email'],
+                            },
+                        },
+                    ],
+                },
+                where: {
+                    id: {
+                        [Op.in]: sequelize.literal(`(
+                            SELECT conversation_id
+                            FROM conversation_members
+                            WHERE user_id = ${decoded.sub}
+                        )`),
+                    },
+                },
+            })
+            res.json({ data: conversations })
         } catch (error: any) {
             return next(new InternalServerError(error))
         }
