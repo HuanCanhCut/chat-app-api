@@ -11,7 +11,7 @@ class ConversationMember extends Model<
     declare conversation_id: number
     declare user_id: number
     declare nickname?: string
-    declare role: 'admin' | 'leader' | 'member'
+    declare role?: 'admin' | 'leader' | 'member'
     declare joined_at?: Date
     declare created_at?: Date
     declare updated_at?: Date
