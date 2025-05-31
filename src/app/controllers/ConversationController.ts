@@ -239,12 +239,20 @@ class ConversationController {
                                 [Op.like]: `%${q}%`,
                             },
                         },
-                        sequelize.literal(`EXISTS (
-                            SELECT 1
-                            FROM conversation_members
-                            WHERE conversation_members.conversation_id = Conversation.id
-                            AND conversation_members.nickname LIKE ${sequelize.escape(`%${q}%`)}
-                        )`),
+                        sequelize.literal(`
+                            Conversation.is_group = 0
+                            AND EXISTS (
+                                SELECT 1
+                                FROM conversation_members
+                                JOIN users ON conversation_members.user_id = users.id
+                                WHERE conversation_members.conversation_id = Conversation.id
+                                AND (
+                                    (conversation_members.nickname IS NOT NULL AND conversation_members.nickname LIKE ${sequelize.escape(`%${q}%`)})
+                                    OR
+                                    (conversation_members.nickname IS NULL AND users.full_name LIKE ${sequelize.escape(`%${q}%`)})
+                                )
+                            )
+                        `),
                     ],
                 },
                 limit: 20,
