@@ -329,9 +329,7 @@ const listen = () => {
                             ...JSON.parse(conversationCache),
                             last_message: newMessage,
                         }
-                        for (const socketId of socketIds) {
-                            io.to(socketId).emit(SocketEvent.NEW_MESSAGE, { conversation })
-                        }
+                        io.to(socketIds).emit(SocketEvent.NEW_MESSAGE, { conversation })
                     } else {
                         try {
                             // get conversation from database

@@ -120,9 +120,7 @@ class FriendController {
             const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${Number(id)}`, 0, -1)
 
             if (socketIds && socketIds.length > 0) {
-                for (const socketId of socketIds) {
-                    socketManager.io?.to(socketId).emit(SocketEvent.NEW_NOTIFICATION, notificationData)
-                }
+                socketManager.io?.to(socketIds).emit(SocketEvent.NEW_NOTIFICATION, notificationData)
             }
 
             res.sendStatus(201)
@@ -320,9 +318,7 @@ class FriendController {
             const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${Number(id)}`, 0, -1)
 
             if (socketIds && socketIds.length > 0) {
-                for (const socketId of socketIds) {
-                    socketManager.io?.to(socketId).emit(SocketEvent.NEW_NOTIFICATION, notificationData)
-                }
+                socketManager.io?.to(socketIds).emit(SocketEvent.NEW_NOTIFICATION, notificationData)
             }
 
             res.sendStatus(200)
@@ -373,11 +369,9 @@ class FriendController {
             const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${Number(decoded.sub)}`, 0, -1)
 
             if (socketIds && socketIds.length > 0) {
-                for (const socketId of socketIds) {
-                    socketManager.io
-                        ?.to(socketId)
-                        .emit(SocketEvent.REMOVE_NOTIFICATION, { notificationId: notification?.id })
-                }
+                socketManager.io
+                    ?.to(socketIds)
+                    .emit(SocketEvent.REMOVE_NOTIFICATION, { notificationId: notification?.id })
             }
 
             res.sendStatus(200)
@@ -456,11 +450,9 @@ class FriendController {
             })
 
             if (socketIds && socketIds.length > 0) {
-                for (const socketId of socketIds) {
-                    socketManager.io
-                        ?.to(socketId)
-                        .emit(SocketEvent.REMOVE_NOTIFICATION, { notificationId: notification?.id })
-                }
+                socketManager.io
+                    ?.to(socketIds)
+                    .emit(SocketEvent.REMOVE_NOTIFICATION, { notificationId: notification?.id })
             }
 
             if (notification) {

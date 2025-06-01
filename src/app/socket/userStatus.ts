@@ -25,13 +25,11 @@ const userStatus = async () => {
                 const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${friend.user.id}`, 0, -1)
 
                 if (socketIds && socketIds.length > 0) {
-                    for (const socketId of socketIds) {
-                        socket.to(socketId).emit(SocketEvent.USER_STATUS, {
-                            user_id: currentUserId,
-                            is_online: isOnline,
-                            last_online_at: lastOnlineAt,
-                        })
-                    }
+                    socket.to(socketIds).emit(SocketEvent.USER_STATUS, {
+                        user_id: currentUserId,
+                        is_online: isOnline,
+                        last_online_at: lastOnlineAt,
+                    })
                 }
             }
         })
