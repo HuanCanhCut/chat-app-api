@@ -8,6 +8,8 @@ import message from '~/app/socket/message'
 import socketManager from './socketManager'
 
 const onConnection = (socketInstance: Socket, ioInstance: Server) => {
+    console.log('\x1b[33m===>>>Socket connected', socketInstance.id, '\x1b[0m')
+
     const cookies = socketInstance.handshake.headers.cookie
 
     const token = cookies

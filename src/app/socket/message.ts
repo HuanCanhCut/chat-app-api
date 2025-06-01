@@ -180,6 +180,41 @@ const listen = () => {
         }
     }
 
+    const getUsersOnlineStatus = async (conversationUuid: string) => {
+        // get all users online in a conversation
+        const allUserOfConversation = await User.findAll({
+            attributes: ['id'],
+            include: [
+                {
+                    model: ConversationMember,
+                    required: true,
+                    as: 'conversation_members',
+                    include: [
+                        {
+                            model: Conversation,
+                            required: true,
+                            as: 'conversation',
+                            where: { uuid: conversationUuid },
+                        },
+                    ],
+                },
+            ],
+        })
+
+        const userIds = await Promise.all(
+            allUserOfConversation.map(async (user: any) => {
+                const isOnlineCache = await redisClient.get(`${RedisKey.USER_ONLINE}${user.get('id')}`)
+
+                return {
+                    id: user.get('id') as number,
+                    is_online: isOnlineCache ? (JSON.parse(isOnlineCache).is_online as boolean) : false,
+                }
+            }),
+        )
+
+        return userIds
+    }
+
     const JOIN_ROOM = async (conversationUuid: string) => {
         // Get all socket ids of user from Redis
         const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${currentUserId}`, 0, -1)
@@ -215,26 +250,6 @@ const listen = () => {
         type: 'text' | 'image' | 'icon'
         parent_id: number | null
     }) => {
-        // get all users online in a conversation
-        const allUserOfConversation = await User.findAll({
-            attributes: ['id'],
-            include: [
-                {
-                    model: ConversationMember,
-                    required: true,
-                    as: 'conversation_members',
-                    include: [
-                        {
-                            model: Conversation,
-                            required: true,
-                            as: 'conversation',
-                            where: { uuid: conversationUuid },
-                        },
-                    ],
-                },
-            ],
-        })
-
         const conversation = await Conversation.findOne({
             attributes: ['id'],
             where: { uuid: conversationUuid },
@@ -245,16 +260,7 @@ const listen = () => {
             return
         }
 
-        const userIds = await Promise.all(
-            allUserOfConversation.map(async (user: any) => {
-                const isOnlineCache = await redisClient.get(`${RedisKey.USER_ONLINE}${user.get('id')}`)
-
-                return {
-                    id: user.get('id') as number,
-                    is_online: isOnlineCache ? (JSON.parse(isOnlineCache).is_online as boolean) : false,
-                }
-            }),
-        )
+        const userIds = await getUsersOnlineStatus(conversationUuid)
 
         const newMessage = await saveMessageToDatabase({
             conversationId: conversation.dataValues.id,
@@ -287,10 +293,13 @@ const listen = () => {
             })
 
             if (conversation) {
-                redisClient.set(`${RedisKey.CONVERSATION_UUID}${conversationUuid}`, JSON.stringify(conversation), {
-                    // 1 hour
-                    EX: 60 * 60,
-                })
+                // Groups can always change information about members, avatars... so they can't be cached.
+                if (!conversation.get('is_group')) {
+                    redisClient.set(`${RedisKey.CONVERSATION_UUID}${conversationUuid}`, JSON.stringify(conversation), {
+                        // 1 hour
+                        EX: 60 * 60,
+                    })
+                }
 
                 const conversationData = {
                     ...conversation.dataValues,
@@ -486,6 +495,25 @@ const listen = () => {
             })
 
             io.to(conversationUuid).emit(SocketEvent.UPDATE_READ_MESSAGE, { message, user_read_id: currentUserId })
+
+            const userIds = await getUsersOnlineStatus(conversationUuid)
+
+            for (const user of userIds) {
+                if (user.id === currentUserId) {
+                    continue
+                }
+
+                if (user.is_online) {
+                    const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${user.id}`, 0, -1)
+
+                    if (socketIds && socketIds.length > 0) {
+                        io.to(socketIds).emit(SocketEvent.UPDATE_READ_MESSAGE, {
+                            message,
+                            user_read_id: currentUserId,
+                        })
+                    }
+                }
+            }
         } catch (error) {
             console.log(error)
         }

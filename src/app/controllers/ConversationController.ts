@@ -221,6 +221,9 @@ class ConversationController {
                                 model: User,
                                 as: 'user',
                                 required: true,
+                                attributes: {
+                                    exclude: ['password', 'email'],
+                                },
                             },
                         ],
                     },
@@ -246,6 +249,7 @@ class ConversationController {
                                 FROM conversation_members
                                 JOIN users ON conversation_members.user_id = users.id
                                 WHERE conversation_members.conversation_id = Conversation.id
+                                AND conversation_members.user_id != ${decoded.sub}
                                 AND (
                                     (conversation_members.nickname IS NOT NULL AND conversation_members.nickname LIKE ${sequelize.escape(`%${q}%`)})
                                     OR
