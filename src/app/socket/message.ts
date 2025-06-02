@@ -408,7 +408,24 @@ const listen = () => {
 
             const message = await Message.findByPk(messageId, {
                 attributes: {
-                    include: [[MessageService.isReadLiteral(currentUserId), 'is_read']],
+                    exclude: ['content'],
+                    include: [
+                        [MessageService.isReadLiteral(currentUserId), 'is_read'],
+                        [
+                            sequelize.literal(`
+                                CASE 
+                                    WHEN EXISTS (
+                                        SELECT 1 FROM message_statuses 
+                                        WHERE message_statuses.message_id = Message.id
+                                        AND message_statuses.receiver_id = ${sequelize.escape(currentUserId)}
+                                        AND message_statuses.is_revoked = 1
+                                    ) THEN NULL 
+                                    ELSE Message.content 
+                                END
+                            `),
+                            'content',
+                        ],
+                    ],
                 },
                 include: [
                     {
@@ -465,18 +482,19 @@ const listen = () => {
                         attributes: {
                             exclude: ['content'],
                             include: [
+                                [MessageService.isReadLiteral(Number(currentUserId)), 'is_read'],
                                 [
                                     sequelize.literal(`
-                                        CASE
-                                            WHEN EXISTS (
-                                                SELECT 1 FROM message_statuses
-                                                WHERE message_statuses.message_id = parent.id
-                                                AND message_statuses.receiver_id = ${sequelize.escape(currentUserId)}
-                                                AND message_statuses.is_revoked = 1
-                                            ) THEN NULL
-                                            ELSE parent.content
-                                        END
-                                    `),
+                                    CASE 
+                                        WHEN EXISTS (
+                                            SELECT 1 FROM message_statuses 
+                                            WHERE message_statuses.message_id = Message.id
+                                            AND message_statuses.receiver_id = ${sequelize.escape(currentUserId)}
+                                            AND message_statuses.is_revoked = 1
+                                        ) THEN NULL 
+                                        ELSE Message.content 
+                                    END
+                                `),
                                     'content',
                                 ],
                             ],
