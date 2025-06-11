@@ -1,14 +1,13 @@
 import { NextFunction, Response } from 'express'
 
 import { IRequest } from '~/type'
-import { UnprocessableEntityError, InternalServerError } from '../errors/errors'
+import { UnprocessableEntityError } from '../errors/errors'
 import Notification from '../models/NotificationModel'
-import User from '../models/UserModel'
 import { responseModel } from '~/app/utils/responseModel'
+import NotificationService from '../services/NotificationService'
 
 class NotificationController {
     // [GET] /notifications?page=&per_page=&type=
-
     async getNotifications(req: IRequest, res: Response, next: NextFunction) {
         try {
             const { page = 1, per_page = 10, type } = req.query
@@ -19,25 +18,11 @@ class NotificationController {
 
             const decoded = req.decoded
 
-            const { rows: notifications, count: total } = await Notification.findAndCountAll({
-                distinct: true,
-                where: {
-                    recipient_id: decoded.sub,
-                    ...(type === 'unread' && { is_read: false }),
-                },
-                include: [
-                    {
-                        model: User,
-                        as: 'sender_user',
-                        required: true,
-                        attributes: {
-                            exclude: ['password', 'email'],
-                        },
-                    },
-                ],
-                order: [['created_at', 'DESC']],
-                limit: Number(per_page),
-                offset: (Number(page) - 1) * Number(per_page),
+            const { notifications, total } = await NotificationService.getNotifications({
+                currentUserId: decoded.sub,
+                page: Number(page),
+                per_page: Number(per_page),
+                type: type as 'all' | 'unread',
             })
 
             res.json(
@@ -51,7 +36,7 @@ class NotificationController {
                 }),
             )
         } catch (error: any) {
-            return next(new InternalServerError({ message: error.message }))
+            return next(error)
         }
     }
 
@@ -64,11 +49,11 @@ class NotificationController {
                 return next(new UnprocessableEntityError({ message: 'Notification id is required' }))
             }
 
-            await Notification.update({ is_read: true }, { where: { id: notification_id } })
+            await NotificationService.markAsRead({ notificationId: notification_id })
 
             res.sendStatus(200)
         } catch (error: any) {
-            return next(new InternalServerError({ message: error.message }))
+            return next(error)
         }
     }
 
@@ -77,11 +62,11 @@ class NotificationController {
         try {
             const decoded = req.decoded
 
-            await Notification.update({ is_seen: true }, { where: { recipient_id: decoded.sub } })
+            await NotificationService.markAsSeen({ currentUserId: decoded.sub })
 
             res.sendStatus(200)
         } catch (error: any) {
-            return next(new InternalServerError({ message: error.message }))
+            return next(error)
         }
     }
 
@@ -94,11 +79,11 @@ class NotificationController {
                 return next(new UnprocessableEntityError({ message: 'Notification id is required' }))
             }
 
-            await Notification.update({ is_read: false }, { where: { id: notification_id } })
+            await NotificationService.markAsUnread({ notificationId: notification_id })
 
             res.sendStatus(200)
         } catch (error: any) {
-            return next(new InternalServerError({ message: error.message }))
+            return next(error)
         }
     }
 
@@ -115,7 +100,7 @@ class NotificationController {
 
             res.sendStatus(200)
         } catch (error: any) {
-            return next(new InternalServerError({ message: error.message }))
+            return next(error)
         }
     }
 }

@@ -25,7 +25,6 @@ const io = new Server(server, {
     },
 })
 
-// Danh sách các domain được phép truy cập
 const allowedOrigins: string[] = ['https://huancanhcut.click', 'https://chatapp.local', 'https://localhost:5500']
 
 const corsOptions: cors.CorsOptions = {
@@ -36,7 +35,7 @@ const corsOptions: cors.CorsOptions = {
         if (allowedOrigins.indexOf(origin) !== -1) {
             callback(null, true)
         } else {
-            callback(new Error('Bị chặn bởi CORS!'))
+            callback(new Error('CORS blocked!'))
         }
     },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

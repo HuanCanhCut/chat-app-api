@@ -7,13 +7,11 @@ interface Message {
 class AppError extends Error {
     statusCode: number
     error: any
-    isOperational: boolean
 
     constructor(message: string, statusCode: number, error = {}) {
         super(message)
         this.statusCode = statusCode
         this.error = error
-        this.isOperational = true
 
         Error.captureStackTrace(this, this.constructor)
     }
@@ -73,6 +71,7 @@ class InternalServerError extends AppError {
 }
 
 export {
+    AppError,
     UnauthorizedError,
     ForBiddenError,
     NotFoundError,

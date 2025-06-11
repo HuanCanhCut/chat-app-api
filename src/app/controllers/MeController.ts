@@ -1,42 +1,29 @@
 import { NextFunction, Response } from 'express'
-import cloudinary from '~/config/cloudinary'
 
-import { User } from '../models'
 import { IRequest, MulterRequest } from '~/type'
-import { InternalServerError, NotFoundError, UnprocessableEntityError } from '../errors/errors'
-import { Op } from 'sequelize'
-import uploadSingleFile from '../helper/uploadToCloudinary'
+import { NotFoundError, UnprocessableEntityError } from '../errors/errors'
 import clearCookie from '../utils/clearCookies'
+import UserService from '../services/UserService'
 
 class MeController {
     // [GET] /auth/me
     async getCurrentUser(req: IRequest, res: Response, next: NextFunction) {
         try {
-            const decoded = req.decoded as { sub: number }
+            const decoded = req.decoded
 
-            if (!decoded) {
-                return next(new NotFoundError({ message: 'User not found' }))
-            }
-
-            const user = await User.findOne({
-                where: {
-                    id: decoded.sub,
-                },
-            })
-
-            if (!user) {
-                clearCookie({ res, cookies: ['access_token', 'refresh_token'] })
-
-                return next(new NotFoundError({ message: 'User not found' }))
-            }
+            const user = await UserService.getUserById(decoded.sub)
 
             res.json({ data: user })
         } catch (error: any) {
-            return next(new InternalServerError({ message: error.message }))
+            if (error instanceof NotFoundError) {
+                clearCookie({ res, cookies: ['access_token', 'refresh_token'] })
+            }
+
+            return next(error)
         }
     }
 
-    // [PATCH] /auth/me/update
+    // [PATCH] /auth/me
     async updateCurrentUser(req: IRequest, res: Response, next: NextFunction) {
         const typedReq = req as MulterRequest
         try {
@@ -52,93 +39,25 @@ class MeController {
                 return next(new UnprocessableEntityError({ message: 'Nickname is required' }))
             }
 
-            if (nickname.trim().split(' ').length > 2) {
-                return next(new UnprocessableEntityError({ message: 'Nickname must be in the format: first last' }))
-            }
-
-            const user = await User.findOne({
-                where: {
-                    nickname,
-                    id: {
-                        [Op.ne]: req.decoded.sub,
-                    },
-                },
-            })
-
-            if (user) {
-                return next(new UnprocessableEntityError({ message: 'Nickname already exists' }))
-            }
-
-            // Nếu không có file được upload, chỉ cập nhật thông tin của user mà không thay đổi avatar
-            if (!files || (!files.avatar && !files.cover_photo)) {
-                try {
-                    await User.update(
-                        { first_name, last_name, nickname, full_name: `${first_name} ${last_name}` },
-                        { where: { id: req.decoded.sub } },
-                    )
-
-                    res.sendStatus(200)
-                    return
-                } catch (error: any) {
-                    return next(new InternalServerError({ message: error.message }))
-                }
-            }
-
-            // Tạo các promise upload các file lên Cloudinary (nếu có)
-            const uploadPromises = []
-
-            if (files.avatar) {
-                uploadPromises.push(
-                    uploadSingleFile({
-                        file: files.avatar[0],
-                        folder: 'chat-app/avatar',
-                        publicId: req.decoded.sub,
-                        type: 'avatar',
+            if (nickname.trim().split(' ').length >= 2) {
+                return next(
+                    new UnprocessableEntityError({
+                        message: 'Nickname must be written without accents or special characters.',
                     }),
                 )
             }
 
-            if (files.cover_photo) {
-                uploadPromises.push(
-                    uploadSingleFile({
-                        file: files.cover_photo[0],
-                        folder: 'chat-app/cover_photo',
-                        publicId: req.decoded.sub,
-                        type: 'cover_photo',
-                    }),
-                )
-            }
-
-            type IUploadResult = {
-                result: cloudinary.UploadApiResponse
-                type: 'avatar' | 'cover_photo'
-            }
-
-            // Thực hiện upload song song
-            const uploadResolve = (await Promise.all(uploadPromises)) as IUploadResult[]
-
-            // Chuẩn bị dữ liệu để update
-            const updateData: any = {
+            const updateData = await UserService.updateUser({
+                nickname,
+                files,
                 first_name,
                 last_name,
-                nickname,
-                full_name: `${first_name} ${last_name}`,
-            }
-
-            uploadResolve.forEach((upload) => {
-                if (upload.type === 'avatar') {
-                    updateData.avatar = upload.result.secure_url
-                } else if (upload.type === 'cover_photo') {
-                    updateData.cover_photo = upload.result.secure_url
-                }
+                currentUserId: req.decoded.sub,
             })
 
-            // Cập nhật vào database
-            await User.update(updateData, { where: { id: req.decoded.sub } })
-
-            res.json({ data: updateData })
+            res.status(200).json({ data: updateData })
         } catch (error: any) {
-            return next(new InternalServerError({ message: error.message }))
+            return next(error)
         }
     }
 }

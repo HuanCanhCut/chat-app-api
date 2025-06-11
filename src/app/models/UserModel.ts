@@ -8,7 +8,7 @@ import { redisClient } from '~/config/redis'
 import { RedisKey } from '~/enum/redis'
 
 class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
-    declare id?: number
+    declare id: number
     declare first_name: string
     declare last_name: string
     declare full_name: string
@@ -18,7 +18,7 @@ class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
     declare avatar: string
     declare cover_photo?: string
     declare sent_friend_request?: boolean
-    declare is_friend?: boolean
+    declare is_friend?: boolean | string
     declare friends_count?: number
     declare created_at?: Date
     declare updated_at?: Date
@@ -87,6 +87,7 @@ User.init(
             {
                 fields: ['full_name', 'nickname'],
                 type: 'FULLTEXT',
+                name: 'user_search_idx',
             },
         ],
         tableName: 'users',

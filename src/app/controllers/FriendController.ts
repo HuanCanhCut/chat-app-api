@@ -1,131 +1,27 @@
 import { Response, NextFunction } from 'express'
 
-import { UnprocessableEntityError, ConflictError, InternalServerError, NotFoundError } from '../errors/errors'
-import { Friendships, User, Notification, Conversation, ConversationMember } from '../models'
-import { Sequelize } from 'sequelize'
-import { Op } from 'sequelize'
-import { v4 as uuidv4 } from 'uuid'
+import { UnprocessableEntityError } from '../errors/errors'
 
-import { SocketEvent } from '../../enum/socketEvent'
-import { RedisKey } from '../../enum/redis'
-import { redisClient } from '../../config/redis'
 import { IRequest } from '~/type'
 import FriendService from '~/app/services/FriendService'
-import { sequelize } from '~/config/database'
-import socketManager from '~/app/socket/socketManager'
 
-type NotificationMessage = 'vừa gửi cho bạn một lời mời kết bạn' | 'đã chấp nhận lời mời kết bạn'
-
-interface ICreateNotification {
-    recipientId: number
-    type: 'friend_request' | 'accept_friend_request' | 'message'
-    currentUserId: number
-    message: NotificationMessage
-}
 class FriendController {
-    // Delete notification when reject friend request
-    async destroyNotification(recipient_id: number, sender_id: number) {
-        await Notification.destroy({
-            where: {
-                recipient_id,
-                sender_id,
-                type: 'friend_request',
-            },
-        })
-    }
-
-    async createNotification({ recipientId, type, currentUserId, message }: ICreateNotification) {
-        const currentUser = await User.findOne({
-            where: {
-                id: currentUserId,
-            },
-        })
-
-        if (!currentUser) {
-            throw new NotFoundError({ message: 'User not found' })
-        }
-
-        const notification = await Notification.create({
-            recipient_id: Number(recipientId),
-            type,
-            sender_id: currentUserId,
-            message: `${currentUser.full_name} ${message}`,
-        })
-
-        const notificationData = {
-            notification: {
-                ...notification?.dataValues,
-                sender_id: currentUserId,
-                sender_user: currentUser,
-            },
-        }
-
-        return notificationData
-    }
-
     // [POST] /users/:id/add
     async addFriend(req: IRequest, res: Response, next: NextFunction) {
         try {
             // id of user that want to add friend
-            const { id } = req.params
+            const { id: friendId } = req.params
             const decoded = req.decoded
 
-            if (!id) {
+            if (!friendId) {
                 return next(new UnprocessableEntityError({ message: 'User ID is required' }))
             }
 
-            const hasUser = await User.findOne<any>({ where: { id } })
-
-            if (!hasUser) {
-                return next(new NotFoundError({ message: 'User not found' }))
-            }
-
-            if (hasUser.id === decoded.sub) {
-                return next(new ConflictError({ message: 'You cannot add yourself as a friend' }))
-            }
-
-            const isFriend = await FriendService.checkIsFriend(decoded.sub, Number(id))
-
-            if (isFriend) {
-                return next(new ConflictError({ message: 'User is already your friend' }))
-            }
-
-            const isMakeFriendRequest = await FriendService.sendMakeFriendRequest({
-                userId: decoded.sub,
-                friendId: Number(id),
-                toWay: true,
-            })
-
-            if (isMakeFriendRequest) {
-                return next(new ConflictError({ message: 'You have already sent a friend request to this user' }))
-            }
-
-            const newFriendship = await Friendships.create({
-                user_id: decoded.sub,
-                friend_id: Number(id),
-            })
-
-            if (!newFriendship) {
-                return next(new InternalServerError({ message: 'Failed to add friend' }))
-            }
-
-            const notificationData = await this.createNotification({
-                recipientId: Number(id),
-                type: 'friend_request',
-                currentUserId: decoded.sub,
-                message: 'vừa gửi cho bạn một lời mời kết bạn',
-            })
-
-            // Send notification to user
-            const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${Number(id)}`, 0, -1)
-
-            if (socketIds && socketIds.length > 0) {
-                socketManager.io?.to(socketIds).emit(SocketEvent.NEW_NOTIFICATION, notificationData)
-            }
+            await FriendService.addFriend({ currentUserId: decoded.sub, friendId: Number(friendId) })
 
             res.sendStatus(201)
         } catch (error: any) {
-            return next(new InternalServerError({ message: error.message }))
+            return next(error)
         }
     }
 
@@ -140,73 +36,12 @@ class FriendController {
 
             const decoded = req.decoded
 
-            // Check if the user is friend with the current user
-            const sql = `
-                    (CASE 
-                        WHEN EXISTS (
-                            SELECT 1
-                            FROM 
-                                friendships 
-                            WHERE 
-                                friendships.status = 'accepted'
-                                AND (
-                                    (friendships.user_id = ${sequelize.escape(decoded.sub)} AND friendships.friend_id = user.id)
-                                    OR 
-                                    (friendships.friend_id = ${sequelize.escape(decoded.sub)} AND friendships.user_id = user.id)
-                                )
-                        ) 
-                        THEN "true"
-                        ELSE "false"
-                    END)
-            `
-
-            const { rows: friends, count } = await Friendships.findAndCountAll<any>({
-                distinct: true,
-                where: {
-                    status: 'accepted',
-                },
-                include: [
-                    {
-                        attributes: {
-                            include: [
-                                [sequelize.literal(sql), 'is_friend'],
-                                [
-                                    sequelize.literal(`
-                                            (
-                                            SELECT 
-                                                COUNT(friendships.id)
-                                            FROM 
-                                                friendships
-                                            JOIN 
-                                                users ON users.id = friendships.user_id OR users.id = friendships.friend_id
-                                            WHERE 
-                                                friendships.status = 'accepted' 
-                                            AND 
-                                                (users.id = user.id)
-                                            )
-                                    `),
-                                    'friends_count',
-                                ],
-                            ],
-                            exclude: ['password', 'email'],
-                        },
-                        model: User,
-                        as: 'user',
-                        required: true,
-                        nested: true,
-                        on: FriendService.friendShipJoinLiteral(Number(user_id)),
-                    },
-                ],
-                limit: Number(per_page),
-                offset: (Number(page) - 1) * Number(per_page),
+            const { friends, count } = await FriendService.getAllFriends({
+                currentUserId: decoded.sub,
+                userId: Number(user_id),
+                page: Number(page),
+                per_page: Number(per_page),
             })
-
-            // Convert is_friend from string to boolean
-            for (const friend of friends) {
-                if (friend) {
-                    friend.dataValues.user.dataValues.is_friend = friend.dataValues.user.dataValues.is_friend === 'true'
-                }
-            }
 
             res.json({
                 data: friends,
@@ -221,7 +56,7 @@ class FriendController {
                 },
             })
         } catch (error: any) {
-            return next(new InternalServerError({ message: error.message }))
+            return next(error)
         }
     }
 
@@ -239,91 +74,11 @@ class FriendController {
                 return next(new UnprocessableEntityError({ message: 'You cannot accept yourself' }))
             }
 
-            const [isFriend, isMakeFriendRequest] = await Promise.all([
-                FriendService.checkIsFriend(decoded.sub, Number(id)),
-                FriendService.sendMakeFriendRequest({ userId: Number(id), friendId: decoded.sub }),
-            ])
-
-            if (isFriend) {
-                return next(new ConflictError({ message: 'User is already your friend' }))
-            }
-
-            if (!isMakeFriendRequest) {
-                return next(new NotFoundError({ message: 'Friend request not found' }))
-            }
-
-            const updateSuccess = await isMakeFriendRequest.update({ status: 'accepted' })
-
-            if (!updateSuccess) {
-                return next(new InternalServerError({ message: 'Failed to accept friend request' }))
-            }
-
-            // Delete notification when accept friend request
-            await Notification.destroy({
-                where: {
-                    recipient_id: decoded.sub,
-                    sender_id: Number(id),
-                    type: 'friend_request',
-                },
-            })
-
-            const notificationData = await this.createNotification({
-                recipientId: Number(id),
-                type: 'accept_friend_request',
-                currentUserId: decoded.sub,
-                message: 'đã chấp nhận lời mời kết bạn',
-            })
-
-            const hasConversation = await Conversation.findOne({
-                where: {
-                    id: {
-                        [Op.in]: sequelize.literal(`(
-                            SELECT conversation_id
-                            FROM conversation_members
-                            WHERE user_id IN (${decoded.sub}, ${Number(id)})
-                            GROUP BY conversation_id
-                            HAVING COUNT(DISTINCT user_id) = 2
-                        )`),
-                    },
-                    is_group: false,
-                },
-                attributes: ['id'],
-            })
-
-            if (!hasConversation) {
-                await sequelize.transaction(async () => {
-                    // create conversation between two users
-                    const conversation = await Conversation.create({
-                        uuid: uuidv4(),
-                        is_group: false,
-                    })
-
-                    // add two members to conversation
-                    if (conversation.id) {
-                        await ConversationMember.create({
-                            conversation_id: conversation.id,
-                            user_id: decoded.sub,
-                            joined_at: new Date(),
-                        })
-
-                        await ConversationMember.create({
-                            conversation_id: conversation.id,
-                            user_id: Number(id),
-                            joined_at: new Date(),
-                        })
-                    }
-                })
-            }
-
-            const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${Number(id)}`, 0, -1)
-
-            if (socketIds && socketIds.length > 0) {
-                socketManager.io?.to(socketIds).emit(SocketEvent.NEW_NOTIFICATION, notificationData)
-            }
+            await FriendService.acceptFriend({ currentUserId: decoded.sub, userId: Number(id) })
 
             res.sendStatus(200)
         } catch (error: any) {
-            return next(new InternalServerError({ message: error.message }))
+            return next(error)
         }
     }
 
@@ -341,42 +96,11 @@ class FriendController {
                 return next(new UnprocessableEntityError({ message: 'You cannot reject yourself' }))
             }
 
-            // Check if the user has sent a friend request to the this user
-            const isMakeFriendRequest = await FriendService.sendMakeFriendRequest({
-                userId: Number(sender_id),
-                friendId: decoded.sub,
-                toWay: false,
-            })
-
-            if (!isMakeFriendRequest) {
-                return next(new NotFoundError({ message: 'Friend request not found' }))
-            }
-
-            const notification = await Notification.findOne({
-                where: { recipient_id: decoded.sub, sender_id: Number(sender_id), type: 'friend_request' },
-                attributes: ['id'],
-            })
-
-            await Promise.all([
-                isMakeFriendRequest.destroy(),
-                Notification.destroy({
-                    where: {
-                        id: notification?.id,
-                    },
-                }),
-            ])
-
-            const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${Number(decoded.sub)}`, 0, -1)
-
-            if (socketIds && socketIds.length > 0) {
-                socketManager.io
-                    ?.to(socketIds)
-                    .emit(SocketEvent.REMOVE_NOTIFICATION, { notificationId: notification?.id })
-            }
+            await FriendService.rejectFriendRequest({ currentUserId: decoded.sub, senderId: Number(sender_id) })
 
             res.sendStatus(200)
         } catch (error: any) {
-            return next(new InternalServerError({ message: error.message }))
+            return next(error)
         }
     }
 
@@ -394,24 +118,11 @@ class FriendController {
                 return next(new UnprocessableEntityError({ message: 'You cannot unfriend yourself' }))
             }
 
-            const isFriend = await FriendService.checkIsFriend(decoded.sub, Number(id))
-
-            if (!isFriend) {
-                return next(new UnprocessableEntityError({ message: 'User is not your friend' }))
-            }
-
-            await Friendships.destroy({
-                where: {
-                    [Op.or]: [
-                        { user_id: decoded.sub, friend_id: Number(id) },
-                        { user_id: Number(id), friend_id: decoded.sub },
-                    ],
-                },
-            })
+            await FriendService.unfriend({ currentUserId: decoded.sub, friendId: Number(id) })
 
             res.sendStatus(200)
         } catch (error: any) {
-            return next(new InternalServerError({ message: error.message }))
+            return next(error)
         }
     }
 
@@ -429,44 +140,11 @@ class FriendController {
                 return next(new UnprocessableEntityError({ message: 'You cannot cancel friend request to yourself' }))
             }
 
-            const isMakeFriendRequest = await FriendService.sendMakeFriendRequest({
-                userId: decoded.sub,
-                friendId: Number(id),
-            })
-
-            if (!isMakeFriendRequest) {
-                return next(new NotFoundError({ message: 'Friend request not found' }))
-            }
-
-            const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${Number(id)}`, 0, -1)
-
-            const notification = await Notification.findOne({
-                where: {
-                    recipient_id: id,
-                    sender_id: decoded.sub,
-                    type: 'friend_request',
-                },
-                attributes: ['id'],
-            })
-
-            if (socketIds && socketIds.length > 0) {
-                socketManager.io
-                    ?.to(socketIds)
-                    .emit(SocketEvent.REMOVE_NOTIFICATION, { notificationId: notification?.id })
-            }
-
-            if (notification) {
-                await Promise.all([
-                    isMakeFriendRequest.destroy(),
-                    Notification.destroy({ where: { id: notification?.id } }),
-                ])
-            } else {
-                await isMakeFriendRequest.destroy()
-            }
+            await FriendService.cancelFriendRequest({ currentUserId: decoded.sub, userId: Number(id) })
 
             res.sendStatus(200)
         } catch (error: any) {
-            return next(new InternalServerError({ message: error.message }))
+            return next(error)
         }
     }
 
@@ -480,25 +158,10 @@ class FriendController {
                 return next(new UnprocessableEntityError({ message: 'Page and per_page are required' }))
             }
 
-            // Danh sách lời mời kết bạn
-            const { rows: friendInvitations, count } = await Friendships.findAndCountAll<any>({
-                distinct: true,
-                where: {
-                    [Op.and]: [{ status: 'pending' }, { friend_id: decoded.sub }],
-                },
-                include: {
-                    model: User,
-                    as: 'user',
-                    required: true,
-                    where: {
-                        id: Sequelize.col('Friendships.user_id'),
-                    },
-                    attributes: {
-                        exclude: ['password', 'email'],
-                    },
-                },
-                limit: Number(per_page),
-                offset: (Number(page) - 1) * Number(per_page),
+            const { friendInvitations, count } = await FriendService.getFriendInvitation({
+                currentUserId: decoded.sub,
+                page: Number(page),
+                per_page: Number(per_page),
             })
 
             res.json({
@@ -514,7 +177,7 @@ class FriendController {
                 },
             })
         } catch (error: any) {
-            return next(new InternalServerError({ message: error.message }))
+            return next(error)
         }
     }
 }

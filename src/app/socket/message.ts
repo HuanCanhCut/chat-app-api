@@ -11,6 +11,8 @@ import { sequelize } from '~/config/database'
 import MessageReaction from '../models/MessageReactionModel'
 import socketManager from './socketManager'
 import MessageService from '../services/MessageService'
+import logger from '~/logger/logger'
+
 const listen = () => {
     const socket = socketManager.socket
     const io = socketManager.io
@@ -147,7 +149,7 @@ const listen = () => {
             if (transaction) {
                 await transaction.rollback()
             }
-            console.log(error)
+            logger.error('SAVE_MESSAGE_TO_DATABASE', error)
         }
     }
 
@@ -250,123 +252,133 @@ const listen = () => {
         type: 'text' | 'image' | 'icon'
         parent_id: number | null
     }) => {
-        const conversation = await Conversation.findOne({
-            attributes: ['id'],
-            where: { uuid: conversationUuid },
-        })
-
-        if (!conversation?.dataValues?.id) {
-            // emit fail message status
-            return
-        }
-
-        const userIds = await getUsersOnlineStatus(conversationUuid)
-
-        const newMessage = await saveMessageToDatabase({
-            conversationId: conversation.dataValues.id,
-            senderId: currentUserId,
-            userIds,
-            message,
-            type,
-            parent_id,
-        })
-
-        if (!newMessage) {
-            // emit fail message status
-            return
-        }
-
-        // emit message to room
-        const conversationCache = await redisClient.get(`${RedisKey.CONVERSATION_UUID}${conversationUuid}`)
-
-        if (conversationCache) {
-            const conversation = {
-                ...JSON.parse(conversationCache),
-                last_message: newMessage,
-            }
-
-            io.to(conversationUuid).emit(SocketEvent.NEW_MESSAGE, { conversation })
-        } else {
-            // get conversation from database
-            const conversation = await getConversation({
-                conversationUuid,
+        try {
+            const conversation = await Conversation.findOne({
+                attributes: ['id'],
+                where: { uuid: conversationUuid },
             })
 
-            if (conversation) {
-                // Groups can always change information about members, avatars... so they can't be cached.
-                if (!conversation.get('is_group')) {
-                    redisClient.set(`${RedisKey.CONVERSATION_UUID}${conversationUuid}`, JSON.stringify(conversation), {
-                        // 1 hour
-                        EX: 60 * 60,
-                    })
-                }
+            if (!conversation?.dataValues?.id) {
+                // emit fail message status
+                return
+            }
 
-                const conversationData = {
-                    ...conversation.dataValues,
+            const userIds = await getUsersOnlineStatus(conversationUuid)
+
+            const newMessage = await saveMessageToDatabase({
+                conversationId: conversation.dataValues.id,
+                senderId: currentUserId,
+                userIds,
+                message,
+                type,
+                parent_id,
+            })
+
+            if (!newMessage) {
+                // emit fail message status
+                return
+            }
+
+            // emit message to room
+            const conversationCache = await redisClient.get(`${RedisKey.CONVERSATION_UUID}${conversationUuid}`)
+
+            if (conversationCache) {
+                const conversation = {
+                    ...JSON.parse(conversationCache),
                     last_message: newMessage,
                 }
 
-                io.to(conversationUuid).emit(SocketEvent.NEW_MESSAGE, { conversation: conversationData })
-            }
-        }
+                io.to(conversationUuid).emit(SocketEvent.NEW_MESSAGE, { conversation })
+            } else {
+                // get conversation from database
+                const conversation = await getConversation({
+                    conversationUuid,
+                })
 
-        for (const user of userIds) {
-            if (user.id === currentUserId) {
-                continue
-            }
-
-            const isUserInRoom = await redisClient.get(`user_${user.id}_in_room_${conversationUuid}`)
-
-            // user online but not in the room
-            if (!isUserInRoom && user.is_online) {
-                const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${user.id}`, 0, -1)
-
-                if (socketIds && socketIds.length > 0) {
-                    const conversationCache = await redisClient.get(`${RedisKey.CONVERSATION_UUID}${conversationUuid}`)
-
-                    if (conversationCache) {
-                        const conversation = {
-                            ...JSON.parse(conversationCache),
-                            last_message: newMessage,
-                        }
-                        io.to(socketIds).emit(SocketEvent.NEW_MESSAGE, { conversation })
-                    } else {
-                        try {
-                            // get conversation from database
-                            const conversation = await getConversation({
-                                conversationUuid,
-                            })
-
-                            if (conversation) {
-                                redisClient.set(
-                                    `${RedisKey.CONVERSATION_UUID}${conversationUuid}`,
-                                    JSON.stringify(conversation),
-                                    {
-                                        // 1 hour
-                                        EX: 60 * 60,
-                                    },
-                                )
-
-                                const conversationData = {
-                                    ...conversation.dataValues,
-                                    last_message: newMessage,
-                                }
-
-                                for (const socketId of socketIds) {
-                                    io.to(socketId).emit(SocketEvent.NEW_MESSAGE, {
-                                        conversation: conversationData,
-                                    })
-                                }
-                            }
-                        } catch (error) {
-                            console.log(error)
-                        }
+                if (conversation) {
+                    // Groups can always change information about members, avatars... so they can't be cached.
+                    if (!conversation.get('is_group')) {
+                        redisClient.set(
+                            `${RedisKey.CONVERSATION_UUID}${conversationUuid}`,
+                            JSON.stringify(conversation),
+                            {
+                                // 1 hour
+                                EX: 60 * 60,
+                            },
+                        )
                     }
-                } else {
-                    // delete socket id from redis if socket id not exist
-                    redisClient.lRem(`${RedisKey.SOCKET_ID}${user.id}`, 0, socket.id)
+
+                    const conversationData = {
+                        ...conversation.dataValues,
+                        last_message: newMessage,
+                    }
+
+                    io.to(conversationUuid).emit(SocketEvent.NEW_MESSAGE, { conversation: conversationData })
                 }
             }
+
+            for (const user of userIds) {
+                if (user.id === currentUserId) {
+                    continue
+                }
+
+                const isUserInRoom = await redisClient.get(`user_${user.id}_in_room_${conversationUuid}`)
+
+                // user online but not in the room
+                if (!isUserInRoom && user.is_online) {
+                    const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${user.id}`, 0, -1)
+
+                    if (socketIds && socketIds.length > 0) {
+                        const conversationCache = await redisClient.get(
+                            `${RedisKey.CONVERSATION_UUID}${conversationUuid}`,
+                        )
+
+                        if (conversationCache) {
+                            const conversation = {
+                                ...JSON.parse(conversationCache),
+                                last_message: newMessage,
+                            }
+                            io.to(socketIds).emit(SocketEvent.NEW_MESSAGE, { conversation })
+                        } else {
+                            try {
+                                // get conversation from database
+                                const conversation = await getConversation({
+                                    conversationUuid,
+                                })
+
+                                if (conversation) {
+                                    redisClient.set(
+                                        `${RedisKey.CONVERSATION_UUID}${conversationUuid}`,
+                                        JSON.stringify(conversation),
+                                        {
+                                            // 1 hour
+                                            EX: 60 * 60,
+                                        },
+                                    )
+
+                                    const conversationData = {
+                                        ...conversation.dataValues,
+                                        last_message: newMessage,
+                                    }
+
+                                    for (const socketId of socketIds) {
+                                        io.to(socketId).emit(SocketEvent.NEW_MESSAGE, {
+                                            conversation: conversationData,
+                                        })
+                                    }
+                                }
+                            } catch (error) {
+                                console.log(error)
+                            }
+                        }
+                    } else {
+                        // delete socket id from redis if socket id not exist
+                        redisClient.lRem(`${RedisKey.SOCKET_ID}${user.id}`, 0, socket.id)
+                    }
+                }
+            }
+        } catch (error) {
+            logger.error('NEW_MESSAGE', error)
         }
     }
 
@@ -531,7 +543,7 @@ const listen = () => {
                 }
             }
         } catch (error) {
-            console.log(error)
+            logger.error('READ_MESSAGE', error)
         }
     }
 
@@ -635,7 +647,7 @@ const listen = () => {
 
             io.to(conversation_uuid).emit(SocketEvent.REACT_MESSAGE, { reaction, top_reactions, total_reactions })
         } catch (error) {
-            console.log(error)
+            logger.error('REACT_MESSAGE', error)
         }
     }
 
@@ -650,71 +662,75 @@ const listen = () => {
         user_reaction_id: number
         react: string
     }) => {
-        const conversationMembers = await User.findAll({
-            attributes: ['id'],
-            include: [
-                {
-                    model: ConversationMember,
-                    required: true,
-                    as: 'conversation_members',
-                    attributes: ['user_id'],
-                    include: [
-                        {
-                            model: Conversation,
-                            required: true,
-                            as: 'conversation',
-                            where: { uuid: conversation_uuid },
-                            attributes: ['id'],
-                        },
-                    ],
-                },
-            ],
-        })
-
-        const isAMember = conversationMembers.some((member) => member.get('id') === user_reaction_id)
-
-        if (!isAMember) {
-            return
-        }
-
-        const [, top_reactions, total_reactions] = await Promise.all([
-            await MessageReaction.destroy({
-                where: {
-                    message_id: message_id,
-                    user_id: user_reaction_id,
-                },
-            }),
-
-            MessageReaction.findAll({
-                where: {
-                    message_id: message_id,
-                },
+        try {
+            const conversationMembers = await User.findAll({
+                attributes: ['id'],
                 include: [
                     {
-                        model: User,
-                        as: 'user_reaction',
-                        attributes: [[sequelize.col('full_name'), 'user_reaction_name']],
+                        model: ConversationMember,
+                        required: true,
+                        as: 'conversation_members',
+                        attributes: ['user_id'],
+                        include: [
+                            {
+                                model: Conversation,
+                                required: true,
+                                as: 'conversation',
+                                where: { uuid: conversation_uuid },
+                                attributes: ['id'],
+                            },
+                        ],
                     },
                 ],
-                attributes: ['react'],
-                group: ['react'],
-                order: [[sequelize.fn('COUNT', sequelize.col('react')), 'DESC']],
-                limit: 2,
-            }),
+            })
 
-            MessageReaction.count({
-                where: {
-                    message_id: message_id,
-                },
-            }),
-        ])
+            const isAMember = conversationMembers.some((member) => member.get('id') === user_reaction_id)
 
-        io.to(conversation_uuid).emit(SocketEvent.REMOVE_REACTION, {
-            message_id,
-            react,
-            top_reactions,
-            total_reactions,
-        })
+            if (!isAMember) {
+                return
+            }
+
+            const [, top_reactions, total_reactions] = await Promise.all([
+                await MessageReaction.destroy({
+                    where: {
+                        message_id: message_id,
+                        user_id: user_reaction_id,
+                    },
+                }),
+
+                MessageReaction.findAll({
+                    where: {
+                        message_id: message_id,
+                    },
+                    include: [
+                        {
+                            model: User,
+                            as: 'user_reaction',
+                            attributes: [[sequelize.col('full_name'), 'user_reaction_name']],
+                        },
+                    ],
+                    attributes: ['react'],
+                    group: ['react'],
+                    order: [[sequelize.fn('COUNT', sequelize.col('react')), 'DESC']],
+                    limit: 2,
+                }),
+
+                MessageReaction.count({
+                    where: {
+                        message_id: message_id,
+                    },
+                }),
+            ])
+
+            io.to(conversation_uuid).emit(SocketEvent.REMOVE_REACTION, {
+                message_id,
+                react,
+                top_reactions,
+                total_reactions,
+            })
+        } catch (error) {
+            logger.error('REMOVE_REACTION', error)
+        }
     }
 
     const DISCONNECT = async () => {

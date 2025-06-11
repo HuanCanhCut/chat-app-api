@@ -2,16 +2,20 @@ import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequ
 
 import { sequelize } from '../../config/database'
 import handleChildrenAfterFindHook from '../helper/childrenAfterFindHook'
+import MessageStatus from './MessageStatusModel'
 
 class Message extends Model<InferAttributes<Message>, InferCreationAttributes<Message>> {
     declare id?: number
     declare conversation_id: number
     declare sender_id: number
-    declare content: string
+    declare content: string | null
+    declare is_read?: boolean
     declare type?: 'text' | 'image' | 'icon'
     declare created_at?: Date
     declare updated_at?: Date
     declare parent_id?: number | null
+    declare parent?: Message | null
+    declare message_status?: MessageStatus[] | null
 }
 
 Message.init(
