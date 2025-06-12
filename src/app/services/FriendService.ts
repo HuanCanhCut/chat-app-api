@@ -7,9 +7,8 @@ import { AppError, ConflictError, InternalServerError, NotFoundError, Unprocessa
 import NotificationService from './NotificationService'
 import { redisClient } from '~/config/redis'
 import { RedisKey } from '~/enum/redis'
-import socketManager from '../socket/socketManager'
 import { SocketEvent } from '~/enum/socketEvent'
-
+import { ioInstance } from '~/config/socket'
 interface SendMakeFriendRequestProps {
     userId: number
     friendId: number
@@ -100,7 +99,7 @@ class FriendService {
             const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${Number(friendId)}`, 0, -1)
 
             if (socketIds && socketIds.length > 0) {
-                socketManager.io?.to(socketIds).emit(SocketEvent.NEW_NOTIFICATION, notificationData)
+                ioInstance?.to(socketIds).emit(SocketEvent.NEW_NOTIFICATION, notificationData)
             }
         } catch (error: any) {
             if (error instanceof AppError) {
@@ -302,7 +301,7 @@ class FriendService {
             const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${Number(userId)}`, 0, -1)
 
             if (socketIds && socketIds.length > 0) {
-                socketManager.io?.to(socketIds).emit(SocketEvent.NEW_NOTIFICATION, notificationData)
+                ioInstance.to(socketIds).emit(SocketEvent.NEW_NOTIFICATION, notificationData)
             }
         } catch (error: any) {
             if (error instanceof AppError) {
@@ -343,9 +342,7 @@ class FriendService {
             const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${Number(currentUserId)}`, 0, -1)
 
             if (socketIds && socketIds.length > 0) {
-                socketManager.io
-                    ?.to(socketIds)
-                    .emit(SocketEvent.REMOVE_NOTIFICATION, { notification_id: notification?.id })
+                ioInstance.to(socketIds).emit(SocketEvent.REMOVE_NOTIFICATION, { notification_id: notification?.id })
             }
         } catch (error: any) {
             if (error instanceof AppError) {
@@ -404,9 +401,7 @@ class FriendService {
             })
 
             if (socketIds && socketIds.length > 0) {
-                socketManager.io
-                    ?.to(socketIds)
-                    .emit(SocketEvent.REMOVE_NOTIFICATION, { notification_id: notification?.id })
+                ioInstance.to(socketIds).emit(SocketEvent.REMOVE_NOTIFICATION, { notification_id: notification?.id })
             }
 
             if (notification) {

@@ -6,8 +6,7 @@ import { ForBiddenError } from '../errors/errors'
 import { Conversation, ConversationMember } from '../models'
 import MessageReaction from '../models/MessageReactionModel'
 import { SocketEvent } from '~/enum/socketEvent'
-import socketManager from '../socket/socketManager'
-
+import { ioInstance } from '~/config/socket'
 class MessageService {
     lastReadMessageIdLiteral = (currentUserId: number, conversationId: number) => {
         return sequelize.literal(`
@@ -715,7 +714,7 @@ class MessageService {
             }
 
             if (revokeType === 'for-other') {
-                socketManager.io?.to(conversationUuid).emit(SocketEvent.MESSAGE_REVOKE, {
+                ioInstance.to(conversationUuid).emit(SocketEvent.MESSAGE_REVOKE, {
                     message_id: messageId,
                     conversation_uuid: conversationUuid,
                 })

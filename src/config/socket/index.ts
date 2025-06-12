@@ -1,8 +1,11 @@
 import { Server, Socket } from 'socket.io'
-
 import onConnection from '~/app/socket'
 
-const socketIO = (ioInstance: Server) => {
+let ioInstance: Server
+
+const socketIO = (io: Server) => {
+    ioInstance = io
+
     ioInstance.on('connection', (socketInstance: Socket) => {
         onConnection(socketInstance, ioInstance)
 
@@ -11,5 +14,7 @@ const socketIO = (ioInstance: Server) => {
         })
     })
 }
+
+export { ioInstance }
 
 export default socketIO
