@@ -12,11 +12,11 @@ import MessageReaction from '../models/MessageReactionModel'
 import socketManager from './socketManager'
 import MessageService from '../services/MessageService'
 import logger from '~/logger/logger'
+import { Socket } from 'socket.io'
 
-const listen = () => {
-    const socket = socketManager.socket
+const listen = (socket: Socket) => {
     const io = socketManager.io
-    const currentUserId = socketManager.decoded.sub
+    const currentUserId = socketManager.currentUserId(socket.id)
 
     const saveMessageToDatabase = async ({
         conversationId,

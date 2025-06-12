@@ -4,16 +4,16 @@ import { SocketEvent } from '~/enum/socketEvent'
 import { Friendships, User } from '../models'
 import FriendService from '~/app/services/FriendService'
 import socketManager from './socketManager'
-
+import { Socket } from 'socket.io'
 const FIVE_MINUTES = 60 * 5
 const FOUR_MINUTES = 60 * 4
 
 // Map to track timeouts for each user
 const userOfflineTimeouts = new Map<number, NodeJS.Timeout>()
 
-const userStatus = async () => {
-    const socket = socketManager.socket
-    const currentUserId = socketManager.decoded.sub
+const userStatus = async (socket: Socket) => {
+    const io = socketManager.io
+    const currentUserId = socketManager.currentUserId(socket.id)
 
     let userOnlineInterval: NodeJS.Timeout | undefined
 
@@ -25,7 +25,7 @@ const userStatus = async () => {
                 const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${friend.user.id}`, 0, -1)
 
                 if (socketIds && socketIds.length > 0) {
-                    socket.to(socketIds).emit(SocketEvent.USER_STATUS, {
+                    io.to(socketIds).emit(SocketEvent.USER_STATUS, {
                         user_id: currentUserId,
                         is_online: isOnline,
                         last_online_at: lastOnlineAt,

@@ -7,6 +7,12 @@ import userStatus from '~/app/socket/userStatus'
 import message from '~/app/socket/message'
 import socketManager from './socketManager'
 
+interface Decoded {
+    sub: string
+    exp: number
+    jti: string
+}
+
 const onConnection = (socketInstance: Socket, ioInstance: Server) => {
     console.log('\x1b[33m===>>>Socket connected', socketInstance.id, '\x1b[0m')
 
@@ -24,22 +30,19 @@ const onConnection = (socketInstance: Socket, ioInstance: Server) => {
             decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET as string)
             if (decoded) {
                 redisClient.rPush(`${RedisKey.SOCKET_ID}${decoded.sub}`, socketInstance.id)
+
+                // Set io to global
+                socketManager.setIO(ioInstance)
+
+                socketManager.setDecoded(socketInstance.id, decoded as Decoded)
+
+                // Listen event
+                message(socketInstance)
+                userStatus(socketInstance)
             }
         } catch (error) {
             console.log(error)
         }
-    }
-
-    // Set socket to global
-    socketManager.setSocket(socketInstance)
-    socketManager.setIO(ioInstance)
-
-    if (decoded) {
-        socketManager.setDecoded(decoded)
-
-        // Listen event
-        message()
-        userStatus()
     }
 
     socketInstance.on('disconnect', async () => {

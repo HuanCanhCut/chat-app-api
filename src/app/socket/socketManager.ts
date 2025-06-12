@@ -1,10 +1,15 @@
-import { Server, Socket } from 'socket.io'
+import { Server } from 'socket.io'
+
+interface Decoded {
+    sub: string
+    exp: number
+    jti: string
+}
 
 class SocketManager {
     private static instance: SocketManager
     private _io: Server | null = null
-    private _socket: Socket | null = null
-    private _decoded: any = null
+    private _decodedMap: Map<string, Decoded> = new Map()
 
     private constructor() {}
 
@@ -19,12 +24,8 @@ class SocketManager {
         this._io = io
     }
 
-    public setSocket(socket: Socket): void {
-        this._socket = socket
-    }
-
-    public setDecoded(decoded: any): void {
-        this._decoded = decoded
+    public setDecoded(socketId: string, decoded: Decoded): void {
+        this._decodedMap.set(socketId, decoded)
     }
 
     public get io(): Server {
@@ -34,18 +35,21 @@ class SocketManager {
         return this._io
     }
 
-    public get socket(): Socket {
-        if (!this._socket) {
-            throw new Error('Socket is not initialized')
-        }
-        return this._socket
-    }
-
-    public get decoded(): any {
-        if (!this._decoded) {
+    public decoded(socketId: string): Decoded | undefined {
+        if (!this._decodedMap.has(socketId)) {
             throw new Error('Decoded is not initialized')
         }
-        return this._decoded
+
+        return this._decodedMap.get(socketId)
+    }
+
+    public currentUserId(socketId: string): number {
+        const decoded = this.decoded(socketId)
+        if (!decoded) {
+            throw new Error('Decoded is not initialized')
+        }
+
+        return Number(decoded.sub)
     }
 }
 
