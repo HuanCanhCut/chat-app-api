@@ -222,12 +222,12 @@ class SocketMessageService {
         return userIds
     }
 
-    JOIN_ROOM = async (conversationUuid: string) => {
+    JOIN_ROOM = async (conversation_uuid: string) => {
         // Get all socket ids of user from Redis
         const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${this.currentUserId}`, 0, -1)
 
         // if user in room, not join again
-        const userInRoom = await redisClient.get(`user_${this.currentUserId}_in_room_${conversationUuid}`)
+        const userInRoom = await redisClient.get(`user_${this.currentUserId}_in_room_${conversation_uuid}`)
 
         if (userInRoom) {
             return
@@ -237,22 +237,22 @@ class SocketMessageService {
             for (const socketId of socketIds) {
                 const userSocket = ioInstance.sockets.sockets.get(socketId) // Get socket from socketId
                 if (userSocket) {
-                    userSocket.join(conversationUuid) // Socket join room
+                    userSocket.join(conversation_uuid) // Socket join room
                 }
             }
         }
 
         // Save user status that has joined room to Redis
-        await redisClient.set(`user_${this.currentUserId}_in_room_${conversationUuid}`, 'true')
+        await redisClient.set(`user_${this.currentUserId}_in_room_${conversation_uuid}`, 'true')
     }
 
     NEW_MESSAGE = async ({
-        conversationUuid,
+        conversation_uuid,
         message,
         type = 'text',
         parent_id = null,
     }: {
-        conversationUuid: string
+        conversation_uuid: string
         message: string
         type: 'text' | 'image' | 'icon'
         parent_id: number | null
@@ -260,7 +260,7 @@ class SocketMessageService {
         try {
             const conversation = await Conversation.findOne({
                 attributes: ['id'],
-                where: { uuid: conversationUuid },
+                where: { uuid: conversation_uuid },
             })
 
             if (!conversation?.dataValues?.id) {
@@ -268,7 +268,7 @@ class SocketMessageService {
                 return
             }
 
-            const userIds = await this.getUsersOnlineStatus(conversationUuid)
+            const userIds = await this.getUsersOnlineStatus(conversation_uuid)
 
             const newMessage = await this.saveMessageToDatabase({
                 conversationId: conversation.dataValues.id,
@@ -285,7 +285,7 @@ class SocketMessageService {
             }
 
             // emit message to room
-            const conversationCache = await redisClient.get(`${RedisKey.CONVERSATION_UUID}${conversationUuid}`)
+            const conversationCache = await redisClient.get(`${RedisKey.CONVERSATION_UUID}${conversation_uuid}`)
 
             if (conversationCache) {
                 const conversation = {
@@ -293,18 +293,18 @@ class SocketMessageService {
                     last_message: newMessage,
                 }
 
-                ioInstance.to(conversationUuid).emit(SocketEvent.NEW_MESSAGE, { conversation })
+                ioInstance.to(conversation_uuid).emit(SocketEvent.NEW_MESSAGE, { conversation })
             } else {
                 // get conversation from database
                 const conversation = await this.getConversation({
-                    conversationUuid,
+                    conversationUuid: conversation_uuid,
                 })
 
                 if (conversation) {
                     // Groups can always change information about members, avatars... so they can't be cached.
                     if (!conversation.get('is_group')) {
                         redisClient.set(
-                            `${RedisKey.CONVERSATION_UUID}${conversationUuid}`,
+                            `${RedisKey.CONVERSATION_UUID}${conversation_uuid}`,
                             JSON.stringify(conversation),
                             {
                                 // 1 hour
@@ -318,7 +318,7 @@ class SocketMessageService {
                         last_message: newMessage,
                     }
 
-                    ioInstance.to(conversationUuid).emit(SocketEvent.NEW_MESSAGE, { conversation: conversationData })
+                    ioInstance.to(conversation_uuid).emit(SocketEvent.NEW_MESSAGE, { conversation: conversationData })
                 }
             }
 
@@ -327,7 +327,7 @@ class SocketMessageService {
                     continue
                 }
 
-                const isUserInRoom = await redisClient.get(`user_${user.id}_in_room_${conversationUuid}`)
+                const isUserInRoom = await redisClient.get(`user_${user.id}_in_room_${conversation_uuid}`)
 
                 // user online but not in the room
                 if (!isUserInRoom && user.is_online) {
@@ -335,7 +335,7 @@ class SocketMessageService {
 
                     if (socketIds && socketIds.length > 0) {
                         const conversationCache = await redisClient.get(
-                            `${RedisKey.CONVERSATION_UUID}${conversationUuid}`,
+                            `${RedisKey.CONVERSATION_UUID}${conversation_uuid}`,
                         )
 
                         if (conversationCache) {
@@ -348,12 +348,12 @@ class SocketMessageService {
                             try {
                                 // get conversation from database
                                 const conversation = await this.getConversation({
-                                    conversationUuid,
+                                    conversationUuid: conversation_uuid,
                                 })
 
                                 if (conversation) {
                                     redisClient.set(
-                                        `${RedisKey.CONVERSATION_UUID}${conversationUuid}`,
+                                        `${RedisKey.CONVERSATION_UUID}${conversation_uuid}`,
                                         JSON.stringify(conversation),
                                         {
                                             // 1 hour
@@ -387,7 +387,7 @@ class SocketMessageService {
         }
     }
 
-    READ_MESSAGE = async ({ conversationUuid, messageId }: { conversationUuid: string; messageId: number }) => {
+    READ_MESSAGE = async ({ conversation_uuid, message_id }: { conversation_uuid: string; message_id: number }) => {
         try {
             // update message status to read
             await sequelize.query(
@@ -407,7 +407,7 @@ class SocketMessageService {
             `,
                 {
                     replacements: {
-                        conversationUuid,
+                        conversationUuid: conversation_uuid,
                         receiverId: this.currentUserId,
                     },
                     type: QueryTypes.UPDATE,
@@ -415,7 +415,7 @@ class SocketMessageService {
             )
 
             const conversation = await Conversation.findOne({
-                where: { uuid: conversationUuid },
+                where: { uuid: conversation_uuid },
                 attributes: ['id'],
             })
 
@@ -423,27 +423,7 @@ class SocketMessageService {
                 return
             }
 
-            const message = await Message.findByPk(messageId, {
-                attributes: {
-                    exclude: ['content'],
-                    include: [
-                        [MessageService.isReadLiteral(this.currentUserId), 'is_read'],
-                        [
-                            sequelize.literal(`
-                                CASE 
-                                    WHEN EXISTS (
-                                        SELECT 1 FROM message_statuses 
-                                        WHERE message_statuses.message_id = Message.id
-                                        AND message_statuses.receiver_id = ${sequelize.escape(this.currentUserId)}
-                                        AND message_statuses.is_revoked = 1
-                                    ) THEN NULL 
-                                    ELSE Message.content 
-                                END
-                            `),
-                            'content',
-                        ],
-                    ],
-                },
+            const message = await Message.findByPk(message_id, {
                 include: [
                     {
                         model: MessageStatus,
@@ -496,26 +476,6 @@ class SocketMessageService {
                                 },
                             },
                         },
-                        attributes: {
-                            exclude: ['content'],
-                            include: [
-                                [MessageService.isReadLiteral(Number(this.currentUserId)), 'is_read'],
-                                [
-                                    sequelize.literal(`
-                                    CASE 
-                                        WHEN EXISTS (
-                                            SELECT 1 FROM message_statuses 
-                                            WHERE message_statuses.message_id = Message.id
-                                            AND message_statuses.receiver_id = ${sequelize.escape(this.currentUserId)}
-                                            AND message_statuses.is_revoked = 1
-                                        ) THEN NULL 
-                                        ELSE Message.content 
-                                    END
-                                `),
-                                    'content',
-                                ],
-                            ],
-                        },
                         include: [
                             {
                                 model: User,
@@ -527,11 +487,15 @@ class SocketMessageService {
                 ],
             })
 
+            if (message) {
+                await MessageService.replaceContentAndIsRead(message, this.currentUserId)
+            }
+
             ioInstance
-                .to(conversationUuid)
+                .to(conversation_uuid)
                 .emit(SocketEvent.UPDATE_READ_MESSAGE, { message, user_read_id: this.currentUserId })
 
-            const userIds = await this.getUsersOnlineStatus(conversationUuid)
+            const userIds = await this.getUsersOnlineStatus(conversation_uuid)
 
             for (const user of userIds) {
                 if (user.id === this.currentUserId) {

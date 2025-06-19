@@ -30,7 +30,7 @@ export interface MessageStatus extends Timestamp {
     message_id: number
     receiver_id: number
     status: 'sent' | 'delivered' | 'read' | 'sending'
-    receiver: UserModel<'last_read_message_id', number> & { last_read_message_id: number }
+    receiver: UserModel & { last_read_message_id: number }
     is_revoked: boolean
     revoke_type: 'for-other' | 'for-me'
     read_at: Date
