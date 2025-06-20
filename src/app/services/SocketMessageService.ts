@@ -706,6 +706,25 @@ class SocketMessageService {
         }
     }
 
+    MESSAGE_TYPING = async ({
+        conversation_uuid,
+        user_id,
+        is_typing,
+    }: {
+        conversation_uuid: string
+        user_id: number
+        is_typing: boolean
+    }) => {
+        try {
+            this.socket.broadcast.to(conversation_uuid).emit(SocketEvent.MESSAGE_TYPING, {
+                user_id,
+                is_typing,
+            })
+        } catch (error) {
+            logger.error('MESSAGE_TYPING', error)
+        }
+    }
+
     DISCONNECT = async () => {
         // Delete all rooms that user has joined from Redis
         redisClient.keys(`user_${this.currentUserId}_in_room_*`).then((keys) => {

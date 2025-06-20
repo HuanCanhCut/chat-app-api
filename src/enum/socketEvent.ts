@@ -6,7 +6,7 @@ export enum SocketEvent {
     UPDATE_READ_MESSAGE = 'message:update_read',
     USER_STATUS = 'user:status',
     MESSAGE_REVOKE = 'message:revoke',
-    TYPING = 'message:typing',
+    MESSAGE_TYPING = 'message:typing',
 
     // ------------------------------- Notification -------------------------------
     NEW_NOTIFICATION = 'notification:new',
