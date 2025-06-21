@@ -719,6 +719,7 @@ class SocketMessageService {
             this.socket.broadcast.to(conversation_uuid).emit(SocketEvent.MESSAGE_TYPING, {
                 user_id,
                 is_typing,
+                conversation_uuid,
             })
         } catch (error) {
             logger.error('MESSAGE_TYPING', error)
