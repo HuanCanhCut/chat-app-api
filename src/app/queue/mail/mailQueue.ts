@@ -1,6 +1,6 @@
 import { Queue } from 'bullmq'
 import { connection } from '~/config/redis'
-import { QueueEnum } from '../../../enum/queue'
+import { QueueEnum } from '~/enum/queue'
 
 // Queue cho việc gửi email
 const mailQueue = new Queue(QueueEnum.MAIL, {

@@ -1,7 +1,7 @@
 import { Worker, Job } from 'bullmq'
 import { connection } from '~/config/redis'
 import sendVerificationCode from '../../helper/sendVerificationCode'
-import { QueueEnum } from '../../../enum/queue'
+import { QueueEnum } from '~/enum/queue'
 
 interface MailData {
     email: string

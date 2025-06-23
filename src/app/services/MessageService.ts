@@ -542,8 +542,8 @@ class MessageService {
                                 (
                                     SELECT message_id 
                                     FROM message_statuses 
-                                    WHERE message_statuses.is_revoked = 1
-                                    AND message_statuses.message_id = Message.id
+                                    WHERE message_statuses.message_id = Message.id 
+                                    AND message_statuses.is_revoked = 1
                                     AND message_statuses.receiver_id = ${sequelize.escape(currentUserId)}
                                 )
                             `),
@@ -718,6 +718,93 @@ class MessageService {
                     message_id: messageId,
                     conversation_uuid: conversationUuid,
                 })
+            }
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            }
+
+            throw new InternalServerError({ message: error.message })
+        }
+    }
+
+    async searchMessages({
+        q,
+        conversationUuid,
+        currentUserId,
+        page,
+        perPage,
+    }: {
+        q: string
+        conversationUuid: string
+        currentUserId: number
+        page: number
+        perPage: number
+    }) {
+        try {
+            // SELECT
+            //   messages.*
+            // FROM
+            //   messages
+            //   JOIN message_statuses ON messages.id = message_statuses.message_id
+            // WHERE
+            //   messages.id NOT IN (
+            //     SELECT
+            //       message_id
+            //     FROM
+            //       message_statuses
+            //     WHERE
+            //       message_statuses.message_id = 260 AND ((
+            //       message_statuses.revoke_type = 'for-me'
+            //       AND message_statuses.receiver_id = 2) OR message_statuses.revoke_type = 'for-other')
+            //   ) AND MATCH (content) AGAINST ('this*' IN BOOLEAN MODE)
+            //   AND type = 'text'
+
+            const conversation = await Conversation.findOne({
+                attributes: ['id'],
+                where: {
+                    uuid: conversationUuid,
+                },
+            })
+
+            const { rows: messages, count } = await Message.findAndCountAll({
+                distinct: true,
+                include: [
+                    {
+                        model: MessageStatus,
+                        as: 'message_status',
+                        required: true,
+                    },
+                ],
+                where: {
+                    conversation_id: conversation?.get('id'),
+                    [Op.not]: {
+                        id: {
+                            [Op.in]: sequelize.literal(`
+                                (
+                                    SELECT message_id
+                                    FROM message_statuses
+                                    WHERE message_statuses.message_id = Message.id  AND ((
+                                        message_statuses.revoke_type = 'for-me'
+                                        AND message_statuses.receiver_id = ${sequelize.escape(currentUserId)}
+                                    ) OR message_statuses.revoke_type = 'for-other')
+                                )
+                            `),
+                        },
+                    },
+                    type: 'text',
+                    [Op.and]: [
+                        sequelize.literal(`MATCH(content) AGAINST(${sequelize.escape(q + '*')} IN BOOLEAN MODE)`),
+                    ],
+                },
+                limit: Number(perPage),
+                offset: (Number(page) - 1) * Number(perPage),
+                order: [['id', 'DESC']],
+            })
+
+            return {
+                messages,
+                count,
             }
         } catch (error: any) {
             if (error instanceof AppError) {

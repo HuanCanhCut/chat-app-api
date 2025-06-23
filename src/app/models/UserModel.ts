@@ -52,7 +52,6 @@ User.init(
         nickname: {
             type: DataTypes.STRING,
             allowNull: false,
-            unique: true,
         },
         uuid: {
             type: DataTypes.STRING,
@@ -61,7 +60,6 @@ User.init(
         email: {
             type: DataTypes.STRING,
             allowNull: false,
-            unique: true,
             validate: {
                 isEmail: true,
             },
@@ -88,6 +86,14 @@ User.init(
                 fields: ['full_name', 'nickname'],
                 type: 'FULLTEXT',
                 name: 'user_search_idx',
+            },
+            {
+                unique: true,
+                fields: ['nickname'],
+            },
+            {
+                unique: true,
+                fields: ['email'],
             },
         ],
         tableName: 'users',

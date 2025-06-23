@@ -198,6 +198,51 @@ class MessageController {
             return next(new InternalServerError(error))
         }
     }
+
+    async searchMessages(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const { q, conversation_uuid, page, per_page } = req.query
+
+            const decoded = req.decoded
+
+            if (!q) {
+                return next(new UnprocessableEntityError({ message: 'Query is required' }))
+            }
+
+            if (!conversation_uuid) {
+                return next(new UnprocessableEntityError({ message: 'Conversation uuid is required' }))
+            }
+
+            if (!page || !per_page) {
+                return next(new UnprocessableEntityError({ message: 'Page and per_page are required' }))
+            }
+
+            if (Number(page) < 1 || Number(per_page) < 1) {
+                return next(new UnprocessableEntityError({ message: 'Page and per_page must be greater than 0' }))
+            }
+
+            const { messages, count } = await MessageService.searchMessages({
+                q: q as string,
+                conversationUuid: conversation_uuid as string,
+                currentUserId: decoded.sub,
+                page: Number(page),
+                perPage: Number(per_page),
+            })
+
+            res.json(
+                responseModel({
+                    data: messages,
+                    total: count,
+                    count: messages.length,
+                    current_page: Number(page),
+                    total_pages: Math.ceil(count / Number(per_page)),
+                    per_page: Number(per_page),
+                }),
+            )
+        } catch (error: any) {
+            return next(new InternalServerError(error))
+        }
+    }
 }
 
 export default new MessageController()

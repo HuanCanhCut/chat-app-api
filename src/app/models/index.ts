@@ -84,7 +84,7 @@ Message.belongsTo(Message, { foreignKey: 'parent_id', as: 'parent' })
 
 // Sync all models with the database
 sequelize
-    .sync({ alter: process.env.NODE_ENV === 'production' })
+    .sync({ alter: false })
     .then(() => {
         console.log('\x1b[36m%s\x1b[0m', 'All models were synchronized successfully.')
     })
