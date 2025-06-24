@@ -25,7 +25,7 @@ ${vietnamTime}
 const logger = winston.createLogger({
     level: 'error',
     format: combine(timestamp(), customFormat),
-    transports: [new winston.transports.File({ filename: logFile, level: 'error' })],
+    transports: [new winston.transports.File({ filename: logFile, level: 'error' }), new winston.transports.Console()],
 })
 
 export default logger

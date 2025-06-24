@@ -1,4 +1,6 @@
 import './config/env'
+import setupGlobalErrorHandling from './app/errors/globalError'
+setupGlobalErrorHandling()
 import express, { Request, Response } from 'express'
 import admin from 'firebase-admin'
 import cors from 'cors'
@@ -14,7 +16,6 @@ import { redisClient } from './config/redis'
 import serviceAccount from './config/firebase/serviceAccount'
 import errorHandler from './app/errors/errorHandler'
 import './app/queue/mail'
-
 const app = express()
 const server = http.createServer(app)
 
