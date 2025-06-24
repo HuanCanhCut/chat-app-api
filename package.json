@@ -9,7 +9,11 @@
         "lint": "eslint .",
         "lint:fix": "eslint . --fix",
         "prettier": "prettier --check .",
-        "prettier:fix": "prettier --write ."
+        "prettier:fix": "prettier --write .",
+        "migrate:dev": "NODE_ENV=development npx sequelize-cli db:migrate",
+        "migrate:prod": "NODE_ENV=production npx sequelize-cli db:migrate",
+        "migrate:undo:dev": "NODE_ENV=development npx sequelize-cli db:migrate:undo",
+        "migrate:seed:dev": "NODE_ENV=development npx sequelize-cli db:seed:all"
     },
     "keywords": [],
     "author": "",

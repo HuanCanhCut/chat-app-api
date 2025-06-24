@@ -1,7 +1,11 @@
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const dotenv = require('dotenv')
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const path = require('path')
 
-dotenv.config({ path: '.env.development' })
+// Load đúng file .env theo NODE_ENV
+const envFile = `.env.${process.env.NODE_ENV || 'development'}`
+dotenv.config({ path: path.resolve(process.cwd(), envFile) })
 
 module.exports = {
     development: {
