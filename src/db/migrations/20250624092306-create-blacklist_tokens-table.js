@@ -9,7 +9,7 @@ module.exports = {
          * Example:
          * await queryInterface.createTable('users', { id: Sequelize.INTEGER });
          */
-        await queryInterface.createTable('backlist_tokens', {
+        await queryInterface.createTable('blacklist_tokens', {
             id: {
                 type: Sequelize.INTEGER,
                 primaryKey: true,
@@ -43,6 +43,6 @@ module.exports = {
          * Example:
          * await queryInterface.dropTable('users');
          */
-        await queryInterface.dropTable('backlist_tokens')
+        await queryInterface.dropTable('blacklist_tokens')
     },
 }
