@@ -56,21 +56,6 @@ ConversationMember.init(
         },
     },
     {
-        indexes: [
-            {
-                name: 'idx_user_conversation',
-                fields: ['conversation_id', 'user_id'],
-                unique: true,
-            },
-            {
-                name: 'idx_user_id',
-                fields: ['user_id'],
-            },
-            {
-                name: 'idx_conversation_id',
-                fields: ['conversation_id'],
-            },
-        ],
         sequelize,
         tableName: 'conversation_members',
     },

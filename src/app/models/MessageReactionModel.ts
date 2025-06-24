@@ -46,16 +46,6 @@ MessageReaction.init(
     {
         tableName: 'message_reactions',
         sequelize,
-        indexes: [
-            {
-                name: 'idx_reaction_message_id_react',
-                fields: ['message_id', 'react'],
-            },
-            {
-                name: 'idx_reaction_message_id',
-                fields: ['message_id'],
-            },
-        ],
     },
 )
 

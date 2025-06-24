@@ -81,21 +81,6 @@ User.init(
         },
     },
     {
-        indexes: [
-            {
-                fields: ['full_name', 'nickname'],
-                type: 'FULLTEXT',
-                name: 'user_search_idx',
-            },
-            {
-                unique: true,
-                fields: ['nickname'],
-            },
-            {
-                unique: true,
-                fields: ['email'],
-            },
-        ],
         tableName: 'users',
         sequelize,
     },

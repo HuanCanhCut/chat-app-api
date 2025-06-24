@@ -11,7 +11,7 @@ class Conversation extends Model<InferAttributes<Conversation>, InferCreationAtt
     declare avatar?: string
     declare uuid: string
     declare last_message?: Message
-    declare emoji: string
+    declare emoji?: string
     declare created_at?: Date
     declare updated_at?: Date
 }
@@ -49,16 +49,6 @@ Conversation.init(
     {
         sequelize,
         tableName: 'conversations',
-        indexes: [
-            {
-                unique: true,
-                fields: ['uuid'],
-            },
-            {
-                fields: ['name'],
-                type: 'FULLTEXT',
-            },
-        ],
     },
 )
 

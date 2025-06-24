@@ -70,12 +70,6 @@ Message.init(
         },
     },
     {
-        indexes: [
-            {
-                fields: ['content'],
-                type: 'FULLTEXT',
-            },
-        ],
         tableName: 'messages',
         sequelize,
     },
