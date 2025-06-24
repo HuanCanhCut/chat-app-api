@@ -1,5 +1,5 @@
 import { AppError, NotFoundError } from '../errors/errors'
-import { Conversation, User } from '../models'
+import { Conversation, ConversationMember, User } from '../models'
 import cloudinary from '~/config/cloudinary'
 
 import { InternalServerError, UnprocessableEntityError } from '../errors/errors'
@@ -169,6 +169,22 @@ class UserService {
                         where: {
                             is_group: false,
                         },
+                        include: [
+                            {
+                                model: ConversationMember,
+                                as: 'conversation_members',
+                                required: true,
+                                where: { user_id: currentUserId },
+                                attributes: ['id'],
+                            },
+                            {
+                                model: ConversationMember,
+                                as: 'conversation_members',
+                                required: true,
+                                where: { user_id: Number(user.id) },
+                                attributes: ['id'],
+                            },
+                        ],
                     })
 
                     if (conversation) {
