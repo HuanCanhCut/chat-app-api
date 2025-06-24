@@ -3,7 +3,6 @@ import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequ
 import handleChildrenAfterFindHook from '../helper/childrenAfterFindHook'
 import { sequelize } from '../../config/database'
 import excludeBeforeFind from './hooks/excludeBeforeFind'
-import { ConversationModel } from '~/type'
 import { redisClient } from '~/config/redis'
 import { RedisKey } from '~/enum/redis'
 
@@ -23,7 +22,7 @@ class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
     declare created_at?: Date
     declare updated_at?: Date
     declare friend_request?: boolean
-    declare conversation?: ConversationModel
+    declare conversation?: { uuid: string }
     declare password?: string
     declare is_online?: boolean
 }

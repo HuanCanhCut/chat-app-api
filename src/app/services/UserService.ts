@@ -1,5 +1,5 @@
 import { AppError, NotFoundError } from '../errors/errors'
-import { Conversation, ConversationMember, User } from '../models'
+import { Conversation, User } from '../models'
 import cloudinary from '~/config/cloudinary'
 
 import { InternalServerError, UnprocessableEntityError } from '../errors/errors'
@@ -8,6 +8,7 @@ import uploadSingleFile from '../helper/uploadToCloudinary'
 import { MulterRequest } from '~/type'
 import FriendService from './FriendService'
 import SearchHistory from '../models/SearchHistoryModel'
+import ConversationService from './ConversationService'
 
 class UserService {
     async getUserById(id: number) {
@@ -164,31 +165,15 @@ class UserService {
                 user.setDataValue('friend_request', friendRequest ? true : false)
 
                 if (isFriend) {
-                    const conversation = await Conversation.findOne({
-                        attributes: ['uuid'],
-                        where: {
-                            is_group: false,
-                        },
-                        include: [
-                            {
-                                model: ConversationMember,
-                                as: 'conversation_members',
-                                required: true,
-                                where: { user_id: currentUserId },
-                                attributes: ['id'],
-                            },
-                            {
-                                model: ConversationMember,
-                                as: 'conversation_members',
-                                required: true,
-                                where: { user_id: Number(user.id) },
-                                attributes: ['id'],
-                            },
-                        ],
-                    })
+                    const conversation = (await ConversationService.generalConversation({
+                        currentUserId,
+                        targetUserId: Number(user.id),
+                    })) as Conversation
 
                     if (conversation) {
-                        user.dataValues.conversation = conversation
+                        user.setDataValue('conversation', {
+                            uuid: conversation.uuid,
+                        })
                     }
                 }
             }

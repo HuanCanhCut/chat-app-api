@@ -4,6 +4,7 @@ import { UnprocessableEntityError } from '../errors/errors'
 
 import { IRequest } from '~/type'
 import FriendService from '~/app/services/FriendService'
+import ConversationService from '../services/ConversationService'
 
 class FriendController {
     // [POST] /users/:id/add
@@ -43,8 +44,23 @@ class FriendController {
                 per_page: Number(per_page),
             })
 
+            const friendsWithConversation = await Promise.all(
+                friends.map(async (friend) => {
+                    const conversation = await ConversationService.generalConversation({
+                        currentUserId: decoded.sub,
+                        targetUserId: friend.get('user').id,
+                    })
+
+                    if (conversation) {
+                        friend.get('user').setDataValue('conversation', conversation)
+                    }
+
+                    return friend
+                }),
+            )
+
             res.json({
-                data: friends,
+                data: friendsWithConversation,
                 meta: {
                     pagination: {
                         total: count,

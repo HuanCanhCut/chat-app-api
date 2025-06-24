@@ -1,11 +1,47 @@
 import { AppError, ForBiddenError, InternalServerError } from '../errors/errors'
 import Conversation from '../models/ConversationModel'
 import { ConversationMember, User } from '../models'
-import { Op } from 'sequelize'
+import { Op, QueryTypes } from 'sequelize'
 import { sequelize } from '~/config/database'
 import MessageService from '../services/MessageService'
 
 class ConversationService {
+    async generalConversation({ currentUserId, targetUserId }: { currentUserId: number; targetUserId: number }) {
+        try {
+            const [conversation] = await sequelize.query(
+                `
+                    SELECT
+                        c.uuid
+                    FROM
+                        conversation_members cm1
+                    JOIN conversation_members cm2 ON cm1.conversation_id = cm2.conversation_id
+                    JOIN conversations c ON c.id = cm1.conversation_id
+                    WHERE
+                        cm1.user_id = :currentUserId
+                    AND cm2.user_id = :targetUserId
+                    AND c.is_group = 0
+                    AND cm1.user_id != cm2.user_id
+                    LIMIT 1
+                `,
+                {
+                    type: QueryTypes.SELECT,
+                    replacements: {
+                        currentUserId,
+                        targetUserId,
+                    },
+                },
+            )
+
+            return conversation
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            }
+
+            throw new InternalServerError({ message: error.message })
+        }
+    }
+
     async getConversations({
         currentUserId,
         page,
