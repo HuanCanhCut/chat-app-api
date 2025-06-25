@@ -742,24 +742,6 @@ class MessageService {
         perPage: number
     }) {
         try {
-            // SELECT
-            //   messages.*
-            // FROM
-            //   messages
-            //   JOIN message_statuses ON messages.id = message_statuses.message_id
-            // WHERE
-            //   messages.id NOT IN (
-            //     SELECT
-            //       message_id
-            //     FROM
-            //       message_statuses
-            //     WHERE
-            //       message_statuses.message_id = 260 AND ((
-            //       message_statuses.revoke_type = 'for-me'
-            //       AND message_statuses.receiver_id = 2) OR message_statuses.revoke_type = 'for-other')
-            //   ) AND MATCH (content) AGAINST ('this*' IN BOOLEAN MODE)
-            //   AND type = 'text'
-
             const conversation = await Conversation.findOne({
                 attributes: ['id'],
                 where: {
@@ -774,6 +756,14 @@ class MessageService {
                         model: MessageStatus,
                         as: 'message_status',
                         required: true,
+                    },
+                    {
+                        model: User,
+                        as: 'sender',
+                        required: true,
+                        attributes: {
+                            exclude: ['password', 'email'],
+                        },
                     },
                 ],
                 where: {

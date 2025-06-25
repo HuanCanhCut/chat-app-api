@@ -118,6 +118,9 @@ class FriendService {
                         model: User,
                         as: 'user',
                         required: true,
+                        attributes: {
+                            exclude: ['password', 'email'],
+                        },
                     },
                 ],
                 where: {

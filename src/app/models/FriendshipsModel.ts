@@ -1,7 +1,6 @@
 import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
 
 import { sequelize } from '../../config/database'
-import excludeWithInclude from './hooks/excludeWithInclude'
 import handleChildrenAfterFindHook from '../helper/childrenAfterFindHook'
 
 class Friendships extends Model<InferAttributes<Friendships>, InferCreationAttributes<Friendships>> {
@@ -49,11 +48,6 @@ Friendships.init(
         underscored: true,
     },
 )
-
-// Remove password and email from User model
-Friendships.beforeFind((options) => {
-    excludeWithInclude(options)
-})
 
 Friendships.addHook('afterFind', handleChildrenAfterFindHook)
 
