@@ -13,6 +13,7 @@ class ConversationMember extends Model<
     declare nickname?: string
     declare role?: 'admin' | 'leader' | 'member'
     declare joined_at?: Date
+    declare added_by_id?: number
     declare created_at?: Date
     declare updated_at?: Date
 }
@@ -53,6 +54,15 @@ ConversationMember.init(
             type: DataTypes.DATE,
             allowNull: false,
             defaultValue: DataTypes.NOW,
+        },
+        added_by_id: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            defaultValue: null,
+            references: {
+                model: 'users',
+                key: 'id',
+            },
         },
     },
     {

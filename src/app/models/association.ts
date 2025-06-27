@@ -53,6 +53,9 @@ const associations = () => {
     User.hasMany(ConversationMember, { foreignKey: 'user_id', as: 'conversation_members' })
     ConversationMember.belongsTo(User, { foreignKey: 'user_id', as: 'user' })
 
+    User.hasMany(ConversationMember, { foreignKey: 'added_by_id', as: 'added_by' })
+    ConversationMember.belongsTo(User, { foreignKey: 'added_by_id', as: 'added_by' })
+
     /**
      * Message model
      */

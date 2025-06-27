@@ -158,6 +158,13 @@ class ConversationService {
                                     exclude: ['password', 'email'],
                                 },
                             },
+                            {
+                                model: User,
+                                as: 'added_by',
+                                attributes: {
+                                    exclude: ['password', 'email'],
+                                },
+                            },
                         ],
                     },
                 ],
