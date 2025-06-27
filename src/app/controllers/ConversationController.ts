@@ -1,9 +1,11 @@
-import { Response, NextFunction } from 'express'
-import { IRequest } from '~/type'
+import { NextFunction, Response } from 'express'
+
 import { UnprocessableEntityError } from '../errors/errors'
 import ConversationService from '../services/ConversationService'
+import { IRequest } from '~/type'
 
 class ConversationController {
+    // [GET] /api/conversations
     async getConversations(req: IRequest, res: Response, next: NextFunction) {
         try {
             const decoded = req.decoded
@@ -26,6 +28,7 @@ class ConversationController {
         }
     }
 
+    // [GET] /api/conversations/:uuid
     async getConversationByUuid(req: IRequest, res: Response, next: NextFunction) {
         try {
             const decoded = req.decoded
@@ -43,6 +46,7 @@ class ConversationController {
         }
     }
 
+    // [GET] /api/conversations/search
     async searchConversation(req: IRequest, res: Response, next: NextFunction) {
         try {
             const decoded = req.decoded

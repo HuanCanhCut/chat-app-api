@@ -1,4 +1,5 @@
 import { Socket } from 'socket.io'
+
 import SocketUserStatusService from '../services/SocketUserStatusService'
 
 class userStatusListener {

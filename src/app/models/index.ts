@@ -1,17 +1,17 @@
 import { sequelize } from '../../config/database'
+import associations from './association'
+import BlacklistToken from './BlacklistTokenModel'
+import ConversationMember from './ConversationMemberModel'
+import Conversation from './ConversationModel'
+import Friendships from './FriendshipsModel'
+import Message from './MessageModel'
+import MessageReaction from './MessageReactionModel'
+import MessageStatus from './MessageStatusModel'
+import Notification from './NotificationModel'
+import RefreshToken from './RefreshTokenModel'
+import SearchHistory from './SearchHistoryModel'
 // Import models
 import User from './UserModel'
-import RefreshToken from './RefreshTokenModel'
-import BlacklistToken from './BlacklistTokenModel'
-import Friendships from './FriendshipsModel'
-import Notification from './NotificationModel'
-import SearchHistory from './SearchHistoryModel'
-import Conversation from './ConversationModel'
-import ConversationMember from './ConversationMemberModel'
-import Message from './MessageModel'
-import MessageStatus from './MessageStatusModel'
-import MessageReaction from './MessageReactionModel'
-import associations from './association'
 
 associations()
 
@@ -25,15 +25,15 @@ sequelize
 
 // Export all models
 export {
-    User,
-    RefreshToken,
     BlacklistToken,
-    Friendships,
-    Notification,
     Conversation,
     ConversationMember,
+    Friendships,
     Message,
-    MessageStatus,
     MessageReaction,
+    MessageStatus,
+    Notification,
+    RefreshToken,
     SearchHistory,
+    User,
 }

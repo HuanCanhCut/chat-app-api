@@ -1,14 +1,14 @@
-import { AppError, NotFoundError } from '../errors/errors'
-import { Conversation, User } from '../models'
-import cloudinary from '~/config/cloudinary'
-
-import { InternalServerError, UnprocessableEntityError } from '../errors/errors'
 import { Op, Sequelize } from 'sequelize'
+
+import { AppError, NotFoundError } from '../errors/errors'
+import { InternalServerError, UnprocessableEntityError } from '../errors/errors'
 import uploadSingleFile from '../helper/uploadToCloudinary'
-import { MulterRequest } from '~/type'
-import FriendService from './FriendService'
+import { Conversation, User } from '../models'
 import SearchHistory from '../models/SearchHistoryModel'
 import ConversationService from './ConversationService'
+import FriendService from './FriendService'
+import cloudinary from '~/config/cloudinary'
+import { MulterRequest } from '~/type'
 
 class UserService {
     async getUserById(id: number) {

@@ -1,4 +1,5 @@
 import { Queue } from 'bullmq'
+
 import { connection } from '~/config/redis'
 import { QueueEnum } from '~/enum/queue'
 
@@ -26,4 +27,4 @@ const addMailJob = async (data: MailData): Promise<void> => {
     await mailQueue.add(QueueEnum.SEND_VERIFICATION_CODE, data)
 }
 
-export { mailQueue, addMailJob, MailData }
+export { addMailJob, MailData, mailQueue }

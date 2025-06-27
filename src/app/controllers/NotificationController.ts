@@ -1,10 +1,10 @@
 import { NextFunction, Response } from 'express'
 
-import { IRequest } from '~/type'
 import { UnprocessableEntityError } from '../errors/errors'
 import Notification from '../models/NotificationModel'
-import { responseModel } from '~/app/utils/responseModel'
 import NotificationService from '../services/NotificationService'
+import { responseModel } from '~/app/utils/responseModel'
+import { IRequest } from '~/type'
 
 class NotificationController {
     // [GET] /notifications?page=&per_page=&type=

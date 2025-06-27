@@ -1,6 +1,7 @@
 import { Socket } from 'socket.io'
-import { SocketEvent } from '~/enum/socketEvent'
+
 import SocketMessageService from '../services/SocketMessageService'
+import { SocketEvent } from '~/enum/socketEvent'
 
 class messageListener {
     private socket: Socket

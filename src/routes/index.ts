@@ -1,10 +1,11 @@
 import { Express } from 'express'
+
 import authRoute from './auth'
-import userRoute from './user'
-import meRoute from './me'
-import notificationRoute from './notification'
 import conversationRoute from './conversation'
+import meRoute from './me'
 import messageRoute from './message'
+import notificationRoute from './notification'
+import userRoute from './user'
 
 const route = (app: Express) => {
     app.use('/api/auth', authRoute)

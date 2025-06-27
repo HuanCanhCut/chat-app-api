@@ -1,14 +1,15 @@
 import { literal, Op, Sequelize } from 'sequelize'
-import { Conversation, Friendships, ConversationMember, Notification } from '../models'
 import { v4 as uuidv4 } from 'uuid'
-import { User } from '../models'
-import { sequelize } from '~/config/database'
+
 import { AppError, ConflictError, InternalServerError, NotFoundError, UnprocessableEntityError } from '../errors/errors'
+import { Conversation, ConversationMember, Friendships, Notification } from '../models'
+import { User } from '../models'
 import NotificationService from './NotificationService'
+import { sequelize } from '~/config/database'
 import { redisClient } from '~/config/redis'
+import { ioInstance } from '~/config/socket'
 import { RedisKey } from '~/enum/redis'
 import { SocketEvent } from '~/enum/socketEvent'
-import { ioInstance } from '~/config/socket'
 interface SendMakeFriendRequestProps {
     userId: number
     friendId: number

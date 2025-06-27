@@ -1,9 +1,10 @@
-import { AppError, ForBiddenError, InternalServerError } from '../errors/errors'
-import Conversation from '../models/ConversationModel'
-import { ConversationMember, User } from '../models'
 import { Op, QueryTypes } from 'sequelize'
-import { sequelize } from '~/config/database'
+
+import { AppError, ForBiddenError, InternalServerError } from '../errors/errors'
+import { ConversationMember, User } from '../models'
+import Conversation from '../models/ConversationModel'
 import MessageService from '../services/MessageService'
+import { sequelize } from '~/config/database'
 
 class ConversationService {
     async generalConversation({ currentUserId, targetUserId }: { currentUserId: number; targetUserId: number }) {

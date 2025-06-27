@@ -1,18 +1,18 @@
 import { QueryTypes } from 'sequelize'
 import { Op } from 'sequelize'
+import { Socket } from 'socket.io'
 
-import { SocketEvent } from '~/enum/socketEvent'
-import { redisClient } from '~/config/redis'
-import { RedisKey } from '~/enum/redis'
 import { Conversation, Message, MessageStatus } from '../models'
 import { ConversationMember } from '../models'
 import { User } from '../models'
-import { sequelize } from '~/config/database'
 import MessageReaction from '../models/MessageReactionModel'
 import MessageService from '../services/MessageService'
-import logger from '~/logger/logger'
-import { Socket } from 'socket.io'
+import { sequelize } from '~/config/database'
+import { redisClient } from '~/config/redis'
 import { ioInstance } from '~/config/socket'
+import { RedisKey } from '~/enum/redis'
+import { SocketEvent } from '~/enum/socketEvent'
+import logger from '~/logger/logger'
 
 class SocketMessageService {
     private socket: Socket

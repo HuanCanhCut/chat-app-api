@@ -1,21 +1,21 @@
 import './config/env'
 import setupGlobalErrorHandling from './app/errors/globalError'
 setupGlobalErrorHandling()
+import cookieParser from 'cookie-parser'
+import cors from 'cors'
 import express, { Request, Response } from 'express'
 import admin from 'firebase-admin'
-import cors from 'cors'
-import cookieParser from 'cookie-parser'
-import 'express-async-errors'
 import http from 'http'
-import socketIO from './config/socket'
 import { Server } from 'socket.io'
 
-import route from './routes/index'
-import * as database from './config/database/index'
-import { redisClient } from './config/redis'
-import serviceAccount from './config/firebase/serviceAccount'
-import errorHandler from './app/errors/errorHandler'
+import 'express-async-errors'
 import './app/queue/mail'
+import errorHandler from './app/errors/errorHandler'
+import * as database from './config/database/index'
+import serviceAccount from './config/firebase/serviceAccount'
+import { redisClient } from './config/redis'
+import socketIO from './config/socket'
+import route from './routes/index'
 const app = express()
 const server = http.createServer(app)
 

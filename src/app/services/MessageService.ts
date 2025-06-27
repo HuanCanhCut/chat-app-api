@@ -1,12 +1,13 @@
-import { sequelize } from '~/config/database'
-import { AppError, InternalServerError, NotFoundError, UnprocessableEntityError } from '../errors/errors'
-import { Message, MessageStatus, User } from '../models'
 import { Op, QueryTypes } from 'sequelize'
+
+import { AppError, InternalServerError, NotFoundError, UnprocessableEntityError } from '../errors/errors'
 import { ForBiddenError } from '../errors/errors'
+import { Message, MessageStatus, User } from '../models'
 import { Conversation, ConversationMember } from '../models'
 import MessageReaction from '../models/MessageReactionModel'
-import { SocketEvent } from '~/enum/socketEvent'
+import { sequelize } from '~/config/database'
 import { ioInstance } from '~/config/socket'
+import { SocketEvent } from '~/enum/socketEvent'
 class MessageService {
     lastReadMessageIdLiteral = (currentUserId: number, conversationId: number) => {
         return sequelize.literal(`

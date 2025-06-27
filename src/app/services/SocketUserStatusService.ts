@@ -1,10 +1,11 @@
-import { redisClient } from '~/config/redis'
-import { RedisKey } from '~/enum/redis'
-import { SocketEvent } from '~/enum/socketEvent'
+import { Socket } from 'socket.io'
+
 import { Friendships, User } from '../models'
 import FriendService from '~/app/services/FriendService'
+import { redisClient } from '~/config/redis'
 import { ioInstance } from '~/config/socket'
-import { Socket } from 'socket.io'
+import { RedisKey } from '~/enum/redis'
+import { SocketEvent } from '~/enum/socketEvent'
 
 const FIVE_MINUTES = 60 * 5
 const FOUR_MINUTES = 60 * 4

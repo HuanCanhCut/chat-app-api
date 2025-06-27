@@ -1,8 +1,8 @@
 import express from 'express'
 const router = express.Router()
 
-import verifyToken from '../app/middlewares/verifyToken'
 import MessageController from '../app/controllers/MessageController'
+import verifyToken from '../app/middlewares/verifyToken'
 
 router.get('/search', verifyToken, MessageController.searchMessages.bind(MessageController))
 router.get('/:messageId/reactions', verifyToken, MessageController.getReactions.bind(MessageController))

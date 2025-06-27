@@ -1,4 +1,4 @@
-import { Queue, Worker, QueueEvents } from 'bullmq'
+import { Queue, QueueEvents, Worker } from 'bullmq'
 import { Redis } from 'ioredis'
 
 // Cấu hình kết nối Redis
@@ -15,4 +15,4 @@ if (process.env.REDIS_PASSWORD) {
 
 const connection = new Redis(redisConfig)
 
-export { Queue, Worker, QueueEvents, connection }
+export { connection, Queue, QueueEvents, Worker }

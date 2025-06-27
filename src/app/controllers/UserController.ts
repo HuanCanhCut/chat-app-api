@@ -1,8 +1,8 @@
-import { Response, NextFunction } from 'express'
+import { NextFunction, Response } from 'express'
 
 import { UnprocessableEntityError } from '../errors/errors'
-import { IRequest } from '~/type'
 import UserService from '../services/UserService'
+import { IRequest } from '~/type'
 
 class UserController {
     // [GET] /user/:nickname

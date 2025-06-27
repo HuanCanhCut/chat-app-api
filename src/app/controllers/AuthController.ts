@@ -1,10 +1,10 @@
-import { Request, Response, NextFunction } from 'express'
-import AuthService from '../services/AuthService'
-import { User } from '~/app/models'
+import { NextFunction, Request, Response } from 'express'
 
-import clearCookie from '../utils/clearCookies'
-import { UnprocessableEntityError, NotFoundError, UnauthorizedError } from '../errors/errors'
+import { NotFoundError, UnauthorizedError, UnprocessableEntityError } from '../errors/errors'
 import { RefreshToken } from '../models'
+import AuthService from '../services/AuthService'
+import clearCookie from '../utils/clearCookies'
+import { User } from '~/app/models'
 
 class AuthController {
     async sendToClient({

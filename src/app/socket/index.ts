@@ -1,11 +1,10 @@
-import { Server, Socket } from 'socket.io'
 import jwt from 'jsonwebtoken'
+import { Server, Socket } from 'socket.io'
 
+import userStatusListener from './userStatus'
+import messageListener from '~/app/socket/message'
 import { redisClient } from '~/config/redis'
 import { RedisKey } from '~/enum/redis'
-
-import messageListener from '~/app/socket/message'
-import userStatusListener from './userStatus'
 
 const onConnection = (socketInstance: Socket, ioInstance: Server) => {
     console.log('\x1b[33m===>>>Socket connected', socketInstance.id, '\x1b[0m')

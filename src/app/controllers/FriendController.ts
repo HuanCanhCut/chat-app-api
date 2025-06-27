@@ -1,10 +1,9 @@
-import { Response, NextFunction } from 'express'
+import { NextFunction, Response } from 'express'
 
 import { UnprocessableEntityError } from '../errors/errors'
-
-import { IRequest } from '~/type'
-import FriendService from '~/app/services/FriendService'
 import ConversationService from '../services/ConversationService'
+import FriendService from '~/app/services/FriendService'
+import { IRequest } from '~/type'
 
 class FriendController {
     // [POST] /users/:id/add

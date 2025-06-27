@@ -1,8 +1,9 @@
-import { Response, NextFunction } from 'express'
-import { IRequest } from '~/type'
-import { UnprocessableEntityError, InternalServerError } from '../errors/errors'
-import { responseModel } from '../utils/responseModel'
+import { NextFunction, Response } from 'express'
+
+import { InternalServerError, UnprocessableEntityError } from '../errors/errors'
 import MessageService from '../services/MessageService'
+import { responseModel } from '../utils/responseModel'
+import { IRequest } from '~/type'
 
 class MessageController {
     // [GET] /api/messages/:conversationUuid

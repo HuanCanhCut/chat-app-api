@@ -1,8 +1,8 @@
 import express from 'express'
 const router = express.Router()
 
-import UserController from '../app/controllers/UserController'
 import FriendController from '../app/controllers/FriendController'
+import UserController from '../app/controllers/UserController'
 import verifyToken from '~/app/middlewares/verifyToken'
 
 router.get('/friends', verifyToken, FriendController.getAllFriends.bind(FriendController))

@@ -1,8 +1,8 @@
 import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
 
 import { sequelize } from '../../config/database'
-import Message from './MessageModel'
 import handleChildrenAfterFindHook from '../helper/childrenAfterFindHook'
+import Message from './MessageModel'
 
 class Conversation extends Model<InferAttributes<Conversation>, InferCreationAttributes<Conversation>> {
     declare id?: number

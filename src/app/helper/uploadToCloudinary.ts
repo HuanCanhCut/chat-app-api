@@ -1,4 +1,5 @@
 import sharp from 'sharp'
+
 import cloudinary from '~/config/cloudinary'
 
 interface IUploadFile {

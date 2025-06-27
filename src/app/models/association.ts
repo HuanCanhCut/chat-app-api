@@ -1,13 +1,13 @@
-import User from './UserModel'
-import RefreshToken from './RefreshTokenModel'
-import Friendships from './FriendshipsModel'
-import Notification from './NotificationModel'
-import SearchHistory from './SearchHistoryModel'
-import Conversation from './ConversationModel'
 import ConversationMember from './ConversationMemberModel'
+import Conversation from './ConversationModel'
+import Friendships from './FriendshipsModel'
 import Message from './MessageModel'
-import MessageStatus from './MessageStatusModel'
 import MessageReaction from './MessageReactionModel'
+import MessageStatus from './MessageStatusModel'
+import Notification from './NotificationModel'
+import RefreshToken from './RefreshTokenModel'
+import SearchHistory from './SearchHistoryModel'
+import User from './UserModel'
 
 const associations = () => {
     // define relations

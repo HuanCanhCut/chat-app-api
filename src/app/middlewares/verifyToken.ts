@@ -1,5 +1,6 @@
 import { NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
+
 import clearCookie from '../utils/clearCookies'
 import { IRequest } from '~/type'
 

@@ -1,4 +1,5 @@
 import { NextFunction, Request } from 'express'
+
 import logger from '../../logger/logger'
 
 interface CustomError extends Error {

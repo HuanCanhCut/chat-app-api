@@ -1,8 +1,9 @@
-import admin from 'firebase-admin'
-import { v4 as uuidv4 } from 'uuid'
 import bcrypt from 'bcrypt'
-import { Op, QueryTypes } from 'sequelize'
+import admin from 'firebase-admin'
 import jwt from 'jsonwebtoken'
+import { JwtPayload } from 'jsonwebtoken'
+import { Op, QueryTypes } from 'sequelize'
+import { v4 as uuidv4 } from 'uuid'
 
 import {
     AppError,
@@ -11,13 +12,12 @@ import {
     UnauthorizedError,
     UnprocessableEntityError,
 } from '../errors/errors'
-import { User, BlacklistToken, RefreshToken } from '../models'
+import { BlacklistToken, RefreshToken, User } from '../models'
+import { addMailJob } from '../queue/mail'
 import createToken from '../utils/createToken'
 import hashValue from '../utils/hashValue'
 import { sequelize } from '~/config/database'
-import { JwtPayload } from 'jsonwebtoken'
 import { redisClient } from '~/config/redis'
-import { addMailJob } from '../queue/mail'
 
 class AuthServices {
     generateToken(payload: { sub: number }) {
