@@ -22,6 +22,8 @@ module.exports = {
                     model: 'conversations',
                     key: 'id',
                 },
+                onDelete: 'CASCADE',
+                onUpdate: 'CASCADE',
             },
             sender_id: {
                 type: Sequelize.INTEGER,
@@ -30,6 +32,8 @@ module.exports = {
                     model: 'users',
                     key: 'id',
                 },
+                onDelete: 'CASCADE',
+                onUpdate: 'CASCADE',
             },
             content: {
                 type: Sequelize.TEXT,
@@ -57,6 +61,8 @@ module.exports = {
                     model: 'messages',
                     key: 'id',
                 },
+                onDelete: 'CASCADE',
+                onUpdate: 'CASCADE',
             },
 
             created_at: {

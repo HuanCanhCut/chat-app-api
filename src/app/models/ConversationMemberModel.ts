@@ -32,6 +32,8 @@ ConversationMember.init(
                 model: 'conversations',
                 key: 'id',
             },
+            onDelete: 'CASCADE',
+            onUpdate: 'CASCADE',
         },
         nickname: {
             type: DataTypes.STRING,
@@ -49,6 +51,8 @@ ConversationMember.init(
                 model: 'users',
                 key: 'id',
             },
+            onDelete: 'CASCADE',
+            onUpdate: 'CASCADE',
         },
         joined_at: {
             type: DataTypes.DATE,
@@ -63,6 +67,8 @@ ConversationMember.init(
                 model: 'users',
                 key: 'id',
             },
+            onDelete: 'CASCADE',
+            onUpdate: 'CASCADE',
         },
     },
     {

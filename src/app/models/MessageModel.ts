@@ -3,6 +3,7 @@ import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequ
 import { sequelize } from '../../config/database'
 import handleChildrenAfterFindHook from '../helper/childrenAfterFindHook'
 import MessageStatus from './MessageStatusModel'
+import { MessageType } from '~/type'
 
 class Message extends Model<InferAttributes<Message>, InferCreationAttributes<Message>> {
     declare id?: number
@@ -10,7 +11,7 @@ class Message extends Model<InferAttributes<Message>, InferCreationAttributes<Me
     declare sender_id: number
     declare content: string | null
     declare is_read?: boolean
-    declare type?: 'text' | 'image' | 'icon'
+    declare type?: MessageType
     declare created_at?: Date
     declare updated_at?: Date
     declare parent_id?: number | null
@@ -32,6 +33,8 @@ Message.init(
                 model: 'conversations',
                 key: 'id',
             },
+            onDelete: 'CASCADE',
+            onUpdate: 'CASCADE',
         },
         sender_id: {
             type: DataTypes.INTEGER,
@@ -40,6 +43,8 @@ Message.init(
                 model: 'users',
                 key: 'id',
             },
+            onDelete: 'CASCADE',
+            onUpdate: 'CASCADE',
         },
         content: {
             type: DataTypes.TEXT,
@@ -67,6 +72,8 @@ Message.init(
                 model: 'messages',
                 key: 'id',
             },
+            onDelete: 'CASCADE',
+            onUpdate: 'CASCADE',
         },
     },
     {

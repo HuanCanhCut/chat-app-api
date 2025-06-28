@@ -24,6 +24,8 @@ RefreshToken.init(
                 model: 'users',
                 key: 'id',
             },
+            onDelete: 'CASCADE',
+            onUpdate: 'CASCADE',
         },
         refresh_token: {
             type: DataTypes.TEXT,

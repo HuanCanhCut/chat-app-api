@@ -29,6 +29,8 @@ MessageStatus.init(
                 model: 'messages',
                 key: 'id',
             },
+            onDelete: 'CASCADE',
+            onUpdate: 'CASCADE',
         },
         receiver_id: {
             type: DataTypes.INTEGER,
@@ -37,6 +39,8 @@ MessageStatus.init(
                 model: 'users',
                 key: 'id',
             },
+            onDelete: 'CASCADE',
+            onUpdate: 'CASCADE',
         },
         status: {
             type: DataTypes.ENUM('read', 'delivered', 'sent'),

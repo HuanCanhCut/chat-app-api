@@ -22,6 +22,8 @@ module.exports = {
                     model: 'conversations',
                     key: 'id',
                 },
+                onDelete: 'CASCADE',
+                onUpdate: 'CASCADE',
             },
             nickname: {
                 type: Sequelize.STRING,
@@ -39,6 +41,8 @@ module.exports = {
                     model: 'users',
                     key: 'id',
                 },
+                onDelete: 'CASCADE',
+                onUpdate: 'CASCADE',
             },
             joined_at: {
                 type: Sequelize.DATE,

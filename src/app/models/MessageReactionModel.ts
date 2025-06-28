@@ -29,6 +29,8 @@ MessageReaction.init(
                 model: 'messages',
                 key: 'id',
             },
+            onDelete: 'CASCADE',
+            onUpdate: 'CASCADE',
         },
         user_id: {
             type: DataTypes.INTEGER,
@@ -37,6 +39,8 @@ MessageReaction.init(
                 model: 'users',
                 key: 'id',
             },
+            onDelete: 'CASCADE',
+            onUpdate: 'CASCADE',
         },
         react: {
             type: DataTypes.STRING,

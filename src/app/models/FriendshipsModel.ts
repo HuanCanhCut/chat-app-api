@@ -26,6 +26,8 @@ Friendships.init(
                 model: 'users',
                 key: 'id',
             },
+            onDelete: 'CASCADE',
+            onUpdate: 'CASCADE',
         },
         friend_id: {
             type: DataTypes.INTEGER,
@@ -34,6 +36,8 @@ Friendships.init(
                 model: 'users',
                 key: 'id',
             },
+            onDelete: 'CASCADE',
+            onUpdate: 'CASCADE',
         },
         status: {
             type: DataTypes.ENUM('pending', 'accepted', 'rejected'),

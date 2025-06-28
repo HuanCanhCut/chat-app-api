@@ -22,6 +22,8 @@ module.exports = {
                     model: 'messages',
                     key: 'id',
                 },
+                onDelete: 'CASCADE',
+                onUpdate: 'CASCADE',
             },
             receiver_id: {
                 type: Sequelize.INTEGER,
@@ -30,6 +32,8 @@ module.exports = {
                     model: 'users',
                     key: 'id',
                 },
+                onDelete: 'CASCADE',
+                onUpdate: 'CASCADE',
             },
             status: {
                 type: Sequelize.ENUM('read', 'delivered', 'sent'),

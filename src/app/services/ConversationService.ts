@@ -1,11 +1,15 @@
 import { Op, QueryTypes } from 'sequelize'
 
-import { AppError, ForBiddenError, InternalServerError } from '../errors/errors'
+import { AppError, ConflictError, ForBiddenError, InternalServerError, NotFoundError } from '../errors/errors'
 import { ConversationMember, User } from '../models'
 import Conversation from '../models/ConversationModel'
 import MessageService from '../services/MessageService'
+import SocketMessageService from './SocketMessageService'
 import { sequelize } from '~/config/database'
-
+import { redisClient } from '~/config/redis'
+import { ioInstance } from '~/config/socket'
+import { RedisKey } from '~/enum/redis'
+import { SocketEvent } from '~/enum/socketEvent'
 class ConversationService {
     async generalConversation({ currentUserId, targetUserId }: { currentUserId: number; targetUserId: number }) {
         try {
@@ -235,6 +239,83 @@ class ConversationService {
             })
 
             return conversations
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            }
+
+            throw new InternalServerError({ message: error.message })
+        }
+    }
+
+    async renameConversation({
+        currentUserId,
+        conversationUuid,
+        conversationName,
+    }: {
+        currentUserId: number
+        conversationUuid: string
+        conversationName: string
+    }) {
+        try {
+            interface ConversationWithMembers extends Conversation {
+                conversation_members: ConversationMember[]
+            }
+
+            const conversation = (await Conversation.findOne({
+                where: {
+                    uuid: conversationUuid,
+                },
+                include: [
+                    {
+                        model: ConversationMember,
+                        as: 'conversation_members',
+                        where: {
+                            user_id: currentUserId,
+                        },
+                    },
+                ],
+            })) as ConversationWithMembers
+
+            if (!conversation) {
+                throw new NotFoundError({ message: 'Conversation not found' })
+            }
+
+            if (!conversation.is_group) {
+                throw new ForBiddenError({ message: 'You are not allowed to rename this conversation' })
+            }
+
+            conversation.name = conversationName
+            const savedConversation = await conversation.save()
+
+            if (!savedConversation) {
+                throw new ConflictError({ message: 'Failed to rename conversation' })
+            }
+
+            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_RENAMED, {
+                conversationUuid,
+                conversationName,
+            })
+
+            const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${currentUserId}`, 0, -1)
+
+            const socket = ioInstance.sockets.sockets.get(socketIds[0])
+
+            if (socket) {
+                const socketMessageService = new SocketMessageService(socket)
+
+                await socketMessageService.NEW_MESSAGE({
+                    conversation_uuid: conversationUuid,
+                    message: `${JSON.stringify({
+                        user_id: currentUserId,
+                        name: conversation.conversation_members[0].nickname,
+                    })} đã đổi tên đoạn chat thành ${conversationName}`,
+                    type: 'system_change_group_name',
+                    parent_id: null,
+                })
+            }
+
+            return savedConversation
         } catch (error: any) {
             if (error instanceof AppError) {
                 throw error

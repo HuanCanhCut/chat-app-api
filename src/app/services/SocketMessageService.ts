@@ -13,7 +13,7 @@ import { ioInstance } from '~/config/socket'
 import { RedisKey } from '~/enum/redis'
 import { SocketEvent } from '~/enum/socketEvent'
 import logger from '~/logger/logger'
-
+import { MessageType } from '~/type'
 class SocketMessageService {
     private socket: Socket
     private currentUserId: number
@@ -35,7 +35,7 @@ class SocketMessageService {
         senderId: number
         userIds: { id: number; is_online: boolean }[]
         message: string
-        type: 'text' | 'image' | 'icon'
+        type: MessageType
         parent_id: number | null
     }) => {
         const transaction = await sequelize.transaction()
@@ -254,7 +254,7 @@ class SocketMessageService {
     }: {
         conversation_uuid: string
         message: string
-        type: 'text' | 'image' | 'icon'
+        type: MessageType
         parent_id: number | null
     }) => {
         try {

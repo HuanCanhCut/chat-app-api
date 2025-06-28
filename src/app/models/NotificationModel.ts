@@ -29,6 +29,8 @@ Notification.init(
                 model: 'users',
                 key: 'id',
             },
+            onDelete: 'CASCADE',
+            onUpdate: 'CASCADE',
         },
         type: {
             type: DataTypes.ENUM('friend_request', 'accept_friend_request', 'message'),
@@ -55,6 +57,8 @@ Notification.init(
                 model: 'users',
                 key: 'id',
             },
+            onDelete: 'CASCADE',
+            onUpdate: 'CASCADE',
         },
     },
     {

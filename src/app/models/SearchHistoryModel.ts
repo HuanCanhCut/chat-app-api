@@ -25,6 +25,8 @@ SearchHistory.init(
                 model: 'users',
                 key: 'id',
             },
+            onDelete: 'CASCADE',
+            onUpdate: 'CASCADE',
         },
         user_search_id: {
             type: DataTypes.INTEGER,
@@ -33,6 +35,8 @@ SearchHistory.init(
                 model: 'users',
                 key: 'id',
             },
+            onDelete: 'CASCADE',
+            onUpdate: 'CASCADE',
         },
     },
     {

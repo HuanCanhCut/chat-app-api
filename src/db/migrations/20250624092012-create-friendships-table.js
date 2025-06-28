@@ -23,6 +23,8 @@ module.exports = {
                     model: 'users',
                     key: 'id',
                 },
+                onDelete: 'CASCADE',
+                onUpdate: 'CASCADE',
             },
             friend_id: {
                 type: Sequelize.INTEGER,
@@ -31,6 +33,8 @@ module.exports = {
                     model: 'users',
                     key: 'id',
                 },
+                onDelete: 'CASCADE',
+                onUpdate: 'CASCADE',
             },
             status: {
                 type: Sequelize.ENUM('pending', 'accepted', 'rejected'),

@@ -67,6 +67,34 @@ class ConversationController {
             return next(error)
         }
     }
+
+    // [PATCH] /api/conversations/:uuid/rename
+    async renameConversation(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const { uuid } = req.params
+            const { name } = req.body
+
+            const decoded = req.decoded
+
+            if (!name) {
+                return next(new UnprocessableEntityError({ message: 'Name is required' }))
+            }
+
+            if (!uuid) {
+                return next(new UnprocessableEntityError({ message: 'UUID is required' }))
+            }
+
+            const updatedConversation = await ConversationService.renameConversation({
+                currentUserId: decoded.sub,
+                conversationUuid: uuid,
+                conversationName: name,
+            })
+
+            res.json({ data: updatedConversation })
+        } catch (error: any) {
+            return next(error)
+        }
+    }
 }
 
 export default new ConversationController()

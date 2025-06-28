@@ -15,4 +15,7 @@ export enum SocketEvent {
     // ------------------------------- Reaction -------------------------------
     REACT_MESSAGE = 'message:react',
     REMOVE_REACTION = 'message:remove_reaction',
+
+    // ------------------------------- Conversation -------------------------------
+    CONVERSATION_RENAMED = 'conversation:renamed',
 }

@@ -22,6 +22,8 @@ module.exports = {
                     model: 'users',
                     key: 'id',
                 },
+                onDelete: 'CASCADE',
+                onUpdate: 'CASCADE',
             },
             type: {
                 type: Sequelize.ENUM('friend_request', 'accept_friend_request', 'message'),
@@ -48,6 +50,8 @@ module.exports = {
                     model: 'users',
                     key: 'id',
                 },
+                onDelete: 'CASCADE',
+                onUpdate: 'CASCADE',
             },
             created_at: {
                 type: Sequelize.DATE,
