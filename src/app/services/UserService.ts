@@ -83,7 +83,7 @@ class UserService {
                 uploadPromises.push(
                     uploadSingleFile({
                         file: files.avatar[0],
-                        folder: 'avatar',
+                        folder: 'avatars',
                         publicId: currentUserId.toString(),
                         type: 'avatar',
                     }),
@@ -94,7 +94,7 @@ class UserService {
                 uploadPromises.push(
                     uploadSingleFile({
                         file: files.cover_photo[0],
-                        folder: 'cover_photo',
+                        folder: 'cover_photos',
                         publicId: currentUserId.toString(),
                         type: 'cover_photo',
                     }),

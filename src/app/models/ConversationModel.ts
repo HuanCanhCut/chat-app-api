@@ -14,6 +14,7 @@ class Conversation extends Model<InferAttributes<Conversation>, InferCreationAtt
     declare emoji?: string
     declare created_at?: Date
     declare updated_at?: Date
+    declare theme_id?: number
 }
 
 Conversation.init(
@@ -44,6 +45,17 @@ Conversation.init(
             type: DataTypes.STRING,
             allowNull: false,
             defaultValue: '1f44d',
+        },
+        theme_id: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 1,
+            references: {
+                model: 'conversation_themes',
+                key: 'id',
+            },
+            onDelete: 'SET DEFAULT',
+            onUpdate: 'CASCADE',
         },
     },
     {

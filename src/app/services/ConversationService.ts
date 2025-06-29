@@ -337,7 +337,7 @@ class ConversationService {
 
             const { result } = await uploadSingleFile({
                 file: avatar,
-                folder: 'conversation',
+                folder: 'conversations',
                 publicId: conversation.uuid,
                 type: 'avatar',
             })
