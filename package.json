@@ -13,7 +13,11 @@
         "migrate:dev": "NODE_ENV=development npx sequelize-cli db:migrate",
         "migrate:prod": "NODE_ENV=production npx sequelize-cli db:migrate",
         "migrate:undo:dev": "NODE_ENV=development npx sequelize-cli db:migrate:undo",
-        "migrate:seed:dev": "NODE_ENV=development npx sequelize-cli db:seed:all"
+        "migrate:seed:dev": "NODE_ENV=development npx sequelize-cli db:seed:all",
+        "seed:dev": "NODE_ENV=development npx sequelize-cli db:seed:all",
+        "seed:prod": "NODE_ENV=production npx sequelize-cli db:seed:all",
+        "seed:undo:dev": "NODE_ENV=development npx sequelize-cli db:seed:undo:all",
+        "seed:undo:prod": "NODE_ENV=production npx sequelize-cli db:seed:undo:all"
     },
     "keywords": [],
     "author": "",

@@ -1,5 +1,6 @@
 import ConversationMember from './ConversationMemberModel'
 import Conversation from './ConversationModel'
+import ConversationTheme from './ConversationThemeModel'
 import Friendships from './FriendshipsModel'
 import Message from './MessageModel'
 import MessageReaction from './MessageReactionModel'
@@ -55,6 +56,13 @@ const associations = () => {
 
     User.hasMany(ConversationMember, { foreignKey: 'added_by_id', as: 'added_by' })
     ConversationMember.belongsTo(User, { foreignKey: 'added_by_id', as: 'added_by' })
+
+    /**
+     * Conversation theme model
+     */
+
+    Conversation.belongsTo(ConversationTheme, { foreignKey: 'theme_id', as: 'theme' })
+    ConversationTheme.hasMany(Conversation, { foreignKey: 'theme_id', as: 'conversations' })
 
     /**
      * Message model

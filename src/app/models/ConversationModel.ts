@@ -41,11 +41,6 @@ Conversation.init(
             type: DataTypes.STRING,
             allowNull: false,
         },
-        emoji: {
-            type: DataTypes.STRING,
-            allowNull: false,
-            defaultValue: '1f44d',
-        },
         theme_id: {
             type: DataTypes.INTEGER,
             allowNull: false,

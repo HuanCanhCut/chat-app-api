@@ -4,6 +4,7 @@ import { AppError, ForBiddenError, InternalServerError } from '../errors/errors'
 import uploadSingleFile from '../helper/uploadToCloudinary'
 import { ConversationMember, User } from '../models'
 import Conversation from '../models/ConversationModel'
+import ConversationTheme from '../models/ConversationThemeModel'
 import MessageService from '../services/MessageService'
 import SocketMessageService from './SocketMessageService'
 import { sequelize } from '~/config/database'
@@ -182,6 +183,10 @@ class ConversationService {
                             },
                         ],
                     },
+                    {
+                        model: ConversationTheme,
+                        as: 'theme',
+                    },
                 ],
             })
 
@@ -285,8 +290,8 @@ class ConversationService {
             }
 
             ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_RENAMED, {
-                conversationUuid,
-                conversationName,
+                conversation_uuid: conversationUuid,
+                conversation_name: conversationName,
             })
 
             const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${currentUserId}`, 0, -1)
@@ -353,9 +358,12 @@ class ConversationService {
                 throw new InternalServerError({ message: 'Failed to change conversation avatar' })
             }
 
-            const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${currentUserId}`, 0, -1)
+            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_AVATAR_CHANGED, {
+                conversation_uuid: conversationUuid,
+                avatar: result?.secure_url,
+            })
 
-            console.log(socketIds)
+            const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${currentUserId}`, 0, -1)
 
             const socket = ioInstance.sockets.sockets.get(socketIds[0])
 

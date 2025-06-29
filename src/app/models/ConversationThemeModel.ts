@@ -8,6 +8,7 @@ class ConversationTheme extends Model<InferAttributes<ConversationTheme>, InferC
     declare name: string
     declare logo: string
     declare description: string
+    declare emoji: string
 }
 ConversationTheme.init(
     {
@@ -35,6 +36,11 @@ ConversationTheme.init(
             type: DataTypes.STRING,
             allowNull: true,
             defaultValue: null,
+        },
+        emoji: {
+            type: DataTypes.STRING,
+            allowNull: true,
+            defaultValue: '1f44d',
         },
     },
     {
