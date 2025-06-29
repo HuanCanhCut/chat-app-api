@@ -80,3 +80,4 @@ export type MessageType =
     | 'system_change_theme'
     | 'system_add_user'
     | 'system_remove_user'
+    | 'system_change_group_avatar'

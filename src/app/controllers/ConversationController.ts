@@ -95,6 +95,33 @@ class ConversationController {
             return next(error)
         }
     }
+
+    // [PATCH] /api/conversations/:uuid/avatar
+    async changeConversationAvatar(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const { uuid } = req.params
+            const avatar = req.file
+            const decoded = req.decoded
+
+            if (!uuid) {
+                return next(new UnprocessableEntityError({ message: 'Conversation uuid is required' }))
+            }
+
+            if (!avatar) {
+                return next(new UnprocessableEntityError({ message: 'Avatar is required' }))
+            }
+
+            const updatedConversation = await ConversationService.changeConversationAvatar({
+                currentUserId: decoded.sub,
+                conversationUuid: uuid,
+                avatar,
+            })
+
+            res.json({ data: updatedConversation })
+        } catch (e: any) {
+            return next(e)
+        }
+    }
 }
 
 export default new ConversationController()

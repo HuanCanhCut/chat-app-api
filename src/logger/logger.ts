@@ -3,7 +3,7 @@ import moment from 'moment-timezone'
 import path from 'path'
 import winston from 'winston'
 
-const { combine, timestamp, printf } = winston.format
+const { combine, timestamp, printf, colorize } = winston.format
 
 const logDir = 'logs'
 const logFile = path.join(logDir, 'error.log')
@@ -25,7 +25,12 @@ ${vietnamTime}
 const logger = winston.createLogger({
     level: 'error',
     format: combine(timestamp(), customFormat),
-    transports: [new winston.transports.File({ filename: logFile, level: 'error' }), new winston.transports.Console()],
+    transports: [
+        new winston.transports.File({ filename: logFile, level: 'error' }),
+        new winston.transports.Console({
+            format: combine(colorize({ all: true, colors: { error: 'red' } }), timestamp(), customFormat),
+        }),
+    ],
 })
 
 export default logger

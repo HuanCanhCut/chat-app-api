@@ -1,6 +1,7 @@
 import { Op, QueryTypes } from 'sequelize'
 
-import { AppError, ConflictError, ForBiddenError, InternalServerError, NotFoundError } from '../errors/errors'
+import { AppError, ForBiddenError, InternalServerError } from '../errors/errors'
+import uploadSingleFile from '../helper/uploadToCloudinary'
 import { ConversationMember, User } from '../models'
 import Conversation from '../models/ConversationModel'
 import MessageService from '../services/MessageService'
@@ -10,7 +11,34 @@ import { redisClient } from '~/config/redis'
 import { ioInstance } from '~/config/socket'
 import { RedisKey } from '~/enum/redis'
 import { SocketEvent } from '~/enum/socketEvent'
+
 class ConversationService {
+    async userAllowedToConversation({ userId, conversationUuid }: { userId: number; conversationUuid: string }) {
+        interface ConversationWithMembers extends Conversation {
+            conversation_members: ConversationMember[]
+        }
+
+        // check if user is a member of the conversation
+        const conversation = (await Conversation.findOne({
+            where: {
+                uuid: conversationUuid,
+            },
+            include: {
+                model: ConversationMember,
+                as: 'conversation_members',
+                where: {
+                    user_id: userId,
+                },
+            },
+        })) as ConversationWithMembers
+
+        if (!conversation) {
+            throw new ForBiddenError({ message: 'You are not allowed to access this conversation' })
+        }
+
+        return conversation
+    }
+
     async generalConversation({ currentUserId, targetUserId }: { currentUserId: number; targetUserId: number }) {
         try {
             const [conversation] = await sequelize.query(
@@ -126,25 +154,7 @@ class ConversationService {
 
     async getConversationByUuid({ currentUserId, uuid }: { currentUserId: number; uuid: string }) {
         try {
-            // check if user is a member of the conversation
-            const hasMember = await Conversation.findOne({
-                attributes: ['id'],
-                where: {
-                    uuid: uuid,
-                },
-                include: {
-                    model: ConversationMember,
-                    as: 'conversation_members',
-                    attributes: ['id'],
-                    where: {
-                        user_id: currentUserId,
-                    },
-                },
-            })
-
-            if (!hasMember) {
-                throw new ForBiddenError({ message: 'Permission denied' })
-            }
+            await this.userAllowedToConversation({ userId: currentUserId, conversationUuid: uuid })
 
             const conversation = await Conversation.findOne({
                 where: {
@@ -258,38 +268,20 @@ class ConversationService {
         conversationName: string
     }) {
         try {
-            interface ConversationWithMembers extends Conversation {
-                conversation_members: ConversationMember[]
-            }
-
-            const conversation = (await Conversation.findOne({
-                where: {
-                    uuid: conversationUuid,
-                },
-                include: [
-                    {
-                        model: ConversationMember,
-                        as: 'conversation_members',
-                        where: {
-                            user_id: currentUserId,
-                        },
-                    },
-                ],
-            })) as ConversationWithMembers
-
-            if (!conversation) {
-                throw new NotFoundError({ message: 'Conversation not found' })
-            }
+            const conversation = await this.userAllowedToConversation({
+                userId: currentUserId,
+                conversationUuid: conversationUuid,
+            })
 
             if (!conversation.is_group) {
-                throw new ForBiddenError({ message: 'You are not allowed to rename this conversation' })
+                throw new ForBiddenError({ message: 'You are not allowed to rename a personal conversation' })
             }
 
             conversation.name = conversationName
             const savedConversation = await conversation.save()
 
             if (!savedConversation) {
-                throw new ConflictError({ message: 'Failed to rename conversation' })
+                throw new InternalServerError({ message: 'Failed to rename conversation' })
             }
 
             ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_RENAMED, {
@@ -301,19 +293,82 @@ class ConversationService {
 
             const socket = ioInstance.sockets.sockets.get(socketIds[0])
 
-            if (socket) {
-                const socketMessageService = new SocketMessageService(socket)
+            const socketMessageService = new SocketMessageService(socket, currentUserId)
 
-                await socketMessageService.NEW_MESSAGE({
-                    conversation_uuid: conversationUuid,
-                    message: `${JSON.stringify({
-                        user_id: currentUserId,
-                        name: conversation.conversation_members[0].nickname,
-                    })} đã đổi tên đoạn chat thành ${conversationName}`,
-                    type: 'system_change_group_name',
-                    parent_id: null,
+            await socketMessageService.NEW_MESSAGE({
+                conversation_uuid: conversationUuid,
+                message: `${JSON.stringify({
+                    user_id: currentUserId,
+                    name: conversation.conversation_members[0].nickname,
+                })} đã đổi tên đoạn chat thành ${conversationName}`,
+                type: 'system_change_group_name',
+            })
+
+            return savedConversation
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            }
+
+            throw new InternalServerError({ message: error.message })
+        }
+    }
+
+    async changeConversationAvatar({
+        currentUserId,
+        conversationUuid,
+        avatar,
+    }: {
+        currentUserId: number
+        conversationUuid: string
+        avatar: Express.Multer.File
+    }) {
+        try {
+            const conversation = await this.userAllowedToConversation({
+                userId: currentUserId,
+                conversationUuid: conversationUuid,
+            })
+
+            if (!conversation.is_group) {
+                throw new ForBiddenError({
+                    message: 'You are not allowed to change the avatar of a personal conversation',
                 })
             }
+
+            const { result } = await uploadSingleFile({
+                file: avatar,
+                folder: 'conversation',
+                publicId: conversation.uuid,
+                type: 'avatar',
+            })
+
+            if (!result) {
+                throw new InternalServerError({ message: 'Failed to upload avatar' })
+            }
+
+            conversation.avatar = result?.secure_url
+            const savedConversation = await conversation.save()
+
+            if (!savedConversation) {
+                throw new InternalServerError({ message: 'Failed to change conversation avatar' })
+            }
+
+            const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${currentUserId}`, 0, -1)
+
+            console.log(socketIds)
+
+            const socket = ioInstance.sockets.sockets.get(socketIds[0])
+
+            const socketMessageService = new SocketMessageService(socket, currentUserId)
+
+            await socketMessageService.NEW_MESSAGE({
+                conversation_uuid: conversationUuid,
+                message: `${JSON.stringify({
+                    user_id: currentUserId,
+                    name: conversation.conversation_members[0].nickname,
+                })} đã đổi ảnh nhóm`,
+                type: 'system_change_group_avatar',
+            })
 
             return savedConversation
         } catch (error: any) {

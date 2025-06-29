@@ -65,8 +65,8 @@ class UnprocessableEntityError extends AppError {
 
 // 500 : Internal Server Error
 class InternalServerError extends AppError {
-    constructor({ message = 'Internal Server Error' }: Message) {
-        super(message, 500)
+    constructor({ message = ReasonPhrases.INTERNAL_SERVER_ERROR }: Message) {
+        super(message, StatusCodes.INTERNAL_SERVER_ERROR)
     }
 }
 

@@ -2,6 +2,7 @@ import { QueryTypes } from 'sequelize'
 import { Op } from 'sequelize'
 import { Socket } from 'socket.io'
 
+import { InternalServerError } from '../errors/errors'
 import { Conversation, Message, MessageStatus } from '../models'
 import { ConversationMember } from '../models'
 import { User } from '../models'
@@ -14,13 +15,14 @@ import { RedisKey } from '~/enum/redis'
 import { SocketEvent } from '~/enum/socketEvent'
 import logger from '~/logger/logger'
 import { MessageType } from '~/type'
-class SocketMessageService {
-    private socket: Socket
-    private currentUserId: number
 
-    constructor(socket: Socket) {
+class SocketMessageService {
+    private socket?: Socket
+    private currentUserId?: number
+
+    constructor(socket?: Socket, currentUserId?: number) {
         this.socket = socket
-        this.currentUserId = socket.data.decoded.sub
+        this.currentUserId = currentUserId || socket?.data.decoded.sub
     }
 
     saveMessageToDatabase = async ({
@@ -39,6 +41,11 @@ class SocketMessageService {
         parent_id: number | null
     }) => {
         const transaction = await sequelize.transaction()
+
+        if (!this.currentUserId) {
+            throw new InternalServerError({ message: 'Current user id is required' })
+        }
+
         try {
             // save message to database
             const newMessage = await Message.create({
@@ -255,7 +262,7 @@ class SocketMessageService {
         conversation_uuid: string
         message: string
         type: MessageType
-        parent_id: number | null
+        parent_id?: number | null
     }) => {
         try {
             const conversation = await Conversation.findOne({
@@ -269,6 +276,10 @@ class SocketMessageService {
             }
 
             const userIds = await this.getUsersOnlineStatus(conversation_uuid)
+
+            if (!this.currentUserId) {
+                throw new InternalServerError({ message: 'Current user id is required' })
+            }
 
             const newMessage = await this.saveMessageToDatabase({
                 conversationId: conversation.dataValues.id,
@@ -378,7 +389,9 @@ class SocketMessageService {
                         }
                     } else {
                         // delete socket id from redis if socket id not exist
-                        redisClient.lRem(`${RedisKey.SOCKET_ID}${user.id}`, 0, this.socket.id)
+                        if (this.socket) {
+                            redisClient.lRem(`${RedisKey.SOCKET_ID}${user.id}`, 0, this.socket.id)
+                        }
                     }
                 }
             }
@@ -421,6 +434,10 @@ class SocketMessageService {
 
             if (!conversation?.dataValues?.id) {
                 return
+            }
+
+            if (!this.currentUserId) {
+                throw new InternalServerError({ message: 'Current user id is required' })
             }
 
             const message = await Message.findByPk(message_id, {
@@ -716,7 +733,7 @@ class SocketMessageService {
         is_typing: boolean
     }) => {
         try {
-            this.socket.broadcast.to(conversation_uuid).emit(SocketEvent.MESSAGE_TYPING, {
+            this.socket?.broadcast.to(conversation_uuid).emit(SocketEvent.MESSAGE_TYPING, {
                 user_id,
                 is_typing,
                 conversation_uuid,

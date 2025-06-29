@@ -60,6 +60,7 @@ Message.init(
                 'system_change_theme',
                 'system_add_user',
                 'system_remove_user',
+                'system_change_group_avatar',
             ),
             allowNull: false,
             defaultValue: 'text',

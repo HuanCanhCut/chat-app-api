@@ -83,7 +83,7 @@ class UserService {
                 uploadPromises.push(
                     uploadSingleFile({
                         file: files.avatar[0],
-                        folder: 'chat-app/avatar',
+                        folder: 'avatar',
                         publicId: currentUserId.toString(),
                         type: 'avatar',
                     }),
@@ -94,7 +94,7 @@ class UserService {
                 uploadPromises.push(
                     uploadSingleFile({
                         file: files.cover_photo[0],
-                        folder: 'chat-app/cover_photo',
+                        folder: 'cover_photo',
                         publicId: currentUserId.toString(),
                         type: 'cover_photo',
                     }),

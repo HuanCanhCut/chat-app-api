@@ -26,6 +26,8 @@ const uploadSingleFile = async ({
         .toFormat('webp', { quality: 70 })
         .toBuffer()
 
+    folder = `chat-app/${folder}`
+
     return new Promise((resolve, reject) => {
         cloudinary.v2.uploader
             .upload_stream({ resource_type: 'image', folder, public_id: `${publicId}-${folder}` }, (error, result) => {
