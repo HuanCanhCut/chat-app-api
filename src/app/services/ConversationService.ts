@@ -16,7 +16,7 @@ import { SocketEvent } from '~/enum/socketEvent'
 class ConversationService {
     async userAllowedToConversation({ userId, conversationUuid }: { userId: number; conversationUuid: string }) {
         interface ConversationWithMembers extends Conversation {
-            conversation_members: ConversationMember[]
+            members: ConversationMember[]
         }
 
         // check if user is a member of the conversation
@@ -26,7 +26,7 @@ class ConversationService {
             },
             include: {
                 model: ConversationMember,
-                as: 'conversation_members',
+                as: 'members',
                 where: {
                     user_id: userId,
                 },
@@ -90,7 +90,7 @@ class ConversationService {
                 include: [
                     {
                         model: ConversationMember,
-                        as: 'conversation_members',
+                        as: 'members',
                         include: [
                             {
                                 model: User,
@@ -164,7 +164,7 @@ class ConversationService {
                 include: [
                     {
                         model: ConversationMember,
-                        as: 'conversation_members',
+                        as: 'members',
                         required: true,
                         include: [
                             {
@@ -206,7 +206,7 @@ class ConversationService {
                 include: [
                     {
                         model: ConversationMember,
-                        as: 'conversation_members',
+                        as: 'members',
                         include: [
                             {
                                 model: User,
@@ -304,7 +304,7 @@ class ConversationService {
                 conversation_uuid: conversationUuid,
                 message: `${JSON.stringify({
                     user_id: currentUserId,
-                    name: conversation.conversation_members[0].nickname,
+                    name: conversation.members[0].nickname,
                 })} đã đổi tên đoạn chat thành ${conversationName}`,
                 type: 'system_change_group_name',
             })
@@ -373,7 +373,7 @@ class ConversationService {
                 conversation_uuid: conversationUuid,
                 message: `${JSON.stringify({
                     user_id: currentUserId,
-                    name: conversation.conversation_members[0].nickname,
+                    name: conversation.members[0].nickname,
                 })} đã đổi ảnh nhóm`,
                 type: 'system_change_group_avatar',
             })

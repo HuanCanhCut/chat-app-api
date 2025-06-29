@@ -189,7 +189,7 @@ class MessageService {
                 },
                 include: {
                     model: ConversationMember,
-                    as: 'conversation_members',
+                    as: 'members',
                     attributes: ['id'],
                     where: {
                         user_id: currentUserId,
@@ -689,7 +689,7 @@ class MessageService {
                 },
                 include: {
                     model: ConversationMember,
-                    as: 'conversation_members',
+                    as: 'members',
                     attributes: ['id'],
                     where: {
                         user_id: currentUserId,

@@ -42,7 +42,7 @@ const associations = () => {
     /**
      * Conversation model
      */
-    Conversation.hasMany(ConversationMember, { foreignKey: 'conversation_id', as: 'conversation_members' })
+    Conversation.hasMany(ConversationMember, { foreignKey: 'conversation_id', as: 'members' })
     ConversationMember.belongsTo(Conversation, { foreignKey: 'conversation_id', as: 'conversation' })
 
     Conversation.hasMany(Message, { foreignKey: 'conversation_id', as: 'messages' })
@@ -51,7 +51,7 @@ const associations = () => {
     /**
      * Conversation member model
      */
-    User.hasMany(ConversationMember, { foreignKey: 'user_id', as: 'conversation_members' })
+    User.hasMany(ConversationMember, { foreignKey: 'user_id', as: 'members' })
     ConversationMember.belongsTo(User, { foreignKey: 'user_id', as: 'user' })
 
     User.hasMany(ConversationMember, { foreignKey: 'added_by_id', as: 'added_by' })

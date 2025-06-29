@@ -175,7 +175,7 @@ class SocketMessageService {
                 include: [
                     {
                         model: ConversationMember,
-                        as: 'conversation_members',
+                        as: 'members',
                         include: [
                             {
                                 model: User,
@@ -202,7 +202,7 @@ class SocketMessageService {
                 {
                     model: ConversationMember,
                     required: true,
-                    as: 'conversation_members',
+                    as: 'members',
                     include: [
                         {
                             model: Conversation,
@@ -553,7 +553,7 @@ class SocketMessageService {
                     {
                         model: ConversationMember,
                         required: true,
-                        as: 'conversation_members',
+                        as: 'members',
                         attributes: ['user_id'],
                         include: [
                             {
@@ -659,7 +659,7 @@ class SocketMessageService {
                     {
                         model: ConversationMember,
                         required: true,
-                        as: 'conversation_members',
+                        as: 'members',
                         attributes: ['user_id'],
                         include: [
                             {
