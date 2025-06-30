@@ -5,10 +5,39 @@ import { ForBiddenError } from '../errors/errors'
 import { Message, MessageStatus, User } from '../models'
 import { Conversation, ConversationMember } from '../models'
 import MessageReaction from '../models/MessageReactionModel'
+import SocketMessageService from './SocketMessageService'
 import { sequelize } from '~/config/database'
+import { redisClient } from '~/config/redis'
 import { ioInstance } from '~/config/socket'
+import { RedisKey } from '~/enum/redis'
 import { SocketEvent } from '~/enum/socketEvent'
+import { MessageType } from '~/type'
+
 class MessageService {
+    async createSystemMessage({
+        conversationUuid,
+        message,
+        type,
+        currentUserId,
+    }: {
+        conversationUuid: string
+        message: string
+        type: MessageType
+        currentUserId: number
+    }) {
+        const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${currentUserId}`, 0, -1)
+
+        const socket = ioInstance.sockets.sockets.get(socketIds[0])
+
+        const socketMessageService = new SocketMessageService(socket, currentUserId)
+
+        await socketMessageService.NEW_MESSAGE({
+            conversation_uuid: conversationUuid,
+            message,
+            type,
+        })
+    }
+
     lastReadMessageIdLiteral = (currentUserId: number, conversationId: number) => {
         return sequelize.literal(`
             (

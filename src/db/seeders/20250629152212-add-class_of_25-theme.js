@@ -50,8 +50,8 @@ module.exports = {
                                     'https://res.cloudinary.com/dkmwrkngj/image/upload/v1751210497/493914117_1616437225725656_4750356188775802173_n_bnqqii.jpg',
                             },
                         },
-                        emoji: '1f393',
                     }),
+                    emoji: '1f393',
                 },
             ],
             {

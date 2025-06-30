@@ -2,6 +2,7 @@ import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequ
 
 import { sequelize } from '../../config/database'
 import handleChildrenAfterFindHook from '../helper/childrenAfterFindHook'
+import ConversationMember from './ConversationMemberModel'
 import Message from './MessageModel'
 
 class Conversation extends Model<InferAttributes<Conversation>, InferCreationAttributes<Conversation>> {
@@ -12,6 +13,7 @@ class Conversation extends Model<InferAttributes<Conversation>, InferCreationAtt
     declare uuid: string
     declare last_message?: Message
     declare emoji?: string
+    declare members?: ConversationMember[]
     declare created_at?: Date
     declare updated_at?: Date
     declare theme_id?: number
@@ -40,6 +42,11 @@ Conversation.init(
         uuid: {
             type: DataTypes.STRING,
             allowNull: false,
+        },
+        emoji: {
+            type: DataTypes.STRING,
+            allowNull: true,
+            defaultValue: '1f44d',
         },
         theme_id: {
             type: DataTypes.INTEGER,

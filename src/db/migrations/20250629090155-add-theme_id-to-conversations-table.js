@@ -17,7 +17,6 @@ module.exports = {
                 model: 'conversation_themes',
                 key: 'id',
             },
-            onDelete: 'SET DEFAULT',
             onUpdate: 'CASCADE',
         })
     },

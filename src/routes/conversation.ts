@@ -14,5 +14,6 @@ router.patch(
     upload.single('avatar'),
     ConversationController.changeConversationAvatar.bind(ConversationController),
 )
+router.patch('/:uuid/theme', verifyToken, ConversationController.changeConversationTheme.bind(ConversationController))
 
 export default router

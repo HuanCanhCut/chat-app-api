@@ -19,4 +19,5 @@ export enum SocketEvent {
     // ------------------------------- Conversation -------------------------------
     CONVERSATION_RENAMED = 'conversation:renamed',
     CONVERSATION_AVATAR_CHANGED = 'conversation:avatar_changed',
+    CONVERSATION_THEME_CHANGED = 'conversation:theme_changed',
 }

@@ -81,3 +81,5 @@ export type MessageType =
     | 'system_add_user'
     | 'system_remove_user'
     | 'system_change_group_avatar'
+    | 'system_change_emoji'
+    | 'system_block_user'

@@ -122,6 +122,34 @@ class ConversationController {
             return next(e)
         }
     }
+
+    // [PATCH] /api/conversations/:uuid/theme
+    async changeConversationTheme(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const { uuid } = req.params
+            const { theme_id } = req.body
+
+            const decoded = req.decoded
+
+            if (!uuid) {
+                return next(new UnprocessableEntityError({ message: 'Conversation uuid is required' }))
+            }
+
+            if (!theme_id) {
+                return next(new UnprocessableEntityError({ message: 'Theme id is required' }))
+            }
+
+            const updatedConversation = await ConversationService.changeConversationTheme({
+                currentUserId: decoded.sub,
+                conversationUuid: uuid,
+                themeId: theme_id,
+            })
+
+            res.json({ data: updatedConversation })
+        } catch (e: any) {
+            return next(e)
+        }
+    }
 }
 
 export default new ConversationController()

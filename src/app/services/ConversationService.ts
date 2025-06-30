@@ -1,26 +1,19 @@
 import { Op, QueryTypes } from 'sequelize'
 
-import { AppError, ForBiddenError, InternalServerError } from '../errors/errors'
+import { AppError, ForBiddenError, InternalServerError, NotFoundError } from '../errors/errors'
 import uploadSingleFile from '../helper/uploadToCloudinary'
 import { ConversationMember, User } from '../models'
 import Conversation from '../models/ConversationModel'
 import ConversationTheme from '../models/ConversationThemeModel'
 import MessageService from '../services/MessageService'
-import SocketMessageService from './SocketMessageService'
 import { sequelize } from '~/config/database'
-import { redisClient } from '~/config/redis'
 import { ioInstance } from '~/config/socket'
-import { RedisKey } from '~/enum/redis'
 import { SocketEvent } from '~/enum/socketEvent'
 
 class ConversationService {
     async userAllowedToConversation({ userId, conversationUuid }: { userId: number; conversationUuid: string }) {
-        interface ConversationWithMembers extends Conversation {
-            members: ConversationMember[]
-        }
-
         // check if user is a member of the conversation
-        const conversation = (await Conversation.findOne({
+        const conversation = await Conversation.findOne({
             where: {
                 uuid: conversationUuid,
             },
@@ -31,7 +24,7 @@ class ConversationService {
                     user_id: userId,
                 },
             },
-        })) as ConversationWithMembers
+        })
 
         if (!conversation) {
             throw new ForBiddenError({ message: 'You are not allowed to access this conversation' })
@@ -294,20 +287,17 @@ class ConversationService {
                 conversation_name: conversationName,
             })
 
-            const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${currentUserId}`, 0, -1)
-
-            const socket = ioInstance.sockets.sockets.get(socketIds[0])
-
-            const socketMessageService = new SocketMessageService(socket, currentUserId)
-
-            await socketMessageService.NEW_MESSAGE({
-                conversation_uuid: conversationUuid,
+            await MessageService.createSystemMessage({
+                conversationUuid,
                 message: `${JSON.stringify({
                     user_id: currentUserId,
-                    name: conversation.members[0].nickname,
-                })} đã đổi tên đoạn chat thành ${conversationName}`,
+                    name: conversation.members![0].nickname,
+                })} đã đổi tên đoạn chat thành ${conversationName}.`,
                 type: 'system_change_group_name',
+                currentUserId,
             })
+
+            delete savedConversation.dataValues.members
 
             return savedConversation
         } catch (error: any) {
@@ -363,20 +353,84 @@ class ConversationService {
                 avatar: result?.secure_url,
             })
 
-            const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${currentUserId}`, 0, -1)
-
-            const socket = ioInstance.sockets.sockets.get(socketIds[0])
-
-            const socketMessageService = new SocketMessageService(socket, currentUserId)
-
-            await socketMessageService.NEW_MESSAGE({
-                conversation_uuid: conversationUuid,
+            await MessageService.createSystemMessage({
+                conversationUuid,
                 message: `${JSON.stringify({
                     user_id: currentUserId,
-                    name: conversation.members[0].nickname,
-                })} đã đổi ảnh nhóm`,
+                    name: conversation.members![0].nickname,
+                })} đã đổi ảnh nhóm.`,
                 type: 'system_change_group_avatar',
+                currentUserId,
             })
+
+            delete conversation.dataValues.members
+
+            return conversation
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            }
+
+            throw new InternalServerError({ message: error.message })
+        }
+    }
+
+    async changeConversationTheme({
+        currentUserId,
+        conversationUuid,
+        themeId,
+    }: {
+        currentUserId: number
+        conversationUuid: string
+        themeId: number
+    }) {
+        try {
+            const conversation = await this.userAllowedToConversation({
+                userId: currentUserId,
+                conversationUuid: conversationUuid,
+            })
+
+            const theme = await ConversationTheme.findByPk(themeId)
+
+            if (!theme) {
+                throw new NotFoundError({ message: 'Theme not found' })
+            }
+
+            conversation.theme_id = themeId
+
+            if (theme.emoji) {
+                conversation.emoji = theme.emoji
+            }
+
+            const savedConversation = await conversation.save()
+
+            if (!savedConversation) {
+                throw new InternalServerError({ message: 'Failed to change conversation theme' })
+            }
+
+            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_THEME_CHANGED, {
+                conversation_uuid: conversationUuid,
+                theme,
+            })
+
+            let emoji = ''
+
+            if (theme.emoji) {
+                // convert unified to emoji
+                emoji = String.fromCodePoint(parseInt(theme.emoji, 16))
+            }
+
+            await MessageService.createSystemMessage({
+                conversationUuid,
+                message: `${JSON.stringify({
+                    user_id: currentUserId,
+                    name: conversation.members![0].nickname,
+                })} đã đổi chủ đề thành ${theme.name} ${emoji ? emoji : ''}`,
+                type: 'system_change_theme',
+                currentUserId,
+            })
+
+            delete savedConversation.dataValues.members
 
             return savedConversation
         } catch (error: any) {
