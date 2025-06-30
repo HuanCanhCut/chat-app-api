@@ -42,12 +42,14 @@ module.exports = {
                         },
                         background_theme: {
                             light: {
-                                background:
+                                background_image:
                                     'https://res.cloudinary.com/dkmwrkngj/image/upload/v1751208434/504158063_1874427243292182_4228321411406763260_n_freqpy.jpg',
+                                background_color: '#ffecf7',
                             },
                             dark: {
-                                background:
+                                background_image:
                                     'https://res.cloudinary.com/dkmwrkngj/image/upload/v1751208379/504390487_29888933354085736_7832433412329963773_n_d12wxb.jpg',
+                                background_color: '#8c1a72',
                             },
                         },
                     }),

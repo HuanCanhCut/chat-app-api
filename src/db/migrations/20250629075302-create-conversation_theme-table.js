@@ -75,10 +75,12 @@ module.exports = {
                     },
                     background_theme: {
                         light: {
-                            background: null,
+                            background_image: null,
+                            background_color: '#ffffff',
                         },
                         dark: {
-                            background: null,
+                            background_image: null,
+                            background_color: '#242526',
                         },
                     },
                 }),
