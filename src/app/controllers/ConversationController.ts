@@ -150,6 +150,34 @@ class ConversationController {
             return next(e)
         }
     }
+
+    // [PATCH] /api/conversations/:uuid/emoji
+    async changeConversationEmoji(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const { uuid } = req.params
+            const { emoji } = req.body
+
+            const decoded = req.decoded
+
+            if (!uuid) {
+                return next(new UnprocessableEntityError({ message: 'Conversation uuid is required' }))
+            }
+
+            if (!emoji) {
+                return next(new UnprocessableEntityError({ message: 'Emoji is required' }))
+            }
+
+            const updatedConversation = await ConversationService.changeConversationEmoji({
+                currentUserId: decoded.sub,
+                conversationUuid: uuid,
+                emoji,
+            })
+
+            res.json({ data: updatedConversation })
+        } catch (e: any) {
+            return next(e)
+        }
+    }
 }
 
 export default new ConversationController()

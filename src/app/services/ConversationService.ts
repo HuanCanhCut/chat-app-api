@@ -441,6 +441,58 @@ class ConversationService {
             throw new InternalServerError({ message: error.message })
         }
     }
+
+    async changeConversationEmoji({
+        currentUserId,
+        conversationUuid,
+        emoji,
+    }: {
+        currentUserId: number
+        conversationUuid: string
+        emoji: string
+    }) {
+        try {
+            const conversation = await this.userAllowedToConversation({
+                userId: currentUserId,
+                conversationUuid: conversationUuid,
+            })
+
+            // convert emoji to unified
+            const unifiedEmoji = emoji.codePointAt(0)?.toString(16)
+
+            conversation.emoji = unifiedEmoji
+            const savedConversation = await conversation.save()
+
+            if (!savedConversation) {
+                throw new InternalServerError({ message: 'Failed to change conversation emoji' })
+            }
+
+            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_EMOJI_CHANGED, {
+                conversation_uuid: conversationUuid,
+                emoji,
+            })
+
+            await MessageService.createSystemMessage({
+                conversationUuid,
+                message: `${JSON.stringify({
+                    user_id: currentUserId,
+                    name: conversation.members![0].nickname,
+                })} đã đổi emoji thành ${emoji}.`,
+                type: 'system_change_emoji',
+                currentUserId,
+            })
+
+            delete savedConversation.dataValues.members
+
+            return savedConversation
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            }
+
+            throw new InternalServerError({ message: error.message })
+        }
+    }
 }
 
 export default new ConversationService()

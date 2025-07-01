@@ -15,5 +15,6 @@ router.patch(
     ConversationController.changeConversationAvatar.bind(ConversationController),
 )
 router.patch('/:uuid/theme', verifyToken, ConversationController.changeConversationTheme.bind(ConversationController))
+router.patch('/:uuid/emoji', verifyToken, ConversationController.changeConversationEmoji.bind(ConversationController))
 
 export default router
