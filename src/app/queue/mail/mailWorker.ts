@@ -22,7 +22,7 @@ const mailWorker = new Worker(
                     // Gọi hàm gửi email
                     await sendVerificationCode({ email, code })
 
-                    console.log(`[Mail Worker] Job ${job.id} completed: email sent to ${email}`)
+                    console.log(`[Mail Worker] Job ${job.id} sent verification code to ${email}`)
                     return { success: true }
                 }
                 default:

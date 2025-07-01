@@ -9,7 +9,7 @@ import http from 'http'
 import { Server } from 'socket.io'
 
 import 'express-async-errors'
-import './app/queue/mail'
+import './app/queue'
 import errorHandler from './app/errors/errorHandler'
 import * as database from './config/database/index'
 import serviceAccount from './config/firebase/serviceAccount'

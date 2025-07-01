@@ -5,6 +5,7 @@ import uploadSingleFile from '../helper/uploadToCloudinary'
 import { ConversationMember, User } from '../models'
 import Conversation from '../models/ConversationModel'
 import ConversationTheme from '../models/ConversationThemeModel'
+import { addSystemMessageJob } from '../queue/systemMessage'
 import MessageService from '../services/MessageService'
 import { sequelize } from '~/config/database'
 import { ioInstance } from '~/config/socket'
@@ -287,7 +288,7 @@ class ConversationService {
                 conversation_name: conversationName,
             })
 
-            await MessageService.createSystemMessage({
+            await addSystemMessageJob({
                 conversationUuid,
                 message: `${JSON.stringify({
                     user_id: currentUserId,
@@ -353,7 +354,7 @@ class ConversationService {
                 avatar: result?.secure_url,
             })
 
-            await MessageService.createSystemMessage({
+            await addSystemMessageJob({
                 conversationUuid,
                 message: `${JSON.stringify({
                     user_id: currentUserId,
@@ -420,7 +421,7 @@ class ConversationService {
                 emoji = String.fromCodePoint(parseInt(theme.emoji, 16))
             }
 
-            await MessageService.createSystemMessage({
+            await addSystemMessageJob({
                 conversationUuid,
                 message: `${JSON.stringify({
                     user_id: currentUserId,
@@ -472,7 +473,7 @@ class ConversationService {
                 emoji,
             })
 
-            await MessageService.createSystemMessage({
+            await addSystemMessageJob({
                 conversationUuid,
                 message: `${JSON.stringify({
                     user_id: currentUserId,
@@ -554,7 +555,7 @@ class ConversationService {
                 nickname,
             })
 
-            await MessageService.createSystemMessage({
+            await addSystemMessageJob({
                 conversationUuid,
                 message: `${JSON.stringify({
                     user_id: currentUserId,
