@@ -21,4 +21,5 @@ export enum SocketEvent {
     CONVERSATION_AVATAR_CHANGED = 'conversation:avatar_changed',
     CONVERSATION_THEME_CHANGED = 'conversation:theme_changed',
     CONVERSATION_EMOJI_CHANGED = 'conversation:emoji_changed',
+    CONVERSATION_MEMBER_NICKNAME_CHANGED = 'conversation:member_nickname_changed',
 }

@@ -178,6 +178,39 @@ class ConversationController {
             return next(e)
         }
     }
+
+    // [PATCH] /api/conversations/:uuid/nickname
+    async changeConversationMemberNickname(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const { uuid } = req.params
+            const { nickname, member_id } = req.body
+
+            const decoded = req.decoded
+
+            if (!uuid) {
+                return next(new UnprocessableEntityError({ message: 'Conversation uuid is required' }))
+            }
+
+            if (!nickname) {
+                return next(new UnprocessableEntityError({ message: 'Nickname is required' }))
+            }
+
+            if (!member_id) {
+                return next(new UnprocessableEntityError({ message: 'Member id is required' }))
+            }
+
+            const updatedConversation = await ConversationService.changeConversationMemberNickname({
+                currentUserId: decoded.sub,
+                conversationUuid: uuid,
+                nickname,
+                memberId: member_id,
+            })
+
+            res.json({ data: updatedConversation })
+        } catch (e: any) {
+            return next(e)
+        }
+    }
 }
 
 export default new ConversationController()

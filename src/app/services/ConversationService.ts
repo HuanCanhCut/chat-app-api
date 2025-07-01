@@ -493,6 +493,89 @@ class ConversationService {
             throw new InternalServerError({ message: error.message })
         }
     }
+
+    async changeConversationMemberNickname({
+        currentUserId,
+        conversationUuid,
+        nickname,
+        memberId,
+    }: {
+        currentUserId: number
+        conversationUuid: string
+        nickname: string
+        memberId: number
+    }) {
+        try {
+            const conversation = await this.userAllowedToConversation({
+                userId: currentUserId,
+                conversationUuid: conversationUuid,
+            })
+
+            interface MemberWithUser extends ConversationMember {
+                user: User
+            }
+
+            const member = (await ConversationMember.findOne({
+                include: [
+                    {
+                        model: Conversation,
+                        as: 'conversation',
+                        where: {
+                            uuid: conversationUuid,
+                        },
+                    },
+                    {
+                        model: User,
+                        as: 'user',
+                        attributes: {
+                            exclude: ['password', 'email'],
+                        },
+                    },
+                ],
+                where: {
+                    user_id: memberId,
+                },
+            })) as MemberWithUser
+
+            if (!member) {
+                throw new NotFoundError({ message: 'Member is not in this conversation' })
+            }
+
+            member.nickname = nickname
+            const savedMember = await member.save()
+
+            if (!savedMember) {
+                throw new InternalServerError({ message: 'Failed to change conversation member nickname' })
+            }
+
+            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_MEMBER_NICKNAME_CHANGED, {
+                conversation_uuid: conversationUuid,
+                member_id: memberId,
+                nickname,
+            })
+
+            await MessageService.createSystemMessage({
+                conversationUuid,
+                message: `${JSON.stringify({
+                    user_id: currentUserId,
+                    name: conversation.members![0].nickname,
+                })} đã đặt biệt danh cho ${JSON.stringify({
+                    user_id: memberId,
+                    name: member.user.full_name,
+                })} thành ${nickname}.`,
+                type: 'system_set_nickname',
+                currentUserId,
+            })
+
+            return savedMember
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            }
+
+            throw new InternalServerError({ message: error.message })
+        }
+    }
 }
 
 export default new ConversationService()
