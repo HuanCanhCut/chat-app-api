@@ -267,6 +267,29 @@ class ConversationController {
             return next(e)
         }
     }
+
+    // [PATCH] /api/conversations/:uuid/remove-leader
+    async removeLeader(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const { uuid } = req.params
+            const { member_id } = req.body
+            const decoded = req.decoded
+
+            if (!uuid) {
+                return next(new UnprocessableEntityError({ message: 'Conversation uuid is required' }))
+            }
+
+            const updatedConversation = await ConversationService.removeLeader({
+                currentUserId: decoded.sub,
+                conversationUuid: uuid,
+                memberId: member_id,
+            })
+
+            res.json({ data: updatedConversation })
+        } catch (e: any) {
+            return next(e)
+        }
+    }
 }
 
 export default new ConversationController()

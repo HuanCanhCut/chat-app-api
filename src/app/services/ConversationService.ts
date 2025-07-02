@@ -516,27 +516,28 @@ class ConversationService {
                 user: User
             }
 
-            const member = (await ConversationMember.findOne({
-                include: [
-                    {
-                        model: Conversation,
-                        as: 'conversation',
-                        where: {
-                            uuid: conversationUuid,
+            const [member, user] = await Promise.all([
+                (await ConversationMember.findOne({
+                    include: [
+                        {
+                            model: Conversation,
+                            as: 'conversation',
+                            where: {
+                                uuid: conversationUuid,
+                            },
                         },
+                    ],
+                    where: {
+                        user_id: memberId,
                     },
-                    {
-                        model: User,
-                        as: 'user',
-                        attributes: {
-                            exclude: ['password', 'email'],
-                        },
+                })) as MemberWithUser,
+
+                User.findByPk(memberId, {
+                    attributes: {
+                        include: ['full_name'],
                     },
-                ],
-                where: {
-                    user_id: memberId,
-                },
-            })) as MemberWithUser
+                }),
+            ])
 
             if (!member) {
                 throw new NotFoundError({ message: 'Member is not in this conversation' })
@@ -562,7 +563,7 @@ class ConversationService {
                     name: conversation.members![0].nickname,
                 })} đã đặt biệt danh cho ${JSON.stringify({
                     user_id: memberId,
-                    name: member.user.full_name,
+                    name: user?.full_name,
                 })} thành ${nickname}.`,
                 type: 'system_set_nickname',
                 currentUserId,
@@ -597,18 +598,24 @@ class ConversationService {
                 throw new ForBiddenError({ message: 'You are not allowed to add a user to a personal conversation' })
             }
 
-            const user = await User.findByPk(userId)
+            const [user, hasMemberInConversation] = await Promise.all([
+                User.findByPk(userId, {
+                    attributes: {
+                        include: ['full_name'],
+                    },
+                }),
+
+                ConversationMember.findAll({
+                    where: {
+                        conversation_id: conversation.id,
+                        user_id: userId,
+                    },
+                }),
+            ])
 
             if (!user) {
                 throw new NotFoundError({ message: 'User not found' })
             }
-
-            const hasMemberInConversation = await ConversationMember.findAll({
-                where: {
-                    conversation_id: conversation.id,
-                    user_id: userId,
-                },
-            })
 
             if (hasMemberInConversation.length > 0) {
                 throw new ConflictError({ message: 'User is already in this conversation' })
@@ -636,7 +643,7 @@ class ConversationService {
                     name: conversation.members![0].nickname,
                 })} đã thêm ${JSON.stringify({
                     user_id: userId,
-                    name: user.full_name,
+                    name: user?.full_name,
                 })} vào nhóm.`,
                 type: 'system_add_user',
                 currentUserId,
@@ -717,7 +724,7 @@ class ConversationService {
 
                 User.findByPk(memberId, {
                     attributes: {
-                        exclude: ['password', 'email'],
+                        include: ['full_name'],
                     },
                 }),
             ])
@@ -758,6 +765,100 @@ class ConversationService {
             })
 
             return savedUserMember
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            }
+
+            throw new InternalServerError({ message: error.message })
+        }
+    }
+
+    async removeLeader({
+        currentUserId,
+        conversationUuid,
+        memberId,
+    }: {
+        currentUserId: number
+        conversationUuid: string
+        memberId: number
+    }) {
+        try {
+            const conversation = await this.userAllowedToConversation({
+                userId: currentUserId,
+                conversationUuid: conversationUuid,
+            })
+
+            if (!conversation.is_group) {
+                throw new ForBiddenError({
+                    message: 'You are not allowed to remove a leader from a personal conversation',
+                })
+            }
+
+            const currentUserMember = await ConversationMember.findOne({
+                where: {
+                    conversation_id: conversation.id,
+                    user_id: currentUserId,
+                },
+            })
+
+            if (!currentUserMember) {
+                throw new ForBiddenError({ message: 'You are not a member of this conversation' })
+            }
+
+            if (currentUserMember.role !== 'admin') {
+                throw new ForBiddenError({ message: 'You are not allowed to remove a leader from this conversation' })
+            }
+
+            const [leader, user] = await Promise.all([
+                await ConversationMember.findOne({
+                    where: {
+                        conversation_id: conversation.id,
+                        user_id: memberId,
+                    },
+                }),
+
+                User.findByPk(memberId, {
+                    attributes: {
+                        include: ['full_name'],
+                    },
+                }),
+            ])
+
+            if (!leader) {
+                throw new NotFoundError({ message: 'Leader not found' })
+            }
+
+            if (leader.role !== 'leader') {
+                throw new ForBiddenError({ message: 'Member is not a leader of this conversation' })
+            }
+
+            leader.role = 'member'
+            const savedLeader = await leader.save()
+
+            if (!savedLeader) {
+                throw new InternalServerError({ message: 'Failed to remove leader from conversation' })
+            }
+
+            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_LEADER_CHANGED, {
+                conversation_uuid: conversationUuid,
+                leader: savedLeader,
+            })
+
+            await addSystemMessageJob({
+                conversationUuid,
+                message: `${JSON.stringify({
+                    user_id: currentUserId,
+                    name: conversation.members![0].nickname,
+                })} đã gỡ tư cách quản trị viên nhóm của ${JSON.stringify({
+                    user_id: leader.user_id,
+                    name: user?.full_name,
+                })}.`,
+                type: 'system_remove_leader',
+                currentUserId,
+            })
+
+            return savedLeader
         } catch (error: any) {
             if (error instanceof AppError) {
                 throw error
