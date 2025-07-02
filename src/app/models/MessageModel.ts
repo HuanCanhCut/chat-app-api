@@ -63,6 +63,8 @@ Message.init(
                 'system_change_group_avatar',
                 'system_change_emoji',
                 'system_block_user',
+                'system_appoint_leader',
+                'system_remove_leader',
             ),
             allowNull: false,
             defaultValue: 'text',

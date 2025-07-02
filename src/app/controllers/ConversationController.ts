@@ -212,10 +212,11 @@ class ConversationController {
         }
     }
 
-    // [POST] /api/conversations/:uuid/user/:user_id
+    // [POST] /api/conversations/:uuid/user
     async addUserToConversation(req: IRequest, res: Response, next: NextFunction) {
         try {
-            const { uuid, user_id } = req.params
+            const { uuid } = req.params
+            const { user_id } = req.body
 
             const decoded = req.decoded
 
@@ -230,7 +231,35 @@ class ConversationController {
             const updatedConversation = await ConversationService.addUserToConversation({
                 currentUserId: decoded.sub,
                 conversationUuid: uuid,
-                userId: Number(user_id),
+                userId: user_id,
+            })
+
+            res.json({ data: updatedConversation })
+        } catch (e: any) {
+            return next(e)
+        }
+    }
+
+    // [PATCH] /api/conversations/:uuid/leader
+    async appointLeader(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const { uuid } = req.params
+            const { member_id } = req.body
+
+            const decoded = req.decoded
+
+            if (!uuid) {
+                return next(new UnprocessableEntityError({ message: 'Conversation uuid is required' }))
+            }
+
+            if (!member_id) {
+                return next(new UnprocessableEntityError({ message: 'User id is required' }))
+            }
+
+            const updatedConversation = await ConversationService.appointLeader({
+                currentUserId: decoded.sub,
+                conversationUuid: uuid,
+                memberId: member_id,
             })
 
             res.json({ data: updatedConversation })

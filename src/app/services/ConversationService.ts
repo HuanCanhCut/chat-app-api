@@ -670,6 +670,102 @@ class ConversationService {
             throw new InternalServerError({ message: error.message })
         }
     }
+
+    async appointLeader({
+        currentUserId,
+        conversationUuid,
+        memberId,
+    }: {
+        currentUserId: number
+        conversationUuid: string
+        memberId: number
+    }) {
+        try {
+            const conversation = await this.userAllowedToConversation({
+                userId: currentUserId,
+                conversationUuid: conversationUuid,
+            })
+
+            if (!conversation.is_group) {
+                throw new ForBiddenError({
+                    message: 'You are not allowed to appoint a leader to a personal conversation',
+                })
+            }
+
+            const currentUserMember = await ConversationMember.findOne({
+                where: {
+                    conversation_id: conversation.id,
+                    user_id: currentUserId,
+                },
+            })
+
+            if (!currentUserMember) {
+                throw new ForBiddenError({ message: 'You are not a member of this conversation' })
+            }
+
+            if (currentUserMember.role !== 'admin' && currentUserMember.role !== 'leader') {
+                throw new ForBiddenError({ message: 'You are not allowed to appoint a leader to this conversation' })
+            }
+
+            const [userMember, user] = await Promise.all([
+                await ConversationMember.findOne({
+                    where: {
+                        conversation_id: conversation.id,
+                        user_id: memberId,
+                    },
+                }),
+
+                User.findByPk(memberId, {
+                    attributes: {
+                        exclude: ['password', 'email'],
+                    },
+                }),
+            ])
+
+            if (!userMember) {
+                throw new NotFoundError({ message: 'User is not a member of this conversation' })
+            }
+
+            if (userMember.role === 'leader' || userMember.role === 'admin') {
+                throw new ForBiddenError({
+                    message: `That user is already a ${userMember.role} of this conversation`,
+                })
+            }
+
+            userMember.role = 'leader'
+            const savedUserMember = await userMember.save()
+
+            if (!savedUserMember) {
+                throw new InternalServerError({ message: 'Failed to appoint leader to conversation' })
+            }
+
+            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_LEADER_CHANGED, {
+                conversation_uuid: conversationUuid,
+                leader: savedUserMember,
+            })
+
+            await addSystemMessageJob({
+                conversationUuid,
+                message: `${JSON.stringify({
+                    user_id: currentUserId,
+                    name: conversation.members![0].nickname,
+                })} đã thêm ${JSON.stringify({
+                    user_id: memberId,
+                    name: user?.full_name,
+                })} làm quản trị viên nhóm.`,
+                type: 'system_appoint_leader',
+                currentUserId,
+            })
+
+            return savedUserMember
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            }
+
+            throw new InternalServerError({ message: error.message })
+        }
+    }
 }
 
 export default new ConversationService()
