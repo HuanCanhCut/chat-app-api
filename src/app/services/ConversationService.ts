@@ -1,6 +1,6 @@
 import { Op, QueryTypes } from 'sequelize'
 
-import { AppError, ForBiddenError, InternalServerError, NotFoundError } from '../errors/errors'
+import { AppError, ConflictError, ForBiddenError, InternalServerError, NotFoundError } from '../errors/errors'
 import uploadSingleFile from '../helper/uploadToCloudinary'
 import { ConversationMember, User } from '../models'
 import Conversation from '../models/ConversationModel'
@@ -569,6 +569,99 @@ class ConversationService {
             })
 
             return savedMember
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            }
+
+            throw new InternalServerError({ message: error.message })
+        }
+    }
+
+    async addUserToConversation({
+        currentUserId,
+        conversationUuid,
+        userId,
+    }: {
+        currentUserId: number
+        conversationUuid: string
+        userId: number
+    }) {
+        try {
+            const conversation = await this.userAllowedToConversation({
+                userId: currentUserId,
+                conversationUuid: conversationUuid,
+            })
+
+            if (!conversation.is_group) {
+                throw new ForBiddenError({ message: 'You are not allowed to add a user to a personal conversation' })
+            }
+
+            const user = await User.findByPk(userId)
+
+            if (!user) {
+                throw new NotFoundError({ message: 'User not found' })
+            }
+
+            const hasMemberInConversation = await ConversationMember.findAll({
+                where: {
+                    conversation_id: conversation.id,
+                    user_id: userId,
+                },
+            })
+
+            if (hasMemberInConversation.length > 0) {
+                throw new ConflictError({ message: 'User is already in this conversation' })
+            }
+
+            const conversationMember = await ConversationMember.create({
+                conversation_id: conversation.id,
+                user_id: userId,
+                added_by_id: currentUserId,
+            })
+
+            if (!conversationMember) {
+                throw new InternalServerError({ message: 'Failed to add user to conversation' })
+            }
+
+            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_MEMBER_ADDED, {
+                conversation_uuid: conversationUuid,
+                member: conversationMember,
+            })
+
+            await addSystemMessageJob({
+                conversationUuid: conversation.uuid,
+                message: `${JSON.stringify({
+                    user_id: currentUserId,
+                    name: conversation.members![0].nickname,
+                })} đã thêm ${JSON.stringify({
+                    user_id: userId,
+                    name: user.full_name,
+                })} vào nhóm.`,
+                type: 'system_add_user',
+                currentUserId,
+            })
+
+            const member = await ConversationMember.findByPk(conversationMember.id, {
+                include: [
+                    {
+                        model: User,
+                        as: 'user',
+                        attributes: {
+                            exclude: ['password', 'email'],
+                        },
+                    },
+                    {
+                        model: User,
+                        as: 'added_by',
+                        attributes: {
+                            exclude: ['password', 'email'],
+                        },
+                    },
+                ],
+            })
+
+            return member
         } catch (error: any) {
             if (error instanceof AppError) {
                 throw error

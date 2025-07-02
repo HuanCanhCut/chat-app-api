@@ -53,7 +53,7 @@ module.exports = {
                             },
                         },
                     }),
-                    emoji: '1f923',
+                    emoji: '1f9cb',
                 },
             ],
             {

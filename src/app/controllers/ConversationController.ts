@@ -211,6 +211,33 @@ class ConversationController {
             return next(e)
         }
     }
+
+    // [POST] /api/conversations/:uuid/user/:user_id
+    async addUserToConversation(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const { uuid, user_id } = req.params
+
+            const decoded = req.decoded
+
+            if (!uuid) {
+                return next(new UnprocessableEntityError({ message: 'Conversation uuid is required' }))
+            }
+
+            if (!user_id) {
+                return next(new UnprocessableEntityError({ message: 'User id is required' }))
+            }
+
+            const updatedConversation = await ConversationService.addUserToConversation({
+                currentUserId: decoded.sub,
+                conversationUuid: uuid,
+                userId: Number(user_id),
+            })
+
+            res.json({ data: updatedConversation })
+        } catch (e: any) {
+            return next(e)
+        }
+    }
 }
 
 export default new ConversationController()

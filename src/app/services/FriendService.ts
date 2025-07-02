@@ -2,14 +2,14 @@ import { literal, Op, Sequelize } from 'sequelize'
 import { v4 as uuidv4 } from 'uuid'
 
 import { AppError, ConflictError, InternalServerError, NotFoundError, UnprocessableEntityError } from '../errors/errors'
-import { Conversation, ConversationMember, Friendships, Notification } from '../models'
-import { User } from '../models'
+import { Conversation, ConversationMember, Friendships, Notification, User } from '../models'
 import NotificationService from './NotificationService'
 import { sequelize } from '~/config/database'
 import { redisClient } from '~/config/redis'
 import { ioInstance } from '~/config/socket'
 import { RedisKey } from '~/enum/redis'
 import { SocketEvent } from '~/enum/socketEvent'
+
 interface SendMakeFriendRequestProps {
     userId: number
     friendId: number
@@ -283,7 +283,7 @@ class FriendService {
                     const conversation = await Conversation.create({
                         uuid: uuidv4(),
                         is_group: false,
-                    })
+                    } as any)
 
                     // add two members to conversation
                     if (conversation.id) {

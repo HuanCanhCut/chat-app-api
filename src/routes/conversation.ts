@@ -21,5 +21,9 @@ router.patch(
     verifyToken,
     ConversationController.changeConversationMemberNickname.bind(ConversationController),
 )
-
+router.post(
+    '/:uuid/user/:user_id',
+    verifyToken,
+    ConversationController.addUserToConversation.bind(ConversationController),
+)
 export default router
