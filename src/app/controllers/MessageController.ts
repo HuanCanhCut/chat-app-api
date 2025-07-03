@@ -1,6 +1,6 @@
 import { NextFunction, Response } from 'express'
 
-import { InternalServerError, UnprocessableEntityError } from '../errors/errors'
+import { UnprocessableEntityError } from '../errors/errors'
 import MessageService from '../services/MessageService'
 import { responseModel } from '../utils/responseModel'
 import { IRequest } from '~/type'
@@ -118,7 +118,7 @@ class MessageController {
 
             res.json(response)
         } catch (error: any) {
-            return next(new InternalServerError(error))
+            return next(error)
         }
     }
 
@@ -154,7 +154,7 @@ class MessageController {
 
             res.json(response)
         } catch (error: any) {
-            return next(new InternalServerError(error))
+            return next(error)
         }
     }
 
@@ -167,7 +167,7 @@ class MessageController {
 
             res.json(types)
         } catch (error: any) {
-            return next(new InternalServerError(error))
+            return next(error)
         }
     }
 
@@ -196,7 +196,7 @@ class MessageController {
                 message: 'Message revoked successfully',
             })
         } catch (error: any) {
-            return next(new InternalServerError(error))
+            return next(error)
         }
     }
 
@@ -241,7 +241,7 @@ class MessageController {
                 }),
             )
         } catch (error: any) {
-            return next(new InternalServerError(error))
+            return next(error)
         }
     }
 }
