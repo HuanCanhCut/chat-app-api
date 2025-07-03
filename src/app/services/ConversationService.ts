@@ -2,9 +2,7 @@ import { Op, QueryTypes } from 'sequelize'
 
 import { AppError, ConflictError, ForBiddenError, InternalServerError, NotFoundError } from '../errors/errors'
 import uploadSingleFile from '../helper/uploadToCloudinary'
-import { ConversationMember, User } from '../models'
-import Conversation from '../models/ConversationModel'
-import ConversationTheme from '../models/ConversationThemeModel'
+import { Block, Conversation, ConversationMember, ConversationTheme, User } from '../models'
 import { addSystemMessageJob } from '../queue/systemMessage'
 import MessageService from '../services/MessageService'
 import { sequelize } from '~/config/database'
@@ -999,6 +997,39 @@ class ConversationService {
                 type: 'system_leave_group',
                 currentUserId,
             })
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            }
+
+            throw new InternalServerError({ message: error.message })
+        }
+    }
+
+    async blockConversation({ currentUserId, conversationUuid }: { currentUserId: number; conversationUuid: string }) {
+        try {
+            const conversation = await this.userAllowedToConversation({
+                userId: currentUserId,
+                conversationUuid: conversationUuid,
+            })
+
+            if (conversation.is_group) {
+                throw new ForBiddenError({
+                    message: 'You are not allowed to block a group conversation',
+                })
+            }
+
+            const block = await Block.create({
+                user_id: currentUserId,
+                blockable_type: 'Conversation',
+                blockable_id: conversation.id,
+            })
+
+            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_BLOCKED, {
+                conversation_uuid: conversationUuid,
+            })
+
+            return block
         } catch (error: any) {
             if (error instanceof AppError) {
                 throw error

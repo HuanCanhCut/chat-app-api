@@ -1,3 +1,4 @@
+import Block from './BlockModel'
 import ConversationMember from './ConversationMemberModel'
 import Conversation from './ConversationModel'
 import ConversationTheme from './ConversationThemeModel'
@@ -90,6 +91,18 @@ const associations = () => {
 
     Message.hasMany(Message, { foreignKey: 'parent_id', as: 'children' })
     Message.belongsTo(Message, { foreignKey: 'parent_id', as: 'parent' })
+
+    /**
+     * Block model
+     */
+    User.hasMany(Block, { foreignKey: 'user_id', as: 'blocks' })
+    Block.belongsTo(User, { foreignKey: 'user_id', as: 'user' })
+
+    User.hasMany(Block, { foreignKey: 'blockable_id', as: 'blocks' })
+    Block.belongsTo(User, { foreignKey: 'blockable_id', as: 'blockable' })
+
+    Conversation.hasMany(Block, { foreignKey: 'blockable_id', as: 'blocks' })
+    Block.belongsTo(Conversation, { foreignKey: 'blockable_id', as: 'blockable' })
 }
 
 export default associations

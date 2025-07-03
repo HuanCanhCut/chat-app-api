@@ -1,8 +1,10 @@
 import { sequelize } from '../../config/database'
 import associations from './association'
 import BlacklistToken from './BlacklistTokenModel'
+import Block from './BlockModel'
 import ConversationMember from './ConversationMemberModel'
 import Conversation from './ConversationModel'
+import ConversationTheme from './ConversationThemeModel'
 import Friendships from './FriendshipsModel'
 import Message from './MessageModel'
 import MessageReaction from './MessageReactionModel'
@@ -10,7 +12,6 @@ import MessageStatus from './MessageStatusModel'
 import Notification from './NotificationModel'
 import RefreshToken from './RefreshTokenModel'
 import SearchHistory from './SearchHistoryModel'
-// Import models
 import User from './UserModel'
 
 associations()
@@ -26,8 +27,10 @@ sequelize
 // Export all models
 export {
     BlacklistToken,
+    Block,
     Conversation,
     ConversationMember,
+    ConversationTheme,
     Friendships,
     Message,
     MessageReaction,
