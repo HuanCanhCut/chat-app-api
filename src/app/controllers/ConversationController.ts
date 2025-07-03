@@ -77,11 +77,11 @@ class ConversationController {
             const decoded = req.decoded
 
             if (!name) {
-                return next(new UnprocessableEntityError({ message: 'Name is required' }))
+                return next(new UnprocessableEntityError({ message: 'name is required' }))
             }
 
             if (!uuid) {
-                return next(new UnprocessableEntityError({ message: 'UUID is required' }))
+                return next(new UnprocessableEntityError({ message: 'conversation_uuid is required' }))
             }
 
             const updatedConversation = await ConversationService.renameConversation({
@@ -104,11 +104,11 @@ class ConversationController {
             const decoded = req.decoded
 
             if (!uuid) {
-                return next(new UnprocessableEntityError({ message: 'Conversation uuid is required' }))
+                return next(new UnprocessableEntityError({ message: 'conversation_uuid is required' }))
             }
 
             if (!avatar) {
-                return next(new UnprocessableEntityError({ message: 'Avatar is required' }))
+                return next(new UnprocessableEntityError({ message: 'avatar is required' }))
             }
 
             const updatedConversation = await ConversationService.changeConversationAvatar({
@@ -132,11 +132,11 @@ class ConversationController {
             const decoded = req.decoded
 
             if (!uuid) {
-                return next(new UnprocessableEntityError({ message: 'Conversation uuid is required' }))
+                return next(new UnprocessableEntityError({ message: 'conversation_uuid is required' }))
             }
 
             if (!theme_id) {
-                return next(new UnprocessableEntityError({ message: 'Theme id is required' }))
+                return next(new UnprocessableEntityError({ message: 'theme_id is required' }))
             }
 
             const updatedConversation = await ConversationService.changeConversationTheme({
@@ -160,11 +160,11 @@ class ConversationController {
             const decoded = req.decoded
 
             if (!uuid) {
-                return next(new UnprocessableEntityError({ message: 'Conversation uuid is required' }))
+                return next(new UnprocessableEntityError({ message: 'conversation_uuid is required' }))
             }
 
             if (!emoji) {
-                return next(new UnprocessableEntityError({ message: 'Emoji is required' }))
+                return next(new UnprocessableEntityError({ message: 'emoji is required' }))
             }
 
             const updatedConversation = await ConversationService.changeConversationEmoji({
@@ -188,15 +188,15 @@ class ConversationController {
             const decoded = req.decoded
 
             if (!uuid) {
-                return next(new UnprocessableEntityError({ message: 'Conversation uuid is required' }))
+                return next(new UnprocessableEntityError({ message: 'conversation_uuid is required' }))
             }
 
             if (!nickname) {
-                return next(new UnprocessableEntityError({ message: 'Nickname is required' }))
+                return next(new UnprocessableEntityError({ message: 'nickname is required' }))
             }
 
             if (!member_id) {
-                return next(new UnprocessableEntityError({ message: 'Member id is required' }))
+                return next(new UnprocessableEntityError({ message: 'member_id is required' }))
             }
 
             const updatedConversation = await ConversationService.changeConversationMemberNickname({
@@ -221,11 +221,11 @@ class ConversationController {
             const decoded = req.decoded
 
             if (!uuid) {
-                return next(new UnprocessableEntityError({ message: 'Conversation uuid is required' }))
+                return next(new UnprocessableEntityError({ message: 'conversation_uuid is required' }))
             }
 
             if (!user_id) {
-                return next(new UnprocessableEntityError({ message: 'User id is required' }))
+                return next(new UnprocessableEntityError({ message: 'user_id is required' }))
             }
 
             const updatedConversation = await ConversationService.addUserToConversation({
@@ -249,11 +249,11 @@ class ConversationController {
             const decoded = req.decoded
 
             if (!uuid) {
-                return next(new UnprocessableEntityError({ message: 'Conversation uuid is required' }))
+                return next(new UnprocessableEntityError({ message: 'conversation_uuid is required' }))
             }
 
             if (!member_id) {
-                return next(new UnprocessableEntityError({ message: 'User id is required' }))
+                return next(new UnprocessableEntityError({ message: 'member_id is required' }))
             }
 
             const updatedConversation = await ConversationService.appointLeader({
@@ -276,7 +276,7 @@ class ConversationController {
             const decoded = req.decoded
 
             if (!uuid) {
-                return next(new UnprocessableEntityError({ message: 'Conversation uuid is required' }))
+                return next(new UnprocessableEntityError({ message: 'conversation_uuid is required' }))
             }
 
             const updatedConversation = await ConversationService.removeLeader({
@@ -286,6 +286,32 @@ class ConversationController {
             })
 
             res.json({ data: updatedConversation })
+        } catch (e: any) {
+            return next(e)
+        }
+    }
+
+    // [DELETE] /api/conversations/:uuid/user/:userId
+    async removeUserFromConversation(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const { uuid, member_id } = req.params
+            const decoded = req.decoded
+
+            if (!uuid) {
+                return next(new UnprocessableEntityError({ message: 'conversation_uuid is required' }))
+            }
+
+            if (!member_id) {
+                return next(new UnprocessableEntityError({ message: 'user_id is required' }))
+            }
+
+            await ConversationService.removeUserFromConversation({
+                currentUserId: decoded.sub,
+                conversationUuid: uuid,
+                memberId: Number(member_id),
+            })
+
+            res.sendStatus(204)
         } catch (e: any) {
             return next(e)
         }

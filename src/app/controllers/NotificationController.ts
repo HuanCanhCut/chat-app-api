@@ -98,7 +98,7 @@ class NotificationController {
 
             await Notification.destroy({ where: { id: notification_id } })
 
-            res.sendStatus(200)
+            res.sendStatus(204)
         } catch (error: any) {
             return next(error)
         }

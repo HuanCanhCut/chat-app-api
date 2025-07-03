@@ -135,7 +135,7 @@ class FriendController {
 
             await FriendService.unfriend({ currentUserId: decoded.sub, friendId: Number(id) })
 
-            res.sendStatus(200)
+            res.sendStatus(204)
         } catch (error: any) {
             return next(error)
         }

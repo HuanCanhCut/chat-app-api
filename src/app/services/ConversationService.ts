@@ -867,6 +867,97 @@ class ConversationService {
             throw new InternalServerError({ message: error.message })
         }
     }
+
+    async removeUserFromConversation({
+        currentUserId,
+        conversationUuid,
+        memberId,
+    }: {
+        currentUserId: number
+        conversationUuid: string
+        memberId: number
+    }) {
+        try {
+            const conversation = await this.userAllowedToConversation({
+                userId: currentUserId,
+                conversationUuid: conversationUuid,
+            })
+
+            if (!conversation.is_group) {
+                throw new ForBiddenError({
+                    message: 'You are not allowed to remove a user from a personal conversation',
+                })
+            }
+
+            const currentUserMember = await ConversationMember.findOne({
+                where: {
+                    conversation_id: conversation.id,
+                    user_id: currentUserId,
+                },
+            })
+
+            if (!currentUserMember) {
+                throw new ForBiddenError({ message: 'You are not a member of this conversation' })
+            }
+
+            if (currentUserMember.role !== 'admin' && currentUserMember.role !== 'leader') {
+                throw new ForBiddenError({
+                    message: 'You must be a leader or admin to remove a user from this conversation',
+                })
+            }
+
+            const [userMember, user] = await Promise.all([
+                await ConversationMember.findOne({
+                    where: {
+                        conversation_id: conversation.id,
+                        user_id: memberId,
+                    },
+                }),
+
+                User.findByPk(memberId, {
+                    attributes: {
+                        include: ['full_name'],
+                    },
+                }),
+            ])
+
+            if (!userMember) {
+                throw new NotFoundError({ message: 'User is not a member of this conversation' })
+            }
+
+            if (userMember.role === 'leader' || userMember.role === 'admin') {
+                throw new ForBiddenError({
+                    message: 'You are not allowed to remove a leader or admin from this conversation',
+                })
+            }
+
+            await userMember.destroy()
+
+            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_MEMBER_REMOVED, {
+                conversation_uuid: conversationUuid,
+                member_id: memberId,
+            })
+
+            await addSystemMessageJob({
+                conversationUuid,
+                message: `${JSON.stringify({
+                    user_id: currentUserId,
+                    name: conversation.members![0].nickname,
+                })} đã xóa ${JSON.stringify({
+                    user_id: memberId,
+                    name: user?.full_name,
+                })} khỏi nhóm.`,
+                type: 'system_remove_user',
+                currentUserId,
+            })
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            }
+
+            throw new InternalServerError({ message: error.message })
+        }
+    }
 }
 
 export default new ConversationService()
