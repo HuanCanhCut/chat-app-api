@@ -316,6 +316,27 @@ class ConversationController {
             return next(e)
         }
     }
+
+    // [DELETE] /api/conversations/:uuid/leave
+    async leaveConversation(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const { uuid } = req.params
+            const decoded = req.decoded
+
+            if (!uuid) {
+                return next(new UnprocessableEntityError({ message: 'conversation_uuid is required' }))
+            }
+
+            await ConversationService.leaveConversation({
+                currentUserId: decoded.sub,
+                conversationUuid: uuid,
+            })
+
+            res.sendStatus(204)
+        } catch (e: any) {
+            return next(e)
+        }
+    }
 }
 
 export default new ConversationController()

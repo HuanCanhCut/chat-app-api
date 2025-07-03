@@ -25,4 +25,5 @@ export enum SocketEvent {
     CONVERSATION_MEMBER_ADDED = 'conversation:member_added',
     CONVERSATION_LEADER_CHANGED = 'conversation:leader_changed',
     CONVERSATION_MEMBER_REMOVED = 'conversation:member_removed',
+    CONVERSATION_MEMBER_LEAVED = 'conversation:member_leaved',
 }

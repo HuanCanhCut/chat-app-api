@@ -958,6 +958,54 @@ class ConversationService {
             throw new InternalServerError({ message: error.message })
         }
     }
-}
 
+    async leaveConversation({ currentUserId, conversationUuid }: { currentUserId: number; conversationUuid: string }) {
+        try {
+            const conversation = await this.userAllowedToConversation({
+                userId: currentUserId,
+                conversationUuid: conversationUuid,
+            })
+
+            if (!conversation.is_group) {
+                throw new ForBiddenError({
+                    message: 'You are not allowed to leave a personal conversation',
+                })
+            }
+
+            const userMember = await ConversationMember.findOne({
+                where: {
+                    conversation_id: conversation.id,
+                    user_id: currentUserId,
+                },
+            })
+
+            if (!userMember) {
+                throw new ForBiddenError({ message: 'You are not a member of this conversation' })
+            }
+
+            await userMember.destroy()
+
+            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_MEMBER_LEAVED, {
+                conversation_uuid: conversationUuid,
+                member_id: currentUserId,
+            })
+
+            await addSystemMessageJob({
+                conversationUuid,
+                message: `${JSON.stringify({
+                    user_id: currentUserId,
+                    name: conversation.members![0].nickname,
+                })} đã rời khỏi nhóm.`,
+                type: 'system_leave_group',
+                currentUserId,
+            })
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            }
+
+            throw new InternalServerError({ message: error.message })
+        }
+    }
+}
 export default new ConversationService()

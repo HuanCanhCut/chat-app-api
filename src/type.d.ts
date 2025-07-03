@@ -85,3 +85,4 @@ export type MessageType =
     | 'system_block_user'
     | 'system_appoint_leader'
     | 'system_remove_leader'
+    | 'system_leave_group'
