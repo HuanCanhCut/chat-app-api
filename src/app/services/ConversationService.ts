@@ -179,6 +179,19 @@ class ConversationService {
                         model: ConversationTheme,
                         as: 'theme',
                     },
+                    {
+                        model: Block,
+                        as: 'blocks',
+                        include: [
+                            {
+                                model: User,
+                                as: 'blocked_user',
+                                attributes: {
+                                    exclude: ['password', 'email'],
+                                },
+                            },
+                        ],
+                    },
                 ],
             })
 
@@ -1025,11 +1038,24 @@ class ConversationService {
                 blockable_id: conversation.id,
             })
 
-            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_BLOCKED, {
-                conversation_uuid: conversationUuid,
+            const userBlock = await Block.findByPk(block.id, {
+                include: [
+                    {
+                        model: User,
+                        as: 'user',
+                        attributes: {
+                            exclude: ['password', 'email'],
+                        },
+                    },
+                ],
             })
 
-            return block
+            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_BLOCKED, {
+                conversation_uuid: conversationUuid,
+                user_block: userBlock,
+            })
+
+            return userBlock
         } catch (error: any) {
             if (error instanceof AppError) {
                 throw error

@@ -348,12 +348,12 @@ class ConversationController {
                 return next(new UnprocessableEntityError({ message: 'conversation_uuid is required' }))
             }
 
-            await ConversationService.blockConversation({
+            const userBlock = await ConversationService.blockConversation({
                 currentUserId: decoded.sub,
                 conversationUuid: uuid,
             })
 
-            res.sendStatus(204)
+            res.json({ data: userBlock })
         } catch (e: any) {
             return next(e)
         }

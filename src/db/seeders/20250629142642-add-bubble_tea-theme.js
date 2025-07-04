@@ -42,14 +42,24 @@ module.exports = {
                         },
                         background_theme: {
                             light: {
-                                background_image:
+                                background:
                                     'https://res.cloudinary.com/dkmwrkngj/image/upload/v1751208001/463393824_463493770035689_8178200017497447895_n_hemzbd.png',
-                                background_color: '#ffddad',
+                                header_color: '#ffddad',
+                                footer_color: '#ffddad',
                             },
                             dark: {
-                                background_image:
-                                    'https://res.cloudinary.com/dkmwrkngj/image/upload/v1751185960/images-removebg-preview_t36s8e.png',
-                                background_color: '#814e39',
+                                background:
+                                    'https://res.cloudinary.com/dkmwrkngj/image/upload/v1751207842/463072574_1274257017330202_3663174031765452520_n_z5er6v.png',
+                                header_color: '#814e39',
+                                footer_color: '#814e39',
+                            },
+                        },
+                        reply_message: {
+                            light: {
+                                background_color: '#fEEACE',
+                            },
+                            dark: {
+                                background_color: '#613818',
                             },
                         },
                     }),

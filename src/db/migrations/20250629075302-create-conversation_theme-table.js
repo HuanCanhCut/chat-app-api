@@ -46,46 +46,6 @@ module.exports = {
                 defaultValue: Sequelize.literal('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'),
             },
         })
-
-        await queryInterface.bulkInsert('conversation_themes', [
-            {
-                name: 'Cổ điển',
-                logo: 'https://res.cloudinary.com/dkmwrkngj/image/upload/v1751185960/images-removebg-preview_t36s8e.png',
-                description: null,
-                theme_config: JSON.stringify({
-                    sender: {
-                        light: {
-                            text_color: '#fff',
-                            background_color: '#0099ff',
-                        },
-                        dark: {
-                            text_color: '#fff',
-                            background_color: '#0E92EB',
-                        },
-                    },
-                    receiver: {
-                        light: {
-                            text_color: '#000',
-                            background_color: '#F0F0F0',
-                        },
-                        dark: {
-                            text_color: '#fff',
-                            background_color: '#303030',
-                        },
-                    },
-                    background_theme: {
-                        light: {
-                            background_image: null,
-                            background_color: '#ffffff',
-                        },
-                        dark: {
-                            background_image: null,
-                            background_color: '#242526',
-                        },
-                    },
-                }),
-            },
-        ])
     },
 
     async down(queryInterface, Sequelize) {

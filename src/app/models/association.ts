@@ -96,13 +96,23 @@ const associations = () => {
      * Block model
      */
     User.hasMany(Block, { foreignKey: 'user_id', as: 'blocks' })
-    Block.belongsTo(User, { foreignKey: 'user_id', as: 'user' })
+    Block.belongsTo(User, { foreignKey: 'user_id', as: 'blocker' })
 
-    User.hasMany(Block, { foreignKey: 'blockable_id', as: 'blocks' })
-    Block.belongsTo(User, { foreignKey: 'blockable_id', as: 'blockable' })
+    User.hasMany(Block, {
+        foreignKey: 'blockable_id',
+        as: 'blocked_by',
+        constraints: false,
+        scope: { blockable_type: 'User' },
+    })
+    Block.belongsTo(User, { foreignKey: 'blockable_id', as: 'blocked_user', constraints: false })
 
-    Conversation.hasMany(Block, { foreignKey: 'blockable_id', as: 'blocks' })
-    Block.belongsTo(Conversation, { foreignKey: 'blockable_id', as: 'blockable' })
+    Conversation.hasMany(Block, {
+        foreignKey: 'blockable_id',
+        as: 'blocks',
+        constraints: false,
+        scope: { blockable_type: 'Conversation' },
+    })
+    Block.belongsTo(Conversation, { foreignKey: 'blockable_id', as: 'blocked_conversation', constraints: false })
 }
 
 export default associations
