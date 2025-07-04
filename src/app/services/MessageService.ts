@@ -11,7 +11,6 @@ import { redisClient } from '~/config/redis'
 import { ioInstance } from '~/config/socket'
 import { RedisKey } from '~/enum/redis'
 import { SocketEvent } from '~/enum/socketEvent'
-import { MessageType } from '~/type'
 
 class MessageService {
     async createSystemMessage({
@@ -22,7 +21,7 @@ class MessageService {
     }: {
         conversationUuid: string
         message: string
-        type: MessageType
+        type: string
         currentUserId: number
     }) {
         const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${currentUserId}`, 0, -1)

@@ -2,7 +2,6 @@ import { Queue } from 'bullmq'
 
 import { connection } from '~/config/redis'
 import { QueueEnum } from '~/enum/queue'
-import { MessageType } from '~/type'
 
 const systemMessageQueue = new Queue(QueueEnum.SYSTEM_MESSAGE, {
     connection,
@@ -20,7 +19,7 @@ const systemMessageQueue = new Queue(QueueEnum.SYSTEM_MESSAGE, {
 interface SystemMessageData {
     conversationUuid: string
     message: string
-    type: MessageType
+    type: string
     currentUserId: number
 }
 
