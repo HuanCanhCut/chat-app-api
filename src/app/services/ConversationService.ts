@@ -296,7 +296,8 @@ class ConversationService {
 
             ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_RENAMED, {
                 conversation_uuid: conversationUuid,
-                conversation_name: conversationName,
+                key: 'name',
+                value: conversationName,
             })
 
             await addSystemMessageJob({
@@ -362,7 +363,8 @@ class ConversationService {
 
             ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_AVATAR_CHANGED, {
                 conversation_uuid: conversationUuid,
-                avatar: result?.secure_url,
+                key: 'avatar',
+                value: result?.secure_url,
             })
 
             await addSystemMessageJob({
@@ -422,7 +424,8 @@ class ConversationService {
 
             ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_THEME_CHANGED, {
                 conversation_uuid: conversationUuid,
-                theme,
+                key: 'theme',
+                value: theme,
             })
 
             let emoji = ''
@@ -481,7 +484,8 @@ class ConversationService {
 
             ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_EMOJI_CHANGED, {
                 conversation_uuid: conversationUuid,
-                emoji,
+                key: 'emoji',
+                value: emoji,
             })
 
             await addSystemMessageJob({
