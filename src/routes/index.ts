@@ -5,6 +5,7 @@ import conversationRoute from './conversation'
 import meRoute from './me'
 import messageRoute from './message'
 import notificationRoute from './notification'
+import themeRoute from './theme'
 import userRoute from './user'
 
 const route = (app: Express) => {
@@ -14,6 +15,7 @@ const route = (app: Express) => {
     app.use('/api/notifications', notificationRoute)
     app.use('/api/conversations', conversationRoute)
     app.use('/api/messages', messageRoute)
+    app.use('/api/themes', themeRoute)
 }
 
 export default route

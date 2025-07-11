@@ -26,7 +26,7 @@ module.exports = {
                                 background_color: '#2F1D71',
                             },
                             dark: {
-                                text_color: '#fff',
+                                text_color: '#000',
                                 background_color: '#FFCA60',
                             },
                         },

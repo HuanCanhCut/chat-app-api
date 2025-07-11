@@ -26,7 +26,7 @@ const uploadSingleFile = async ({
         .toFormat('webp', { quality: 70 })
         .toBuffer()
 
-    folder = `chat-app/${folder}`
+    folder = `chat-app-${process.env.NODE_ENV}/${folder}`
 
     return new Promise((resolve, reject) => {
         cloudinary.v2.uploader
