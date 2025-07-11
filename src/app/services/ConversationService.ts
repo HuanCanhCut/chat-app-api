@@ -428,6 +428,12 @@ class ConversationService {
                 value: theme,
             })
 
+            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_EMOJI_CHANGED, {
+                conversation_uuid: conversationUuid,
+                key: 'emoji',
+                value: theme.emoji,
+            })
+
             let emoji = ''
 
             if (theme.emoji) {
@@ -558,7 +564,7 @@ class ConversationService {
                 throw new NotFoundError({ message: 'Member is not in this conversation' })
             }
 
-            member.nickname = nickname
+            member.nickname = nickname.trim().length ? nickname : null
             const savedMember = await member.save()
 
             if (!savedMember) {
@@ -576,10 +582,10 @@ class ConversationService {
                 message: `${JSON.stringify({
                     user_id: currentUserId,
                     name: conversation.members![0].nickname,
-                })} đã đặt biệt danh cho ${JSON.stringify({
+                })} đã ${nickname.trim().length ? 'đặt biệt danh cho' : 'xóa biệt danh của'} ${JSON.stringify({
                     user_id: memberId,
                     name: user?.full_name,
-                })} thành ${nickname}.`,
+                })} ${nickname.trim().length ? `thành ${nickname}` : ''}.`,
                 type: 'system_set_nickname',
                 currentUserId,
             })

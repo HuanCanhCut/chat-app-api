@@ -191,7 +191,7 @@ class ConversationController {
                 return next(new UnprocessableEntityError({ message: 'conversation_uuid is required' }))
             }
 
-            if (!nickname) {
+            if (nickname === null || nickname === undefined) {
                 return next(new UnprocessableEntityError({ message: 'nickname is required' }))
             }
 
