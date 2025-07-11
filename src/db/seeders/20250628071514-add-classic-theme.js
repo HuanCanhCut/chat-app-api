@@ -17,7 +17,7 @@ module.exports = {
             [
                 {
                     name: 'Cổ điển',
-                    logo: 'https://res.cloudinary.com/dkmwrkngj/image/upload/v1751185960/images-removebg-preview_t36s8e.png',
+                    logo: 'https://res.cloudinary.com/dkmwrkngj/image/upload/v1752209725/Screenshot_2025-07-11_115406-removebg-preview_zmou6d.png',
                     description: null,
                     theme_config: JSON.stringify({
                         sender: {

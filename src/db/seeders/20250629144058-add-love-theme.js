@@ -17,8 +17,8 @@ module.exports = {
             [
                 {
                     name: 'Tình yêu',
-                    logo: 'https://res.cloudinary.com/dkmwrkngj/image/upload/v1751208133/148082747_1138998106591214_5618240141689110769_n_jqn3le.jpg',
-                    description: null,
+                    logo: 'https://res.cloudinary.com/dkmwrkngj/image/upload/v1752209804/148082747_1138998106591214_5618240141689110769_n_vfruwi.jpg',
+                    description: '',
                     theme_config: JSON.stringify({
                         sender: {
                             light: {
@@ -43,13 +43,13 @@ module.exports = {
                         background_theme: {
                             light: {
                                 background:
-                                    'https://res.cloudinary.com/dkmwrkngj/image/upload/v1751208434/504158063_1874427243292182_4228321411406763260_n_freqpy.jpg',
+                                    'https://res.cloudinary.com/dkmwrkngj/image/upload/v1752209953/504158063_1874427243292182_4228321411406763260_n_unpris.jpg',
                                 header_color: '#ffecf7',
                                 footer_color: '#FDD6E8',
                             },
                             dark: {
                                 background:
-                                    'https://res.cloudinary.com/dkmwrkngj/image/upload/v1751208379/504390487_29888933354085736_7832433412329963773_n_d12wxb.jpg',
+                                    'https://res.cloudinary.com/dkmwrkngj/image/upload/v1752209952/504390487_29888933354085736_7832433412329963773_n_mkobni.jpg',
                                 header_color: '#8c1a72',
                                 footer_color: '#2B0037',
                             },

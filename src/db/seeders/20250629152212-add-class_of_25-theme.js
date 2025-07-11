@@ -17,7 +17,7 @@ module.exports = {
             [
                 {
                     name: 'Khóa 2025',
-                    logo: 'https://res.cloudinary.com/dkmwrkngj/image/upload/v1751210370/494968377_2035701133622102_5454003839690686785_n_a9nmaq.jpg',
+                    logo: 'https://res.cloudinary.com/dkmwrkngj/image/upload/v1752209818/494968377_2035701133622102_5454003839690686785_n_xaorhx.jpg',
                     description: 'Tranh của Lim KangLi',
                     theme_config: JSON.stringify({
                         sender: {
@@ -43,13 +43,13 @@ module.exports = {
                         background_theme: {
                             light: {
                                 background:
-                                    'https://res.cloudinary.com/dkmwrkngj/image/upload/v1751210496/492824150_1677548329559910_8608362685492317298_n_m3ok2x.jpg',
+                                    'https://res.cloudinary.com/dkmwrkngj/image/upload/v1752209950/492824150_1677548329559910_8608362685492317298_n_pvk6ry.jpg',
                                 header_color: '#9bc8ff',
                                 footer_color: '#9bc8ff',
                             },
                             dark: {
                                 background:
-                                    'https://res.cloudinary.com/dkmwrkngj/image/upload/v1751210497/493914117_1616437225725656_4750356188775802173_n_bnqqii.jpg',
+                                    'https://res.cloudinary.com/dkmwrkngj/image/upload/v1752209953/493914117_1616437225725656_4750356188775802173_n_lexegk.jpg',
                                 header_color: '#301e61',
                                 footer_color: '#301e61',
                             },
