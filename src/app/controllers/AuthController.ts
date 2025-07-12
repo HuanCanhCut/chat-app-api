@@ -27,16 +27,11 @@ class AuthController {
 
         res.status(status)
             .setHeader('Set-Cookie', [
-                `access_token=${token}; max-age=${Number(process.env.EXPIRED_TOKEN)}; httpOnly; path=/; sameSite=None; secure; Partitioned; domain=${process.env.DOMAIN}`,
+                `access_token=${token}; max-age=${60820005}; httpOnly; path=/; sameSite=None; secure; Partitioned; domain=${process.env.DOMAIN}`,
                 `refresh_token=${refreshToken}; max-age=${Number(process.env.EXPIRED_REFRESH_TOKEN)}; httpOnly; path=/; sameSite=None; secure; Partitioned; domain=${process.env.DOMAIN}`,
             ])
             .json({
                 data: user,
-                meta: {
-                    pagination: {
-                        exp: Math.floor(Date.now() / 1000) + Number(process.env.EXPIRED_TOKEN),
-                    },
-                },
             })
     }
 
@@ -117,7 +112,7 @@ class AuthController {
             const { newAccessToken, newRefreshToken } = await AuthService.refreshToken({ refresh_token })
 
             res.setHeader('Set-Cookie', [
-                `access_token=${newAccessToken}; max-age=${Number(process.env.EXPIRED_TOKEN)}; path=/; sameSite=None; secure; Partitioned; domain=${process.env.DOMAIN}`,
+                `access_token=${newAccessToken}; max-age=${60820005}; path=/; sameSite=None; secure; Partitioned; domain=${process.env.DOMAIN}`,
                 `refresh_token=${newRefreshToken}; max-age=${Number(process.env.EXPIRED_REFRESH_TOKEN)}; path=/; sameSite=None; secure; Partitioned; domain=${process.env.DOMAIN}`,
             ])
                 .status(200)
