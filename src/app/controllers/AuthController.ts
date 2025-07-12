@@ -27,8 +27,8 @@ class AuthController {
 
         res.status(status)
             .setHeader('Set-Cookie', [
-                `access_token=${token}; httpOnly; path=/; sameSite=None; secure; Partitioned; domain=${process.env.DOMAIN}`,
-                `refresh_token=${refreshToken}; httpOnly; path=/; sameSite=None; secure; Partitioned; domain=${process.env.DOMAIN}`,
+                `access_token=${token}; max-age=${Number(process.env.EXPIRED_TOKEN)}; httpOnly; path=/; sameSite=None; secure; Partitioned; domain=${process.env.DOMAIN}`,
+                `refresh_token=${refreshToken}; max-age=${Number(process.env.EXPIRED_REFRESH_TOKEN)}; httpOnly; path=/; sameSite=None; secure; Partitioned; domain=${process.env.DOMAIN}`,
             ])
             .json({
                 data: user,
@@ -108,17 +108,17 @@ class AuthController {
     // // [GET] /auth/refresh
     async refreshToken(req: Request, res: Response, next: NextFunction) {
         try {
-            const { access_token, refresh_token } = req.cookies
+            const { refresh_token } = req.cookies
 
-            if (!access_token || !refresh_token) {
+            if (!refresh_token) {
                 return next(new UnauthorizedError({ message: 'Authorization token is required' }))
             }
 
-            const { newToken, newRefreshToken } = await AuthService.refreshToken({ access_token, refresh_token })
+            const { newAccessToken, newRefreshToken } = await AuthService.refreshToken({ refresh_token })
 
             res.setHeader('Set-Cookie', [
-                `access_token=${newToken}; path=/; sameSite=None; secure; Partitioned; domain=${process.env.DOMAIN}`,
-                `refresh_token=${newRefreshToken}; path=/; sameSite=None; secure; Partitioned; domain=${process.env.DOMAIN}`,
+                `access_token=${newAccessToken}; max-age=${Number(process.env.EXPIRED_TOKEN)}; path=/; sameSite=None; secure; Partitioned; domain=${process.env.DOMAIN}`,
+                `refresh_token=${newRefreshToken}; max-age=${Number(process.env.EXPIRED_REFRESH_TOKEN)}; path=/; sameSite=None; secure; Partitioned; domain=${process.env.DOMAIN}`,
             ])
                 .status(200)
                 .json({

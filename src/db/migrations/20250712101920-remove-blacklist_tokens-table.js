@@ -9,6 +9,18 @@ module.exports = {
          * Example:
          * await queryInterface.createTable('users', { id: Sequelize.INTEGER });
          */
+
+        await queryInterface.dropTable('blacklist_tokens')
+    },
+
+    async down(queryInterface, Sequelize) {
+        /**
+         * Add reverting commands here.
+         *
+         * Example:
+         * await queryInterface.dropTable('users');
+         */
+
         await queryInterface.createTable('blacklist_tokens', {
             id: {
                 type: Sequelize.INTEGER,
@@ -35,15 +47,5 @@ module.exports = {
             unique: true,
             name: 'token_idx',
         })
-    },
-
-    async down(queryInterface, Sequelize) {
-        /**
-         * Add reverting commands here.
-         *
-         * Example:
-         * await queryInterface.dropTable('users');
-         */
-        await queryInterface.dropTable('blacklist_tokens')
     },
 }

@@ -12,7 +12,7 @@ import {
     UnauthorizedError,
     UnprocessableEntityError,
 } from '../errors/errors'
-import { BlacklistToken, RefreshToken, User } from '../models'
+import { RefreshToken, User } from '../models'
 import { addMailJob } from '../queue/mail'
 import createToken from '../utils/createToken'
 import hashValue from '../utils/hashValue'
@@ -125,10 +125,10 @@ class AuthServices {
 
     async logout({ access_token, refresh_token }: { access_token: string; refresh_token: string }) {
         try {
-            if (access_token && refresh_token) {
+            if (access_token) {
                 // save token to blacklist and delete refreshToken in database
                 await Promise.all([
-                    BlacklistToken.create({ token: access_token, refresh_token }),
+                    redisClient.set(`blacklist-${access_token}`, 'true', { EX: Number(process.env.EXPIRED_TOKEN) }),
                     RefreshToken.destroy({ where: { refresh_token } }),
                 ])
             }
@@ -190,26 +190,15 @@ class AuthServices {
         }
     }
 
-    async refreshToken({ access_token, refresh_token }: { access_token: string; refresh_token: string }) {
+    async refreshToken({ refresh_token }: { refresh_token: string }) {
         try {
-            const tokenIsInvalid = await BlacklistToken.findOne({
-                where: { [Op.or]: [{ token: access_token }, { refresh_token }] },
-            })
-
-            if (tokenIsInvalid) {
-                throw new UnauthorizedError({ message: 'Authorization token is invalid' })
-            }
-
             let decoded: JwtPayload | null = null
 
             try {
                 decoded = jwt.verify(refresh_token, process.env.JWT_REFRESH_SECRET as string) as JwtPayload
             } catch (error: any) {
                 if (error.message === 'jwt expired') {
-                    await Promise.all([
-                        BlacklistToken.create({ token: access_token, refresh_token }),
-                        RefreshToken.destroy({ where: { refresh_token } }),
-                    ])
+                    await Promise.all([RefreshToken.destroy({ where: { refresh_token } })])
 
                     throw new UnauthorizedError({ message: 'Refresh token expired' })
                 }
@@ -245,7 +234,7 @@ class AuthServices {
             // Giữ giá trị exp token cũ gắn vào token mới
             const exp = Math.floor((decoded.exp * 1000 - Date.now()) / 1000)
 
-            const newToken = createToken({ payload }).token
+            const newAccessToken = createToken({ payload }).token
             const newRefreshToken = createToken({ payload, expRefresh: exp }).refreshToken
 
             await RefreshToken.update(
@@ -259,7 +248,7 @@ class AuthServices {
                 },
             )
 
-            return { newToken, newRefreshToken }
+            return { newAccessToken, newRefreshToken }
         } catch (error: any) {
             if (error instanceof AppError) {
                 throw error

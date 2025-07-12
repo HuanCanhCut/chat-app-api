@@ -1,6 +1,5 @@
 import { sequelize } from '../../config/database'
 import associations from './association'
-import BlacklistToken from './BlacklistTokenModel'
 import Block from './BlockModel'
 import ConversationMember from './ConversationMemberModel'
 import Conversation from './ConversationModel'
@@ -26,7 +25,6 @@ sequelize
 
 // Export all models
 export {
-    BlacklistToken,
     Block,
     Conversation,
     ConversationMember,
