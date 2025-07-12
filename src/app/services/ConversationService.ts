@@ -491,7 +491,7 @@ class ConversationService {
             ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_EMOJI_CHANGED, {
                 conversation_uuid: conversationUuid,
                 key: 'emoji',
-                value: emoji,
+                value: unifiedEmoji,
             })
 
             await addSystemMessageJob({
@@ -499,7 +499,7 @@ class ConversationService {
                 message: `${JSON.stringify({
                     user_id: currentUserId,
                     name: conversation.members![0].nickname,
-                })} đã đổi emoji thành ${emoji}.`,
+                })} đã đặt cảm xúc nhanh thành ${emoji}.`,
                 type: 'system_change_emoji',
                 currentUserId,
             })
