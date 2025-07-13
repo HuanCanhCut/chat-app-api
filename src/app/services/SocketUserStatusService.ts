@@ -171,6 +171,14 @@ class SocketUserStatusService {
             console.error(error)
         }
     }
+
+    VISIBILITY_CHANGE = ({ is_visible }: { is_visible: boolean }) => {
+        if (is_visible) {
+            this.CONNECT()
+        } else {
+            this.DISCONNECT()
+        }
+    }
 }
 
 export default SocketUserStatusService

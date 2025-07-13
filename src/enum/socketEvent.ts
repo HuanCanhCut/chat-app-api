@@ -1,4 +1,7 @@
 export enum SocketEvent {
+    // ------------------------------- User -------------------------------
+    VISIBILITY_CHANGE = 'visibility_change',
+
     // ------------------------------- MESSAGE -------------------------------
     JOIN_ROOM = 'room:join',
     NEW_MESSAGE = 'message:new',
