@@ -574,7 +574,8 @@ class ConversationService {
             ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_MEMBER_NICKNAME_CHANGED, {
                 conversation_uuid: conversationUuid,
                 member_id: memberId,
-                nickname,
+                key: 'nickname',
+                value: nickname,
             })
 
             await addSystemMessageJob({
@@ -699,14 +700,14 @@ class ConversationService {
         }
     }
 
-    async appointLeader({
-        currentUserId,
+    async getMemberInConversation({
+        userId,
         conversationUuid,
-        memberId,
+        currentUserId,
     }: {
-        currentUserId: number
+        userId: number
         conversationUuid: string
-        memberId: number
+        currentUserId: number
     }) {
         try {
             const conversation = await this.userAllowedToConversation({
@@ -714,78 +715,18 @@ class ConversationService {
                 conversationUuid: conversationUuid,
             })
 
-            if (!conversation.is_group) {
-                throw new ForBiddenError({
-                    message: 'You are not allowed to appoint a leader to a personal conversation',
-                })
-            }
-
-            const currentUserMember = await ConversationMember.findOne({
+            const member = await ConversationMember.findOne({
                 where: {
-                    conversation_id: conversation.id,
-                    user_id: currentUserId,
+                    conversation_id: conversation.get('id'),
+                    user_id: userId,
                 },
             })
 
-            if (!currentUserMember) {
-                throw new ForBiddenError({ message: 'You are not a member of this conversation' })
-            }
-
-            if (currentUserMember.role !== 'admin' && currentUserMember.role !== 'leader') {
-                throw new ForBiddenError({ message: 'You are not allowed to appoint a leader to this conversation' })
-            }
-
-            const [userMember, user] = await Promise.all([
-                await ConversationMember.findOne({
-                    where: {
-                        conversation_id: conversation.id,
-                        user_id: memberId,
-                    },
-                }),
-
-                User.findByPk(memberId, {
-                    attributes: {
-                        include: ['full_name'],
-                    },
-                }),
-            ])
-
-            if (!userMember) {
+            if (!member) {
                 throw new NotFoundError({ message: 'User is not a member of this conversation' })
             }
 
-            if (userMember.role === 'leader' || userMember.role === 'admin') {
-                throw new ForBiddenError({
-                    message: `That user is already a ${userMember.role} of this conversation`,
-                })
-            }
-
-            userMember.role = 'leader'
-            const savedUserMember = await userMember.save()
-
-            if (!savedUserMember) {
-                throw new InternalServerError({ message: 'Failed to appoint leader to conversation' })
-            }
-
-            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_LEADER_CHANGED, {
-                conversation_uuid: conversationUuid,
-                leader: savedUserMember,
-            })
-
-            await addSystemMessageJob({
-                conversationUuid,
-                message: `${JSON.stringify({
-                    user_id: currentUserId,
-                    name: conversation.members![0].nickname,
-                })} đã thêm ${JSON.stringify({
-                    user_id: memberId,
-                    name: user?.full_name,
-                })} làm quản trị viên nhóm.`,
-                type: 'system_appoint_leader',
-                currentUserId,
-            })
-
-            return savedUserMember
+            return member
         } catch (error: any) {
             if (error instanceof AppError) {
                 throw error
@@ -795,14 +736,18 @@ class ConversationService {
         }
     }
 
-    async removeLeader({
+    async changeLeaderRole({
         currentUserId,
         conversationUuid,
         memberId,
+        userMember,
+        role,
     }: {
         currentUserId: number
         conversationUuid: string
         memberId: number
+        userMember: ConversationMember
+        role: 'admin' | 'leader' | 'member'
     }) {
         try {
             const conversation = await this.userAllowedToConversation({
@@ -812,74 +757,61 @@ class ConversationService {
 
             if (!conversation.is_group) {
                 throw new ForBiddenError({
-                    message: 'You are not allowed to remove a leader from a personal conversation',
+                    message: 'You are not allowed to change leader role in a personal conversation',
                 })
             }
 
-            const currentUserMember = await ConversationMember.findOne({
-                where: {
-                    conversation_id: conversation.id,
-                    user_id: currentUserId,
+            const user = await User.findByPk(memberId, {
+                attributes: {
+                    include: ['full_name'],
                 },
             })
 
-            if (!currentUserMember) {
-                throw new ForBiddenError({ message: 'You are not a member of this conversation' })
-            }
+            userMember.role = role
+            const savedUserMember = await userMember.save()
 
-            if (currentUserMember.role !== 'admin') {
-                throw new ForBiddenError({ message: 'You are not allowed to remove a leader from this conversation' })
-            }
-
-            const [leader, user] = await Promise.all([
-                await ConversationMember.findOne({
-                    where: {
-                        conversation_id: conversation.id,
-                        user_id: memberId,
-                    },
-                }),
-
-                User.findByPk(memberId, {
-                    attributes: {
-                        include: ['full_name'],
-                    },
-                }),
-            ])
-
-            if (!leader) {
-                throw new NotFoundError({ message: 'Leader not found' })
-            }
-
-            if (leader.role !== 'leader') {
-                throw new ForBiddenError({ message: 'Member is not a leader of this conversation' })
-            }
-
-            leader.role = 'member'
-            const savedLeader = await leader.save()
-
-            if (!savedLeader) {
-                throw new InternalServerError({ message: 'Failed to remove leader from conversation' })
+            if (!savedUserMember) {
+                throw new InternalServerError({ message: 'Failed to change leader role in conversation' })
             }
 
             ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_LEADER_CHANGED, {
                 conversation_uuid: conversationUuid,
-                leader: savedLeader,
+                leader: savedUserMember,
+                key: 'role',
+                value: role,
             })
+
+            let message = ''
+
+            switch (role) {
+                case 'leader':
+                    message = `${JSON.stringify({
+                        user_id: currentUserId,
+                        name: conversation.members![0].nickname,
+                    })} đã thêm ${JSON.stringify({
+                        user_id: memberId,
+                        name: user?.full_name,
+                    })} làm quản trị viên nhóm.`
+                    break
+                case 'member':
+                    message = `${JSON.stringify({
+                        user_id: currentUserId,
+                        name: conversation.members![0].nickname,
+                    })} đã gỡ tư cách quản trị viên nhóm của ${JSON.stringify({
+                        user_id: memberId,
+                        name: user?.full_name,
+                    })}`
+                    break
+            }
 
             await addSystemMessageJob({
                 conversationUuid,
-                message: `${JSON.stringify({
-                    user_id: currentUserId,
-                    name: conversation.members![0].nickname,
-                })} đã gỡ tư cách quản trị viên nhóm của ${JSON.stringify({
-                    user_id: leader.user_id,
-                    name: user?.full_name,
-                })}.`,
-                type: 'system_remove_leader',
+                message,
+                type: 'system_change_leader_role',
                 currentUserId,
             })
 
-            return savedLeader
+            return savedUserMember
         } catch (error: any) {
             if (error instanceof AppError) {
                 throw error

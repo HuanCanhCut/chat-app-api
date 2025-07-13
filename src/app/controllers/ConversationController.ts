@@ -1,6 +1,6 @@
 import { NextFunction, Response } from 'express'
 
-import { UnprocessableEntityError } from '../errors/errors'
+import { ForBiddenError, NotFoundError, UnprocessableEntityError } from '../errors/errors'
 import ConversationService from '../services/ConversationService'
 import { IRequest } from '~/type'
 
@@ -240,8 +240,8 @@ class ConversationController {
         }
     }
 
-    // [PATCH] /api/conversations/:uuid/leader
-    async appointLeader(req: IRequest, res: Response, next: NextFunction) {
+    // [PATCH] /api/conversations/:uuid/designate-leader
+    async designateLeader(req: IRequest, res: Response, next: NextFunction) {
         try {
             const { uuid } = req.params
             const { member_id } = req.body
@@ -256,10 +256,35 @@ class ConversationController {
                 return next(new UnprocessableEntityError({ message: 'member_id is required' }))
             }
 
-            const updatedConversation = await ConversationService.appointLeader({
+            const [currentUserMember, userMember] = await Promise.all([
+                ConversationService.getMemberInConversation({
+                    userId: decoded.sub,
+                    conversationUuid: uuid,
+                    currentUserId: decoded.sub,
+                }),
+                ConversationService.getMemberInConversation({
+                    userId: member_id,
+                    conversationUuid: uuid,
+                    currentUserId: decoded.sub,
+                }),
+            ])
+
+            if (currentUserMember.role !== 'admin' && currentUserMember.role !== 'leader') {
+                throw new ForBiddenError({ message: 'You are not allowed to appoint a leader to this conversation' })
+            }
+
+            if (userMember.role === 'leader' || userMember.role === 'admin') {
+                throw new ForBiddenError({
+                    message: `That user is already a ${userMember.role} of this conversation`,
+                })
+            }
+
+            const updatedConversation = await ConversationService.changeLeaderRole({
                 currentUserId: decoded.sub,
                 conversationUuid: uuid,
-                memberId: member_id,
+                memberId: Number(member_id),
+                userMember,
+                role: 'leader',
             })
 
             res.json({ data: updatedConversation })
@@ -279,10 +304,46 @@ class ConversationController {
                 return next(new UnprocessableEntityError({ message: 'conversation_uuid is required' }))
             }
 
-            const updatedConversation = await ConversationService.removeLeader({
+            if (!member_id) {
+                return next(new UnprocessableEntityError({ message: 'member_id is required' }))
+            }
+
+            const [currentUserMember, leader] = await Promise.all([
+                ConversationService.getMemberInConversation({
+                    userId: decoded.sub,
+                    conversationUuid: uuid,
+                    currentUserId: decoded.sub,
+                }),
+
+                ConversationService.getMemberInConversation({
+                    userId: member_id,
+                    conversationUuid: uuid,
+                    currentUserId: decoded.sub,
+                }),
+            ])
+
+            console.log(leader)
+
+            if (!leader) {
+                throw new NotFoundError({ message: 'Leader not found' })
+            }
+
+            if (leader.role !== 'leader') {
+                throw new ForBiddenError({ message: 'Member is not a leader of this conversation' })
+            }
+
+            if (currentUserMember.role !== 'admin') {
+                throw new ForBiddenError({
+                    message: 'You must be a admin to remove a leader from this conversation',
+                })
+            }
+
+            const updatedConversation = await ConversationService.changeLeaderRole({
                 currentUserId: decoded.sub,
                 conversationUuid: uuid,
-                memberId: member_id,
+                memberId: Number(member_id),
+                userMember: leader,
+                role: 'member',
             })
 
             res.json({ data: updatedConversation })

@@ -22,7 +22,11 @@ router.patch(
     ConversationController.changeConversationMemberNickname.bind(ConversationController),
 )
 router.post('/:uuid/user', verifyToken, ConversationController.addUserToConversation.bind(ConversationController))
-router.patch('/:uuid/leader', verifyToken, ConversationController.appointLeader.bind(ConversationController))
+router.patch(
+    '/:uuid/designate-leader',
+    verifyToken,
+    ConversationController.designateLeader.bind(ConversationController),
+)
 router.patch('/:uuid/remove-leader', verifyToken, ConversationController.removeLeader.bind(ConversationController))
 router.delete(
     '/:uuid/user/:member_id',
