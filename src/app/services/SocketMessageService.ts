@@ -91,17 +91,7 @@ class SocketMessageService {
                                 attributes: {
                                     include: [
                                         [
-                                            sequelize.literal(`
-                                                (
-                                                    SELECT messages.id
-                                                    FROM messages
-                                                    INNER JOIN message_statuses ON message_statuses.message_id = messages.id
-                                                    WHERE message_statuses.receiver_id = message_status.receiver_id AND
-                                                        message_statuses.status = 'read'
-                                                    ORDER BY messages.id DESC
-                                                    LIMIT 1
-                                                )
-                                            `),
+                                            MessageService.lastReadMessageIdLiteral(this.currentUserId, conversationId),
                                             'last_read_message_id',
                                         ],
                                     ],

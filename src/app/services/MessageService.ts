@@ -43,7 +43,7 @@ class MessageService {
                 SELECT messages.id
                 FROM messages
                 INNER JOIN message_statuses ON message_statuses.message_id = messages.id
-                WHERE message_statuses.receiver_id = message_status.receiver_id AND
+                WHERE messages.type NOT LIKE 'system%' AND message_statuses.receiver_id = message_status.receiver_id AND
                     message_statuses.status = 'read' 
                     AND messages.conversation_id = ${sequelize.escape(conversationId)}
                     AND messages.type != 'system'
