@@ -1,8 +1,7 @@
 import bcrypt from 'bcrypt'
 import admin from 'firebase-admin'
-import jwt from 'jsonwebtoken'
-import { JwtPayload } from 'jsonwebtoken'
-import { Op, QueryTypes } from 'sequelize'
+import jwt, { JwtPayload } from 'jsonwebtoken'
+import { QueryTypes } from 'sequelize'
 import { v4 as uuidv4 } from 'uuid'
 
 import {
@@ -198,7 +197,7 @@ class AuthServices {
                 decoded = jwt.verify(refresh_token, process.env.JWT_REFRESH_SECRET as string) as JwtPayload
             } catch (error: any) {
                 if (error.message === 'jwt expired') {
-                    await Promise.all([RefreshToken.destroy({ where: { refresh_token } })])
+                    await RefreshToken.destroy({ where: { refresh_token } })
 
                     throw new UnauthorizedError({ message: 'Refresh token expired' })
                 }
@@ -210,18 +209,12 @@ class AuthServices {
                 throw new UnauthorizedError({ message: 'Invalid or expired token ' })
             }
 
-            // Remove old refresh token
-            await RefreshToken.destroy({
-                where: { [Op.and]: [{ refresh_token: { [Op.ne]: refresh_token } }, { user_id: decoded.sub }] },
+            const hasRefreshToken = await RefreshToken.findOne({
+                where: { refresh_token },
             })
 
-            const hasRefreshToken = await RefreshToken.findOne({
-                where: { user_id: decoded.sub },
-                limit: 1,
-                order: [['created_at', 'DESC']],
-            })
             // if have'nt refreshToken in database
-            if (hasRefreshToken?.dataValues.refresh_token !== refresh_token) {
+            if (!hasRefreshToken) {
                 throw new UnauthorizedError({ message: 'Invalid or expired token' })
             }
 
@@ -243,7 +236,7 @@ class AuthServices {
                 },
                 {
                     where: {
-                        user_id: decoded.sub,
+                        refresh_token,
                     },
                 },
             )
