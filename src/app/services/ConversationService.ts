@@ -26,6 +26,7 @@ class ConversationService {
                 where: {
                     user_id: userId,
                 },
+                paranoid: false,
             },
         })
 

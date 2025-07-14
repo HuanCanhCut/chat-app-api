@@ -16,6 +16,7 @@ class ConversationMember extends Model<
     declare added_by_id?: number
     declare created_at?: Date
     declare updated_at?: Date
+    declare deleted_at?: Date
 }
 
 ConversationMember.init(
@@ -74,6 +75,7 @@ ConversationMember.init(
     {
         sequelize,
         tableName: 'conversation_members',
+        paranoid: true,
     },
 )
 

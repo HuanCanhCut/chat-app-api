@@ -26,7 +26,7 @@ const io = new Server(server, {
     },
 })
 
-const allowedOrigins: string[] = ['https://huancanhcut.click', 'https://chatapp.local', 'http://localhost:3000']
+const allowedOrigins: string[] = ['https://huancanhcut.click', 'https://chatapp.local']
 
 const corsOptions: cors.CorsOptions = {
     origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {

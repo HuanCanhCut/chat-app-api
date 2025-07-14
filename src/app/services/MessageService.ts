@@ -222,6 +222,7 @@ class MessageService {
                     where: {
                         user_id: currentUserId,
                     },
+                    paranoid: false,
                 },
             })
 
@@ -722,6 +723,7 @@ class MessageService {
                     where: {
                         user_id: currentUserId,
                     },
+                    paranoid: false,
                 },
             })
 
