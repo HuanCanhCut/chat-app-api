@@ -183,7 +183,7 @@ class ConversationController {
     async changeConversationMemberNickname(req: IRequest, res: Response, next: NextFunction) {
         try {
             const { uuid } = req.params
-            const { nickname, member_id } = req.body
+            const { nickname, user_id } = req.body
 
             const decoded = req.decoded
 
@@ -195,15 +195,15 @@ class ConversationController {
                 return next(new UnprocessableEntityError({ message: 'nickname is required' }))
             }
 
-            if (!member_id) {
-                return next(new UnprocessableEntityError({ message: 'member_id is required' }))
+            if (!user_id) {
+                return next(new UnprocessableEntityError({ message: 'user_id is required' }))
             }
 
             const updatedConversation = await ConversationService.changeConversationMemberNickname({
                 currentUserId: decoded.sub,
                 conversationUuid: uuid,
                 nickname,
-                memberId: member_id,
+                userId: user_id,
             })
 
             res.json({ data: updatedConversation })
@@ -244,7 +244,7 @@ class ConversationController {
     async designateLeader(req: IRequest, res: Response, next: NextFunction) {
         try {
             const { uuid } = req.params
-            const { member_id } = req.body
+            const { user_id } = req.body
 
             const decoded = req.decoded
 
@@ -252,8 +252,8 @@ class ConversationController {
                 return next(new UnprocessableEntityError({ message: 'conversation_uuid is required' }))
             }
 
-            if (!member_id) {
-                return next(new UnprocessableEntityError({ message: 'member_id is required' }))
+            if (!user_id) {
+                return next(new UnprocessableEntityError({ message: 'user_id is required' }))
             }
 
             const [currentUserMember, userMember] = await Promise.all([
@@ -263,7 +263,7 @@ class ConversationController {
                     currentUserId: decoded.sub,
                 }),
                 ConversationService.getMemberInConversation({
-                    userId: member_id,
+                    userId: user_id,
                     conversationUuid: uuid,
                     currentUserId: decoded.sub,
                 }),
@@ -282,7 +282,7 @@ class ConversationController {
             const updatedConversation = await ConversationService.changeLeaderRole({
                 currentUserId: decoded.sub,
                 conversationUuid: uuid,
-                memberId: Number(member_id),
+                userId: Number(user_id),
                 userMember,
                 role: 'leader',
             })
@@ -297,15 +297,15 @@ class ConversationController {
     async removeLeader(req: IRequest, res: Response, next: NextFunction) {
         try {
             const { uuid } = req.params
-            const { member_id } = req.body
+            const { user_id } = req.body
             const decoded = req.decoded
 
             if (!uuid) {
                 return next(new UnprocessableEntityError({ message: 'conversation_uuid is required' }))
             }
 
-            if (!member_id) {
-                return next(new UnprocessableEntityError({ message: 'member_id is required' }))
+            if (!user_id) {
+                return next(new UnprocessableEntityError({ message: 'user_id is required' }))
             }
 
             const [currentUserMember, leader] = await Promise.all([
@@ -316,7 +316,7 @@ class ConversationController {
                 }),
 
                 ConversationService.getMemberInConversation({
-                    userId: member_id,
+                    userId: user_id,
                     conversationUuid: uuid,
                     currentUserId: decoded.sub,
                 }),
@@ -343,7 +343,7 @@ class ConversationController {
             const updatedConversation = await ConversationService.changeLeaderRole({
                 currentUserId: decoded.sub,
                 conversationUuid: uuid,
-                memberId: Number(member_id),
+                userId: Number(user_id),
                 userMember: leader,
                 role: 'member',
             })

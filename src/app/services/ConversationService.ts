@@ -520,12 +520,12 @@ class ConversationService {
         currentUserId,
         conversationUuid,
         nickname,
-        memberId,
+        userId,
     }: {
         currentUserId: number
         conversationUuid: string
         nickname: string
-        memberId: number
+        userId: number
     }) {
         try {
             const conversation = await this.userAllowedToConversation({
@@ -549,11 +549,11 @@ class ConversationService {
                         },
                     ],
                     where: {
-                        user_id: memberId,
+                        user_id: userId,
                     },
                 })) as MemberWithUser,
 
-                User.findByPk(memberId, {
+                User.findByPk(userId, {
                     attributes: {
                         include: ['full_name'],
                     },
@@ -573,7 +573,7 @@ class ConversationService {
 
             ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_MEMBER_NICKNAME_CHANGED, {
                 conversation_uuid: conversationUuid,
-                user_id: memberId,
+                user_id: userId,
                 key: 'nickname',
                 value: nickname,
             })
@@ -584,7 +584,7 @@ class ConversationService {
                     user_id: currentUserId,
                     name: conversation.members![0].nickname,
                 })} đã ${nickname.trim().length ? 'đặt biệt danh cho' : 'xóa biệt danh của'} ${JSON.stringify({
-                    user_id: memberId,
+                    user_id: userId,
                     name: user?.full_name,
                 })} ${nickname.trim().length ? `thành ${nickname}` : ''}.`,
                 type: 'system_set_nickname',
@@ -739,13 +739,13 @@ class ConversationService {
     async changeLeaderRole({
         currentUserId,
         conversationUuid,
-        memberId,
+        userId,
         userMember,
         role,
     }: {
         currentUserId: number
         conversationUuid: string
-        memberId: number
+        userId: number
         userMember: ConversationMember
         role: 'admin' | 'leader' | 'member'
     }) {
@@ -761,7 +761,7 @@ class ConversationService {
                 })
             }
 
-            const user = await User.findByPk(memberId, {
+            const user = await User.findByPk(userId, {
                 attributes: {
                     include: ['full_name'],
                 },
@@ -778,7 +778,7 @@ class ConversationService {
                 conversation_uuid: conversationUuid,
                 key: 'role',
                 value: role,
-                user_id: memberId,
+                user_id: userId,
             })
 
             let message = ''
@@ -789,7 +789,7 @@ class ConversationService {
                         user_id: currentUserId,
                         name: conversation.members![0].nickname,
                     })} đã thêm ${JSON.stringify({
-                        user_id: memberId,
+                        user_id: userId,
                         name: user?.full_name,
                     })} làm quản trị viên nhóm.`
                     break
@@ -798,7 +798,7 @@ class ConversationService {
                         user_id: currentUserId,
                         name: conversation.members![0].nickname,
                     })} đã gỡ tư cách quản trị viên nhóm của ${JSON.stringify({
-                        user_id: memberId,
+                        user_id: userId,
                         name: user?.full_name,
                     })}`
                     break
