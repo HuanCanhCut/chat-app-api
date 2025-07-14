@@ -9,10 +9,6 @@ import { sequelize } from '~/config/database'
 import { ioInstance } from '~/config/socket'
 import { SocketEvent } from '~/enum/socketEvent'
 
-interface MemberWithUser extends ConversationMember {
-    user: User
-}
-
 class ConversationService {
     async userAllowedToConversation({ userId, conversationUuid }: { userId: number; conversationUuid: string }) {
         // check if user is a member of the conversation
@@ -23,6 +19,12 @@ class ConversationService {
             include: {
                 model: ConversationMember,
                 as: 'members',
+                include: [
+                    {
+                        model: User,
+                        as: 'user',
+                    },
+                ],
                 where: {
                     user_id: userId,
                 },
@@ -309,7 +311,7 @@ class ConversationService {
                 conversationUuid,
                 message: `${JSON.stringify({
                     user_id: currentUserId,
-                    name: conversation.members![0].nickname,
+                    name: conversation.members![0].nickname || conversation.members![0].user?.full_name,
                 })} đã đổi tên đoạn chat thành ${conversationName}.`,
                 type: 'system_change_group_name',
                 currentUserId,
@@ -376,7 +378,7 @@ class ConversationService {
                 conversationUuid,
                 message: `${JSON.stringify({
                     user_id: currentUserId,
-                    name: conversation.members![0].nickname,
+                    name: conversation.members![0].nickname || conversation.members![0].user?.full_name,
                 })} đã đổi ảnh nhóm.`,
                 type: 'system_change_group_avatar',
                 currentUserId,
@@ -450,7 +452,7 @@ class ConversationService {
                 conversationUuid,
                 message: `${JSON.stringify({
                     user_id: currentUserId,
-                    name: conversation.members![0].nickname,
+                    name: conversation.members![0].nickname || conversation.members![0].user?.full_name,
                 })} đã đổi chủ đề thành ${theme.name} ${emoji ? emoji : ''}`,
                 type: 'system_change_theme',
                 currentUserId,
@@ -503,7 +505,7 @@ class ConversationService {
                 conversationUuid,
                 message: `${JSON.stringify({
                     user_id: currentUserId,
-                    name: conversation.members![0].nickname,
+                    name: conversation.members![0].nickname || conversation.members![0].user?.full_name,
                 })} đã đặt cảm xúc nhanh thành ${emoji}.`,
                 type: 'system_change_emoji',
                 currentUserId,
@@ -539,7 +541,7 @@ class ConversationService {
             })
 
             const [member, user] = await Promise.all([
-                (await ConversationMember.findOne({
+                await ConversationMember.findOne({
                     include: [
                         {
                             model: Conversation,
@@ -552,7 +554,7 @@ class ConversationService {
                     where: {
                         user_id: userId,
                     },
-                })) as MemberWithUser,
+                }),
 
                 User.findByPk(userId, {
                     attributes: {
@@ -583,7 +585,7 @@ class ConversationService {
                 conversationUuid,
                 message: `${JSON.stringify({
                     user_id: currentUserId,
-                    name: conversation.members![0].nickname,
+                    name: conversation.members![0].nickname || conversation.members![0].user?.full_name,
                 })} đã ${nickname.trim().length ? 'đặt biệt danh cho' : 'xóa biệt danh của'} ${JSON.stringify({
                     user_id: userId,
                     name: user?.full_name,
@@ -664,7 +666,7 @@ class ConversationService {
                 conversationUuid: conversation.uuid,
                 message: `${JSON.stringify({
                     user_id: currentUserId,
-                    name: conversation.members![0].nickname,
+                    name: conversation.members![0].nickname || conversation.members![0].user?.full_name,
                 })} đã thêm ${JSON.stringify({
                     user_id: userId,
                     name: user?.full_name,
@@ -789,7 +791,7 @@ class ConversationService {
                 case 'leader':
                     message = `${JSON.stringify({
                         user_id: currentUserId,
-                        name: conversation.members![0].nickname,
+                        name: conversation.members![0].nickname || conversation.members![0].user?.full_name,
                     })} đã thêm ${JSON.stringify({
                         user_id: userId,
                         name: user?.full_name,
@@ -798,7 +800,7 @@ class ConversationService {
                 case 'member':
                     message = `${JSON.stringify({
                         user_id: currentUserId,
-                        name: conversation.members![0].nickname,
+                        name: conversation.members![0].nickname || conversation.members![0].user?.full_name,
                     })} đã gỡ tư cách quản trị viên nhóm của ${JSON.stringify({
                         user_id: userId,
                         name: user?.full_name,
@@ -861,7 +863,7 @@ class ConversationService {
                 })
             }
 
-            const member = (await ConversationMember.findByPk(memberId, {
+            const member = await ConversationMember.findByPk(memberId, {
                 include: [
                     {
                         model: User,
@@ -871,7 +873,7 @@ class ConversationService {
                         },
                     },
                 ],
-            })) as MemberWithUser
+            })
 
             if (!member) {
                 throw new NotFoundError({ message: 'User is not a member of this conversation' })
@@ -901,10 +903,10 @@ class ConversationService {
                 conversationUuid,
                 message: `${JSON.stringify({
                     user_id: currentUserId,
-                    name: conversation.members![0].nickname,
+                    name: conversation.members![0].nickname || conversation.members![0].user?.full_name,
                 })} đã xóa ${JSON.stringify({
                     user_id: member.user_id,
-                    name: member.user.full_name,
+                    name: member.user?.full_name,
                 })} khỏi nhóm.`,
                 type: 'system_remove_user',
                 currentUserId,
@@ -953,7 +955,7 @@ class ConversationService {
                 conversationUuid,
                 message: `${JSON.stringify({
                     user_id: currentUserId,
-                    name: conversation.members![0].nickname,
+                    name: conversation.members![0].nickname || conversation.members![0].user?.full_name,
                 })} đã rời khỏi nhóm.`,
                 type: 'system_leave_group',
                 currentUserId,

@@ -2,6 +2,7 @@ import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequ
 
 import { sequelize } from '../../config/database'
 import handleChildrenAfterFindHook from '../helper/childrenAfterFindHook'
+import User from './UserModel'
 
 class ConversationMember extends Model<
     InferAttributes<ConversationMember>,
@@ -10,6 +11,7 @@ class ConversationMember extends Model<
     declare id?: number
     declare conversation_id: number
     declare user_id: number
+    declare user?: User
     declare nickname?: string | null
     declare role: 'admin' | 'leader' | 'member'
     declare joined_at?: Date
