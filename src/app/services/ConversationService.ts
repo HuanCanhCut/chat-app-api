@@ -9,6 +9,10 @@ import { sequelize } from '~/config/database'
 import { ioInstance } from '~/config/socket'
 import { SocketEvent } from '~/enum/socketEvent'
 
+interface MemberWithUser extends ConversationMember {
+    user: User
+}
+
 class ConversationService {
     async userAllowedToConversation({ userId, conversationUuid }: { userId: number; conversationUuid: string }) {
         // check if user is a member of the conversation
@@ -533,10 +537,6 @@ class ConversationService {
                 conversationUuid: conversationUuid,
             })
 
-            interface MemberWithUser extends ConversationMember {
-                user: User
-            }
-
             const [member, user] = await Promise.all([
                 (await ConversationMember.findOne({
                     include: [
@@ -647,6 +647,7 @@ class ConversationService {
                 conversation_id: conversation.id,
                 user_id: userId,
                 added_by_id: currentUserId,
+                role: 'member',
             })
 
             if (!conversationMember) {
@@ -859,32 +860,36 @@ class ConversationService {
                 })
             }
 
-            const [userMember, user] = await Promise.all([
-                await ConversationMember.findOne({
-                    where: {
-                        conversation_id: conversation.id,
-                        user_id: memberId,
+            const member = (await ConversationMember.findByPk(memberId, {
+                include: [
+                    {
+                        model: User,
+                        as: 'user',
+                        attributes: {
+                            include: ['full_name'],
+                        },
                     },
-                }),
+                ],
+            })) as MemberWithUser
 
-                User.findByPk(memberId, {
-                    attributes: {
-                        include: ['full_name'],
-                    },
-                }),
-            ])
-
-            if (!userMember) {
+            if (!member) {
                 throw new NotFoundError({ message: 'User is not a member of this conversation' })
             }
 
-            if (userMember.role === 'leader' || userMember.role === 'admin') {
+            // admin can remove leader and member, leader can remove member
+            const permission = {
+                admin: ['leader', 'member'],
+                leader: ['member'],
+                member: [],
+            }
+
+            if (!permission[currentUserMember.role].includes(member.role)) {
                 throw new ForBiddenError({
-                    message: 'You are not allowed to remove a leader or admin from this conversation',
+                    message: `You are not allowed to remove ${member.role} from this conversation`,
                 })
             }
 
-            await userMember.destroy()
+            await member.destroy()
 
             ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_MEMBER_REMOVED, {
                 conversation_uuid: conversationUuid,
@@ -897,8 +902,8 @@ class ConversationService {
                     user_id: currentUserId,
                     name: conversation.members![0].nickname,
                 })} đã xóa ${JSON.stringify({
-                    user_id: memberId,
-                    name: user?.full_name,
+                    user_id: member.user_id,
+                    name: member.user.full_name,
                 })} khỏi nhóm.`,
                 type: 'system_remove_user',
                 currentUserId,
