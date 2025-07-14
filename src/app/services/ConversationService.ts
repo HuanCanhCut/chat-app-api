@@ -573,7 +573,7 @@ class ConversationService {
 
             ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_MEMBER_NICKNAME_CHANGED, {
                 conversation_uuid: conversationUuid,
-                member_id: memberId,
+                user_id: memberId,
                 key: 'nickname',
                 value: nickname,
             })
@@ -776,9 +776,9 @@ class ConversationService {
 
             ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_LEADER_CHANGED, {
                 conversation_uuid: conversationUuid,
-                leader: savedUserMember,
                 key: 'role',
                 value: role,
+                user_id: memberId,
             })
 
             let message = ''

@@ -322,10 +322,12 @@ class ConversationController {
                 }),
             ])
 
-            console.log(leader)
-
             if (!leader) {
                 throw new NotFoundError({ message: 'Leader not found' })
+            }
+
+            if (leader.id === currentUserMember.id) {
+                throw new ForBiddenError({ message: 'You cannot remove yourself as a leader of this conversation' })
             }
 
             if (leader.role !== 'leader') {
