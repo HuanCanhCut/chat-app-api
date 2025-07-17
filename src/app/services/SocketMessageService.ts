@@ -205,8 +205,6 @@ class SocketMessageService {
             ],
         })
 
-        console.log(allUserOfConversation)
-
         const userIds = await Promise.all(
             allUserOfConversation.map(async (user: any) => {
                 // get socket id instead of online status because if user switches tab then it will be offline but still keep socket
@@ -517,7 +515,7 @@ class SocketMessageService {
 
             ioInstance
                 .to(conversation_uuid)
-                .emit(SocketEvent.UPDATE_READ_MESSAGE, { message, user_read_id: this.currentUserId })
+                .emit(SocketEvent.UPDATE_READ_MESSAGE, { message, user_read_id: this.currentUserId, conversation_uuid })
 
             const userIds = await this.getUsersOnlineStatus(conversation_uuid)
 
