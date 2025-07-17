@@ -56,7 +56,9 @@ admin.initializeApp({
 database.connect()
 
 // connect to redis
-redisClient.connect()
+;(async () => {
+    await redisClient.connect()
+})()
 
 app.use(
     express.urlencoded({

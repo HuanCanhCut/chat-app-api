@@ -10,7 +10,15 @@ import { ioInstance } from '~/config/socket'
 import { SocketEvent } from '~/enum/socketEvent'
 
 class ConversationService {
-    async userAllowedToConversation({ userId, conversationUuid }: { userId: number; conversationUuid: string }) {
+    async userAllowedToConversation({
+        userId,
+        conversationUuid,
+        paranoid = true,
+    }: {
+        userId: number
+        conversationUuid: string
+        paranoid?: boolean
+    }) {
         // check if user is a member of the conversation
         const conversation = await Conversation.findOne({
             where: {
@@ -28,7 +36,7 @@ class ConversationService {
                 where: {
                     user_id: userId,
                 },
-                paranoid: false,
+                paranoid,
             },
         })
 
@@ -131,7 +139,7 @@ class ConversationService {
 
             const promises = conversations.map(async (conversation) => {
                 const lastMessage = await MessageService.getLastMessage({
-                    conversationId: conversation.id as number,
+                    conversationUuid: conversation.uuid,
                     currentUserId,
                 })
 
@@ -154,7 +162,7 @@ class ConversationService {
 
     async getConversationByUuid({ currentUserId, uuid }: { currentUserId: number; uuid: string }) {
         try {
-            await this.userAllowedToConversation({ userId: currentUserId, conversationUuid: uuid })
+            await this.userAllowedToConversation({ userId: currentUserId, conversationUuid: uuid, paranoid: false })
 
             const conversation = await Conversation.findOne({
                 where: {
@@ -708,15 +716,18 @@ class ConversationService {
         userId,
         conversationUuid,
         currentUserId,
+        paranoid = true,
     }: {
         userId: number
         conversationUuid: string
         currentUserId: number
+        paranoid?: boolean
     }) {
         try {
             const conversation = await this.userAllowedToConversation({
                 userId: currentUserId,
                 conversationUuid: conversationUuid,
+                paranoid,
             })
 
             const member = await ConversationMember.findOne({
@@ -724,6 +735,7 @@ class ConversationService {
                     conversation_id: conversation.get('id'),
                     user_id: userId,
                 },
+                paranoid,
             })
 
             if (!member) {

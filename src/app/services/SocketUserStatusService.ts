@@ -71,9 +71,13 @@ class SocketUserStatusService {
                         ],
                     })
 
-                    redisClient.set(`${RedisKey.FRIENDS_ID_OF_USER}${this.currentUserId}`, JSON.stringify(friends), {
-                        EX: 60 * 60 * 12, // 12 hours
-                    })
+                    await redisClient.set(
+                        `${RedisKey.FRIENDS_ID_OF_USER}${this.currentUserId}`,
+                        JSON.stringify(friends),
+                        {
+                            EX: 60 * 60 * 12, // 12 hours
+                        },
+                    )
                 }
 
                 const promises = this.userStatusPromises(friends, true, null)
@@ -82,7 +86,7 @@ class SocketUserStatusService {
             }
 
             // Set user online status in Redis
-            redisClient.set(
+            await redisClient.set(
                 `${RedisKey.USER_ONLINE}${this.currentUserId}`,
                 JSON.stringify({
                     is_online: true,
@@ -98,8 +102,8 @@ class SocketUserStatusService {
             }
 
             // Extend online status periodically
-            this.userOnlineInterval = setInterval(() => {
-                redisClient.set(
+            this.userOnlineInterval = setInterval(async () => {
+                await redisClient.set(
                     `${RedisKey.USER_ONLINE}${this.currentUserId}`,
                     JSON.stringify({
                         is_online: true,

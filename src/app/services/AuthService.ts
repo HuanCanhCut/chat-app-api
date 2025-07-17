@@ -264,9 +264,10 @@ class AuthServices {
 
             const codeTtl = 60
 
-            redisClient.set(`resetCode-${email}`, resetCode, { EX: codeTtl })
-
-            await addMailJob({ email, code: resetCode })
+            await Promise.all([
+                redisClient.set(`resetCode-${email}`, resetCode, { EX: codeTtl }),
+                addMailJob({ email, code: resetCode }),
+            ])
         } catch (error: any) {
             if (error instanceof AppError) {
                 throw error

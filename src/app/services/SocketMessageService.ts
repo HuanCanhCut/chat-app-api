@@ -8,6 +8,7 @@ import { ConversationMember } from '../models'
 import { User } from '../models'
 import MessageReaction from '../models/MessageReactionModel'
 import MessageService from '../services/MessageService'
+import ConversationService from './ConversationService'
 import { sequelize } from '~/config/database'
 import { redisClient } from '~/config/redis'
 import { ioInstance } from '~/config/socket'
@@ -204,13 +205,16 @@ class SocketMessageService {
             ],
         })
 
+        console.log(allUserOfConversation)
+
         const userIds = await Promise.all(
             allUserOfConversation.map(async (user: any) => {
-                const isOnlineCache = await redisClient.get(`${RedisKey.USER_ONLINE}${user.get('id')}`)
+                // get socket id instead of online status because if user switches tab then it will be offline but still keep socket
+                const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${user.get('id')}`, 0, -1)
 
                 return {
                     id: user.get('id') as number,
-                    is_online: isOnlineCache ? (JSON.parse(isOnlineCache).is_online as boolean) : false,
+                    is_online: socketIds.length > 0,
                 }
             }),
         )
@@ -219,27 +223,41 @@ class SocketMessageService {
     }
 
     JOIN_ROOM = async (conversation_uuid: string) => {
-        // Get all socket ids of user from Redis
-        const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${this.currentUserId}`, 0, -1)
+        try {
+            // Get all socket ids of user from Redis
+            const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${this.currentUserId}`, 0, -1)
 
-        // if user in room, not join again
-        const userInRoom = await redisClient.get(`user_${this.currentUserId}_in_room_${conversation_uuid}`)
+            // if user in room, not join again
+            const userInRoom = await redisClient.get(`user_${this.currentUserId}_in_room_${conversation_uuid}`)
 
-        if (userInRoom) {
-            return
-        }
+            if (userInRoom) {
+                return
+            }
 
-        if (socketIds && socketIds.length > 0) {
-            for (const socketId of socketIds) {
-                const userSocket = ioInstance.sockets.sockets.get(socketId) // Get socket from socketId
-                if (userSocket) {
-                    userSocket.join(conversation_uuid) // Socket join room
+            const hasMember = await ConversationService.getMemberInConversation({
+                userId: this.currentUserId!,
+                conversationUuid: conversation_uuid,
+                currentUserId: this.currentUserId!,
+            })
+
+            if (!hasMember) {
+                return
+            }
+
+            if (socketIds && socketIds.length > 0) {
+                for (const socketId of socketIds) {
+                    const userSocket = ioInstance.sockets.sockets.get(socketId) // Get socket from socketId
+                    if (userSocket) {
+                        userSocket.join(conversation_uuid) // Socket join room
+                    }
                 }
             }
-        }
 
-        // Save user status that has joined room to Redis
-        await redisClient.set(`user_${this.currentUserId}_in_room_${conversation_uuid}`, 'true')
+            // Save user status that has joined room to Redis
+            await redisClient.set(`user_${this.currentUserId}_in_room_${conversation_uuid}`, 'true')
+        } catch (error) {
+            console.log(error)
+        }
     }
 
     NEW_MESSAGE = async ({
@@ -303,7 +321,7 @@ class SocketMessageService {
                 if (conversation) {
                     // Groups can always change information about members, avatars... so they can't be cached.
                     if (!conversation.get('is_group')) {
-                        redisClient.set(
+                        await redisClient.set(
                             `${RedisKey.CONVERSATION_UUID}${conversation_uuid}`,
                             JSON.stringify(conversation),
                             {
@@ -352,7 +370,7 @@ class SocketMessageService {
                                 })
 
                                 if (conversation) {
-                                    redisClient.set(
+                                    await redisClient.set(
                                         `${RedisKey.CONVERSATION_UUID}${conversation_uuid}`,
                                         JSON.stringify(conversation),
                                         {
@@ -379,7 +397,7 @@ class SocketMessageService {
                     } else {
                         // delete socket id from redis if socket id not exist
                         if (this.socket) {
-                            redisClient.lRem(`${RedisKey.SOCKET_ID}${user.id}`, 0, this.socket.id)
+                            await redisClient.lRem(`${RedisKey.SOCKET_ID}${user.id}`, 0, this.socket.id)
                         }
                     }
                 }
@@ -734,8 +752,10 @@ class SocketMessageService {
 
     DISCONNECT = async () => {
         // Delete all rooms that user has joined from Redis
-        redisClient.keys(`user_${this.currentUserId}_in_room_*`).then((keys) => {
-            keys.forEach((key) => redisClient.del(key))
+        await redisClient.keys(`user_${this.currentUserId}_in_room_*`).then(async (keys) => {
+            const promises = keys.map(async (key) => await redisClient.del(key))
+
+            await Promise.all(promises)
         })
     }
 }

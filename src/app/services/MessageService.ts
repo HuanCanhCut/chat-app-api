@@ -5,6 +5,7 @@ import { ForBiddenError } from '../errors/errors'
 import { Message, MessageStatus, User } from '../models'
 import { Conversation, ConversationMember } from '../models'
 import MessageReaction from '../models/MessageReactionModel'
+import ConversationService from './ConversationService'
 import SocketMessageService from './SocketMessageService'
 import { sequelize } from '~/config/database'
 import { redisClient } from '~/config/redis'
@@ -46,7 +47,6 @@ class MessageService {
                 WHERE messages.type NOT LIKE 'system%' AND message_statuses.receiver_id = message_status.receiver_id AND
                     message_statuses.status = 'read' 
                     AND messages.conversation_id = ${sequelize.escape(conversationId)}
-                    AND messages.type != 'system'
                     AND (
                         message_statuses.is_revoked = 0
                         OR (
@@ -132,11 +132,18 @@ class MessageService {
         }
     }
 
-    async getLastMessage({ conversationId, currentUserId }: { conversationId: number; currentUserId: number }) {
+    async getLastMessage({ conversationUuid, currentUserId }: { conversationUuid: string; currentUserId: number }) {
         try {
+            const currentMember = await ConversationService.getMemberInConversation({
+                userId: currentUserId,
+                conversationUuid,
+                currentUserId,
+                paranoid: false,
+            })
+
             const lastMessage = await Message.findOne({
                 where: {
-                    conversation_id: conversationId,
+                    conversation_id: currentMember.conversation_id,
                     [Op.not]: {
                         id: {
                             [Op.in]: sequelize.literal(`
@@ -149,6 +156,9 @@ class MessageService {
                                 )
                             `),
                         },
+                    },
+                    created_at: {
+                        [Op.lte]: currentMember?.get('deleted_at') || new Date(),
                     },
                 },
                 include: [
@@ -218,7 +228,7 @@ class MessageService {
                 include: {
                     model: ConversationMember,
                     as: 'members',
-                    attributes: ['id'],
+                    attributes: ['id', 'deleted_at'],
                     where: {
                         user_id: currentUserId,
                     },
@@ -232,23 +242,6 @@ class MessageService {
 
             const { rows: messages, count } = await Message.findAndCountAll<any>({
                 distinct: true,
-                where: {
-                    conversation_id: hasMember.id,
-                    // Get all messages except messages that have been revoked for-me by the current user
-                    [Op.not]: {
-                        id: {
-                            [Op.in]: sequelize.literal(`
-                        (
-                            SELECT message_id
-                            FROM message_statuses
-                            WHERE message_statuses.revoke_type = 'for-me'
-                            AND message_statuses.message_id = Message.id
-                            AND message_statuses.receiver_id = ${sequelize.escape(currentUserId)}
-                        )
-                    `),
-                        },
-                    },
-                },
                 include: [
                     {
                         model: MessageStatus,
@@ -335,6 +328,26 @@ class MessageService {
                         ],
                     },
                 ],
+                where: {
+                    conversation_id: hasMember.id,
+                    // Get all messages except messages that have been revoked for-me by the current user
+                    [Op.not]: {
+                        id: {
+                            [Op.in]: sequelize.literal(`
+                                (
+                                    SELECT message_id
+                                    FROM message_statuses
+                                    WHERE message_statuses.revoke_type = 'for-me'
+                                    AND message_statuses.message_id = Message.id
+                                    AND message_statuses.receiver_id = ${sequelize.escape(currentUserId)}
+                                )
+                            `),
+                        },
+                    },
+                    created_at: {
+                        [Op.lte]: hasMember.members?.[0].deleted_at || new Date(),
+                    },
+                },
                 limit,
                 offset,
                 order: [['id', sort]],

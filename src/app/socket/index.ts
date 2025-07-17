@@ -6,7 +6,7 @@ import messageListener from '~/app/socket/message'
 import { redisClient } from '~/config/redis'
 import { RedisKey } from '~/enum/redis'
 
-const onConnection = (socketInstance: Socket, ioInstance: Server) => {
+const onConnection = async (socketInstance: Socket, ioInstance: Server) => {
     console.log('\x1b[33m===>>>Socket connected', socketInstance.id, '\x1b[0m')
 
     const cookies = socketInstance.handshake.headers.cookie
@@ -22,7 +22,7 @@ const onConnection = (socketInstance: Socket, ioInstance: Server) => {
         try {
             decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET as string)
             if (decoded) {
-                redisClient.rPush(`${RedisKey.SOCKET_ID}${decoded.sub}`, socketInstance.id)
+                await redisClient.rPush(`${RedisKey.SOCKET_ID}${decoded.sub}`, socketInstance.id)
 
                 socketInstance.data.decoded = decoded
 

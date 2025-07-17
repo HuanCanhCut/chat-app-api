@@ -291,12 +291,14 @@ class FriendService {
                             conversation_id: conversation.id,
                             user_id: currentUserId,
                             joined_at: new Date(),
+                            role: 'member',
                         })
 
                         await ConversationMember.create({
                             conversation_id: conversation.id,
                             user_id: Number(userId),
                             joined_at: new Date(),
+                            role: 'member',
                         })
                     }
                 })
