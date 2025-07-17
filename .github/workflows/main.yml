@@ -21,8 +21,8 @@ jobs:
                       cd /var/www/nodejs/chat-app-api
                       git checkout main
                       git pull
+                      yarn install
                       yarn migrate:prod
                       yarn seed:prod
-                      yarn install
                       yarn build
                       pm2 restart chat-app-api
