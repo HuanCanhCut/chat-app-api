@@ -29,13 +29,15 @@ class MessageService {
 
         const socket = ioInstance.sockets.sockets.get(socketIds[0])
 
-        const socketMessageService = new SocketMessageService(socket, currentUserId)
+        if (socket) {
+            const socketMessageService = new SocketMessageService(socket, currentUserId)
 
-        await socketMessageService.NEW_MESSAGE({
-            conversation_uuid: conversationUuid,
-            message,
-            type,
-        })
+            await socketMessageService.NEW_MESSAGE({
+                conversation_uuid: conversationUuid,
+                message,
+                type,
+            })
+        }
     }
 
     lastReadMessageIdLiteral = (currentUserId: number, conversationId: number) => {

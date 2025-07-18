@@ -17,12 +17,12 @@ import { SocketEvent } from '~/enum/socketEvent'
 import logger from '~/logger/logger'
 
 class SocketMessageService {
-    private socket?: Socket
+    private socket: Socket
     private currentUserId?: number
 
-    constructor(socket?: Socket, currentUserId?: number) {
+    constructor(socket: Socket, currentUserId?: number) {
         this.socket = socket
-        this.currentUserId = currentUserId || socket?.data.decoded.sub
+        this.currentUserId = currentUserId || socket.data.decoded.sub
     }
 
     saveMessageToDatabase = async ({
@@ -155,35 +155,6 @@ class SocketMessageService {
         }
     }
 
-    getConversation = async ({ conversationUuid }: { conversationUuid: string }) => {
-        try {
-            // get conversation from database
-            const conversation = await Conversation.findOne({
-                where: {
-                    uuid: conversationUuid,
-                },
-                include: [
-                    {
-                        model: ConversationMember,
-                        as: 'members',
-                        include: [
-                            {
-                                model: User,
-                                as: 'user',
-                                attributes: {
-                                    exclude: ['password', 'email'],
-                                },
-                            },
-                        ],
-                    },
-                ],
-            })
-            return conversation
-        } catch (error) {
-            console.log(error)
-        }
-    }
-
     getUsersOnlineStatus = async (conversationUuid: string) => {
         // get all users online in a conversation
         const allUserOfConversation = await User.findAll({
@@ -218,44 +189,6 @@ class SocketMessageService {
         )
 
         return userIds
-    }
-
-    JOIN_ROOM = async (conversation_uuid: string) => {
-        try {
-            // Get all socket ids of user from Redis
-            const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${this.currentUserId}`, 0, -1)
-
-            // if user in room, not join again
-            const userInRoom = await redisClient.get(`user_${this.currentUserId}_in_room_${conversation_uuid}`)
-
-            if (userInRoom) {
-                return
-            }
-
-            const hasMember = await ConversationService.getMemberInConversation({
-                userId: this.currentUserId!,
-                conversationUuid: conversation_uuid,
-                currentUserId: this.currentUserId!,
-            })
-
-            if (!hasMember) {
-                return
-            }
-
-            if (socketIds && socketIds.length > 0) {
-                for (const socketId of socketIds) {
-                    const userSocket = ioInstance.sockets.sockets.get(socketId) // Get socket from socketId
-                    if (userSocket) {
-                        userSocket.join(conversation_uuid) // Socket join room
-                    }
-                }
-            }
-
-            // Save user status that has joined room to Redis
-            await redisClient.set(`user_${this.currentUserId}_in_room_${conversation_uuid}`, 'true')
-        } catch (error) {
-            console.log(error)
-        }
     }
 
     NEW_MESSAGE = async ({
@@ -312,8 +245,9 @@ class SocketMessageService {
                 ioInstance.to(conversation_uuid).emit(SocketEvent.NEW_MESSAGE, { conversation })
             } else {
                 // get conversation from database
-                const conversation = await this.getConversation({
-                    conversationUuid: conversation_uuid,
+                const conversation = await ConversationService.getConversationByUuid({
+                    currentUserId: this.currentUserId,
+                    uuid: conversation_uuid,
                 })
 
                 if (conversation) {
@@ -343,7 +277,7 @@ class SocketMessageService {
                     continue
                 }
 
-                const isUserInRoom = await redisClient.get(`user_${user.id}_in_room_${conversation_uuid}`)
+                const isUserInRoom = ioInstance.sockets.sockets.get(this.socket.id)?.rooms.has(conversation_uuid)
 
                 // user online but not in the room
                 if (!isUserInRoom && user.is_online) {
@@ -362,9 +296,9 @@ class SocketMessageService {
                             ioInstance.to(socketIds).emit(SocketEvent.NEW_MESSAGE, { conversation })
                         } else {
                             try {
-                                // get conversation from database
-                                const conversation = await this.getConversation({
-                                    conversationUuid: conversation_uuid,
+                                const conversation = await ConversationService.getConversationByUuid({
+                                    currentUserId: this.currentUserId,
+                                    uuid: conversation_uuid,
                                 })
 
                                 if (conversation) {
@@ -372,8 +306,7 @@ class SocketMessageService {
                                         `${RedisKey.CONVERSATION_UUID}${conversation_uuid}`,
                                         JSON.stringify(conversation),
                                         {
-                                            // 1 hour
-                                            EX: 60 * 60,
+                                            EX: 60 * 60, // 1 hour
                                         },
                                     )
 
@@ -746,15 +679,6 @@ class SocketMessageService {
         } catch (error) {
             logger.error('MESSAGE_TYPING', error)
         }
-    }
-
-    DISCONNECT = async () => {
-        // Delete all rooms that user has joined from Redis
-        await redisClient.keys(`user_${this.currentUserId}_in_room_*`).then(async (keys) => {
-            const promises = keys.map(async (key) => await redisClient.del(key))
-
-            await Promise.all(promises)
-        })
     }
 }
 

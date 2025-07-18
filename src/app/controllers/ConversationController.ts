@@ -334,12 +334,6 @@ class ConversationController {
                 throw new ForBiddenError({ message: 'Member is not a leader of this conversation' })
             }
 
-            if (currentUserMember.role !== 'admin') {
-                throw new ForBiddenError({
-                    message: 'You must be a admin to remove a leader from this conversation',
-                })
-            }
-
             const updatedConversation = await ConversationService.changeLeaderRole({
                 currentUserId: decoded.sub,
                 conversationUuid: uuid,

@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken'
 import { Server, Socket } from 'socket.io'
 
+import conversationListener from './conversation'
 import userStatusListener from './userStatus'
 import messageListener from '~/app/socket/message'
 import { redisClient } from '~/config/redis'
@@ -29,6 +30,7 @@ const onConnection = async (socketInstance: Socket, ioInstance: Server) => {
                 // Listen event
                 new messageListener(socketInstance)
                 new userStatusListener(socketInstance)
+                new conversationListener(socketInstance)
             }
         } catch (error) {
             console.log(error)

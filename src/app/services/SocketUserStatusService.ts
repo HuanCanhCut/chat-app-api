@@ -14,7 +14,7 @@ const FOUR_MINUTES = 60 * 4
 const userOfflineTimeouts = new Map<number, NodeJS.Timeout>()
 
 class SocketUserStatusService {
-    private socket?: Socket
+    private socket: Socket
     private userOnlineInterval: NodeJS.Timeout | undefined
     private currentUserId: number
 
