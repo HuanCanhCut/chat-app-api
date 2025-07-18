@@ -293,6 +293,7 @@ class SocketMessageService {
                                 ...JSON.parse(conversationCache),
                                 last_message: newMessage,
                             }
+
                             ioInstance.to(socketIds).emit(SocketEvent.NEW_MESSAGE, { conversation })
                         } else {
                             try {

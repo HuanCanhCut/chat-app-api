@@ -47,14 +47,15 @@ class SocketConversationService {
         }
     }
 
-    DISCONNECT = async () => {
-        const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${this.currentUserId}`, 0, -1)
+    LEAVE_ROOM = async ({ conversation_uuid, user_id }: { conversation_uuid?: string; user_id?: number }) => {
+        const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${user_id}`, 0, -1)
 
         socketIds.forEach((socketId) => {
             const userSocket = ioInstance.sockets.sockets.get(socketId)
 
             if (userSocket) {
-                const rooms = [...userSocket.rooms]
+                const rooms = conversation_uuid ? [conversation_uuid] : [...userSocket.rooms]
+
                 rooms.forEach((room) => {
                     if (room !== socketId) {
                         userSocket.leave(room)
@@ -62,6 +63,10 @@ class SocketConversationService {
                 })
             }
         })
+    }
+
+    DISCONNECT = async () => {
+        this.LEAVE_ROOM({ user_id: this.currentUserId! })
     }
 }
 

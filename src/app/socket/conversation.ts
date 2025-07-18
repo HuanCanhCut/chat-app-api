@@ -12,6 +12,7 @@ class conversationListener {
         const socketConversationService = new SocketConversationService(socket)
 
         this.socket.on(SocketEvent.JOIN_ROOM, socketConversationService.JOIN_ROOM)
+        this.socket.on(SocketEvent.LEAVE_ROOM, socketConversationService.LEAVE_ROOM)
 
         // Handle when user disconnect
         this.socket.on('disconnect', socketConversationService.DISCONNECT)
