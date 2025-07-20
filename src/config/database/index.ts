@@ -8,7 +8,7 @@ const sequelize = new Sequelize(
         host: process.env.DB_HOST as string,
         dialect: 'mysql',
         timezone: '+07:00',
-        logging: process.env.NODE_ENV === 'development',
+        logging: false,
         define: {
             createdAt: 'created_at',
             updatedAt: 'updated_at',

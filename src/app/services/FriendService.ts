@@ -1,4 +1,5 @@
 import { literal, Op, Sequelize } from 'sequelize'
+import { Literal } from 'sequelize/types/utils'
 import { v4 as uuidv4 } from 'uuid'
 
 import { AppError, ConflictError, InternalServerError, NotFoundError, UnprocessableEntityError } from '../errors/errors'
@@ -19,9 +20,9 @@ interface SendMakeFriendRequestProps {
 class FriendService {
     friendShipJoinLiteral = (userId: number) => {
         return literal(`
-                (user.id = Friendships.friend_id AND Friendships.user_id = ${sequelize.escape(userId)}) 
+                ((user.id = Friendships.friend_id AND Friendships.user_id = ${sequelize.escape(userId)}) 
                 OR
-                (user.id = Friendships.user_id AND Friendships.friend_id = ${sequelize.escape(userId)})
+                (user.id = Friendships.user_id AND Friendships.friend_id = ${sequelize.escape(userId)}))
             `)
     }
 
@@ -175,32 +176,52 @@ class FriendService {
         userId,
         page,
         per_page,
+        q,
     }: {
         currentUserId: number
         userId: number
         page: number
         per_page: number
+        q?: string
     }) {
         try {
+            interface UserInclude {
+                attributes: {
+                    exclude: string[]
+                }
+                model: typeof User
+                as: string
+                required: boolean
+                on: Literal
+                where?: Literal
+            }
+
+            // Build the include for User, adding search if q is present
+            const userInclude: UserInclude = {
+                attributes: {
+                    exclude: ['password', 'email'],
+                },
+                model: User,
+                as: 'user',
+                required: true,
+                on: this.friendShipJoinLiteral(Number(userId)),
+            }
+
+            if (q) {
+                userInclude.where = sequelize.literal(
+                    `MATCH(full_name) AGAINST(${sequelize.escape(q + '*')} IN BOOLEAN MODE)`,
+                )
+            }
+
             const { rows: friends, count } = await Friendships.findAndCountAll<any>({
                 distinct: true,
                 where: {
                     status: 'accepted',
                 },
-                include: [
-                    {
-                        attributes: {
-                            exclude: ['password', 'email'],
-                        },
-                        model: User,
-                        as: 'user',
-                        required: true,
-                        nested: true,
-                        on: this.friendShipJoinLiteral(Number(userId)),
-                    },
-                ],
+                include: [userInclude],
                 limit: Number(per_page),
                 offset: (Number(page) - 1) * Number(per_page),
+                logging: true,
             })
 
             const promises = friends.map(async (friend) => {
@@ -459,6 +480,34 @@ class FriendService {
             })
 
             return { friendInvitations, count }
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            }
+
+            throw new InternalServerError({ message: error.message })
+        }
+    }
+
+    async searchFriend({
+        currentUserId,
+        query,
+        page,
+        per_page,
+    }: {
+        currentUserId: number
+        query: string
+        page: number
+        per_page: number
+    }) {
+        try {
+            return await this.getAllFriends({
+                currentUserId,
+                userId: currentUserId,
+                page,
+                per_page,
+                q: query,
+            })
         } catch (error: any) {
             if (error instanceof AppError) {
                 throw error

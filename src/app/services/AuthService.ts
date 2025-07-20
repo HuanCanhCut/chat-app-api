@@ -83,7 +83,7 @@ class AuthServices {
             }
 
             const [user, userPassword] = await Promise.all([
-                User.findOne<any>({
+                User.findOne({
                     where: {
                         email,
                     },

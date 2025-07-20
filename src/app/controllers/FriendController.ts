@@ -2,6 +2,7 @@ import { NextFunction, Response } from 'express'
 
 import { UnprocessableEntityError } from '../errors/errors'
 import ConversationService from '../services/ConversationService'
+import { responseModel } from '../utils/responseModel'
 import FriendService from '~/app/services/FriendService'
 import { IRequest } from '~/type'
 
@@ -191,6 +192,44 @@ class FriendController {
                     },
                 },
             })
+        } catch (error: any) {
+            return next(error)
+        }
+    }
+
+    // [GET] /users/friends/search?q=
+    async searchFriend(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const { q } = req.query
+            const { page, per_page } = req.query
+
+            if (!q) {
+                return next(new UnprocessableEntityError({ message: 'Query is required' }))
+            }
+
+            if (!page || !per_page) {
+                return next(new UnprocessableEntityError({ message: 'Page and per_page are required' }))
+            }
+
+            const decoded = req.decoded
+
+            const { friends, count } = await FriendService.searchFriend({
+                currentUserId: decoded.sub,
+                query: q as string,
+                page: Number(page),
+                per_page: Number(per_page),
+            })
+
+            res.json(
+                responseModel({
+                    data: friends,
+                    total: count,
+                    count: friends.length,
+                    current_page: Number(page),
+                    total_pages: Math.ceil(count / Number(per_page)),
+                    per_page: Number(per_page),
+                }),
+            )
         } catch (error: any) {
             return next(error)
         }
