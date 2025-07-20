@@ -21,7 +21,7 @@ jobs:
                       cd /var/www/nodejs/chat-app-api
                       git checkout main
                       git pull
-                      yarn install
+                      yarn install --frozen-lockfile
                       yarn migrate:prod
                       yarn seed:prod
                       yarn build
