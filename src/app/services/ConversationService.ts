@@ -6,7 +6,9 @@ import { Block, Conversation, ConversationMember, ConversationTheme, User } from
 import { addSystemMessageJob } from '../queue/systemMessage'
 import MessageService from '../services/MessageService'
 import { sequelize } from '~/config/database'
+import { redisClient } from '~/config/redis'
 import { ioInstance } from '~/config/socket'
+import { RedisKey } from '~/enum/redis'
 import { SocketEvent } from '~/enum/socketEvent'
 
 class ConversationService {
@@ -736,6 +738,22 @@ class ConversationService {
                 members,
             })
 
+            // emit event to new members
+
+            for (const member of members) {
+                if (member) {
+                    const socketIds = await redisClient.lRange(
+                        `${RedisKey.SOCKET_ID}${Number(member.get('user_id'))}`,
+                        0,
+                        -1,
+                    )
+
+                    if (socketIds && socketIds.length > 0) {
+                        ioInstance.to(socketIds).emit(SocketEvent.CONVERSATION_MEMBER_JOINED)
+                    }
+                }
+            }
+
             await Promise.all(
                 members.map((member) => {
                     if (!member) {
@@ -854,24 +872,22 @@ class ConversationService {
 
             let message = ''
 
+            const currentUser = `${JSON.stringify({
+                user_id: currentUserId,
+                name: conversation.members![0].nickname || conversation.members![0].user?.full_name,
+            })}`
+
+            const targetUser = `${JSON.stringify({
+                user_id: userId,
+                name: user?.full_name,
+            })}`
+
             switch (role) {
                 case 'leader':
-                    message = `${JSON.stringify({
-                        user_id: currentUserId,
-                        name: conversation.members![0].nickname || conversation.members![0].user?.full_name,
-                    })} đã thêm ${JSON.stringify({
-                        user_id: userId,
-                        name: user?.full_name,
-                    })} làm quản trị viên nhóm.`
+                    message = `${currentUser} đã thêm ${targetUser} làm quản trị viên nhóm.`
                     break
                 case 'member':
-                    message = `${JSON.stringify({
-                        user_id: currentUserId,
-                        name: conversation.members![0].nickname || conversation.members![0].user?.full_name,
-                    })} đã gỡ tư cách quản trị viên nhóm của ${JSON.stringify({
-                        user_id: userId,
-                        name: user?.full_name,
-                    })}`
+                    message = `${currentUser} đã gỡ tư cách quản trị viên nhóm của ${targetUser}`
                     break
             }
 
