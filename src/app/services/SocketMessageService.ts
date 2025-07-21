@@ -17,12 +17,12 @@ import { SocketEvent } from '~/enum/socketEvent'
 import logger from '~/logger/logger'
 
 class SocketMessageService {
-    private socket: Socket
+    private socket?: Socket
     private currentUserId?: number
 
-    constructor(socket: Socket, currentUserId?: number) {
+    constructor(socket?: Socket, currentUserId?: number) {
         this.socket = socket
-        this.currentUserId = currentUserId || socket.data.decoded.sub
+        this.currentUserId = currentUserId || socket?.data.decoded.sub
     }
 
     saveMessageToDatabase = async ({
@@ -277,7 +277,7 @@ class SocketMessageService {
                     continue
                 }
 
-                const isUserInRoom = ioInstance.sockets.sockets.get(this.socket.id)?.rooms.has(conversation_uuid)
+                const isUserInRoom = ioInstance.sockets.sockets.get(this.socket?.id || '')?.rooms.has(conversation_uuid)
 
                 // user online but not in the room
                 if (!isUserInRoom && user.is_online) {

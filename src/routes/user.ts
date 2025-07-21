@@ -13,6 +13,7 @@ router.post('/:id/accept', verifyToken, FriendController.acceptFriend.bind(Frien
 router.post('/:id/reject', verifyToken, FriendController.rejectFriendRequest.bind(FriendController))
 router.delete('/:id/unfriend', verifyToken, FriendController.unfriend.bind(FriendController))
 router.post('/:id/cancel', verifyToken, FriendController.cancelFriendRequest.bind(FriendController))
+
 router.get('/search', verifyToken, UserController.searchUser.bind(UserController))
 router.get('/search-history', verifyToken, UserController.getSearchHistory.bind(UserController))
 router.post('/search-history', verifyToken, UserController.setSearchHistory.bind(UserController))

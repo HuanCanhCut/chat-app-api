@@ -615,11 +615,11 @@ class ConversationService {
     async addUserToConversation({
         currentUserId,
         conversationUuid,
-        userId,
+        userIds,
     }: {
         currentUserId: number
         conversationUuid: string
-        userId: number
+        userIds: number[]
     }) {
         try {
             const conversation = await this.userAllowedToConversation({
@@ -631,78 +631,133 @@ class ConversationService {
                 throw new ForBiddenError({ message: 'You are not allowed to add a user to a personal conversation' })
             }
 
-            const [user, hasMemberInConversation] = await Promise.all([
-                User.findByPk(userId, {
-                    attributes: {
-                        include: ['full_name'],
-                    },
-                }),
-
-                ConversationMember.findAll({
-                    where: {
-                        conversation_id: conversation.id,
-                        user_id: userId,
-                    },
-                }),
+            const [users, hasMemberInConversations] = await Promise.all([
+                Promise.all(
+                    userIds.map(async (userId) => {
+                        return User.findByPk(userId, {
+                            attributes: {
+                                include: ['full_name'],
+                            },
+                        })
+                    }),
+                ),
+                Promise.all(
+                    userIds.map(async (userId) => {
+                        return await ConversationMember.findOne({
+                            where: {
+                                conversation_id: conversation.id,
+                                user_id: userId,
+                            },
+                            include: [
+                                {
+                                    model: User,
+                                    as: 'user',
+                                    attributes: {
+                                        exclude: ['password', 'email'],
+                                    },
+                                },
+                            ],
+                            paranoid: false,
+                        })
+                    }),
+                ),
             ])
 
-            if (!user) {
-                throw new NotFoundError({ message: 'User not found' })
+            const notFoundUserIds = userIds.filter((userId) => !users.some((user) => user?.get('id') === userId))
+
+            if (notFoundUserIds.length > 0) {
+                throw new NotFoundError({ message: `User ${notFoundUserIds.join(', ')} not found` })
             }
 
-            if (hasMemberInConversation.length > 0) {
-                throw new ConflictError({ message: 'User is already in this conversation' })
+            if (hasMemberInConversations.length > 0) {
+                const hasMembers = hasMemberInConversations.filter((member) => {
+                    return member && !member?.get('deleted_at')
+                })
+
+                if (hasMembers.length > 0) {
+                    throw new ConflictError({
+                        message: `${hasMembers.map((member) => member?.user?.full_name).join(', ')} is already in this conversation`,
+                    })
+                }
+
+                // if member is deleted, we need to delete it before add new members
+                const deletedMembers = hasMemberInConversations.filter((member) => {
+                    return member && member?.get('deleted_at')
+                })
+
+                await ConversationMember.destroy({
+                    where: {
+                        id: {
+                            [Op.in]: deletedMembers.map((member) => member?.get('id') || 0),
+                        },
+                    },
+                    force: true,
+                })
             }
 
-            const conversationMember = await ConversationMember.create({
-                conversation_id: conversation.id,
-                user_id: userId,
-                added_by_id: currentUserId,
-                role: 'member',
-            })
+            const conversationMembers = await ConversationMember.bulkCreate(
+                userIds.map((userId) => ({
+                    conversation_id: conversation.id,
+                    user_id: userId,
+                    added_by_id: currentUserId,
+                    role: 'member' as 'admin' | 'leader' | 'member',
+                })),
+            )
 
-            if (!conversationMember) {
+            if (!conversationMembers) {
                 throw new InternalServerError({ message: 'Failed to add user to conversation' })
             }
 
+            const members = await Promise.all(
+                conversationMembers.map((member) => {
+                    return ConversationMember.findByPk(member.get('id'), {
+                        include: [
+                            {
+                                model: User,
+                                as: 'user',
+                                attributes: {
+                                    exclude: ['password', 'email'],
+                                },
+                            },
+                            {
+                                model: User,
+                                as: 'added_by',
+                                attributes: {
+                                    exclude: ['password', 'email'],
+                                },
+                            },
+                        ],
+                    })
+                }),
+            )
+
             ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_MEMBER_ADDED, {
                 conversation_uuid: conversationUuid,
-                member: conversationMember,
+                members,
             })
 
-            await addSystemMessageJob({
-                conversationUuid: conversation.uuid,
-                message: `${JSON.stringify({
-                    user_id: currentUserId,
-                    name: conversation.members![0].nickname || conversation.members![0].user?.full_name,
-                })} đã thêm ${JSON.stringify({
-                    user_id: userId,
-                    name: user?.full_name,
-                })} vào nhóm.`,
-                type: 'system_add_user',
-                currentUserId,
-            })
+            await Promise.all(
+                members.map((member) => {
+                    if (!member) {
+                        return
+                    }
 
-            const member = await ConversationMember.findByPk(conversationMember.id, {
-                include: [
-                    {
-                        model: User,
-                        as: 'user',
-                        attributes: {
-                            exclude: ['password', 'email'],
-                        },
-                    },
-                    {
-                        model: User,
-                        as: 'added_by',
-                        attributes: {
-                            exclude: ['password', 'email'],
-                        },
-                    },
-                ],
-            })
+                    return addSystemMessageJob({
+                        conversationUuid: conversation.uuid,
+                        message: `${JSON.stringify({
+                            user_id: currentUserId,
+                            name: conversation.members![0].nickname || conversation.members![0].user?.full_name,
+                        })} đã thêm ${JSON.stringify({
+                            user_id: member.get('user_id'),
+                            name: member.get('user')?.get('full_name'),
+                        })} vào nhóm.`,
+                        type: 'system_add_user',
+                        currentUserId,
+                    })
+                }),
+            )
 
-            return member
+            return members
         } catch (error: any) {
             if (error instanceof AppError) {
                 throw error

@@ -228,13 +228,17 @@ class ConversationController {
                 return next(new UnprocessableEntityError({ message: 'user_id is required' }))
             }
 
-            const updatedConversation = await ConversationService.addUserToConversation({
+            if (!Array.isArray(user_id)) {
+                return next(new UnprocessableEntityError({ message: 'user_id must be an array' }))
+            }
+
+            const addedMembers = await ConversationService.addUserToConversation({
                 currentUserId: decoded.sub,
                 conversationUuid: uuid,
-                userId: user_id,
+                userIds: user_id.map(Number),
             })
 
-            res.json({ data: updatedConversation })
+            res.json({ data: addedMembers })
         } catch (e: any) {
             return next(e)
         }

@@ -21,7 +21,12 @@ router.patch(
     verifyToken,
     ConversationController.changeConversationMemberNickname.bind(ConversationController),
 )
-router.post('/:uuid/user', verifyToken, ConversationController.addUserToConversation.bind(ConversationController))
+router.post(
+    '/:uuid/user',
+    verifyToken,
+    upload.none(),
+    ConversationController.addUserToConversation.bind(ConversationController),
+)
 router.patch(
     '/:uuid/designate-leader',
     verifyToken,
