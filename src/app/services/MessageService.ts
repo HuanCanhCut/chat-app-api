@@ -1,6 +1,27 @@
+import got from 'got'
+import metascraper from 'metascraper'
+import metascraperAuthor from 'metascraper-author'
+import metascraperDescription from 'metascraper-description'
+import metascraperImage from 'metascraper-image'
+import metascraperTitle from 'metascraper-title'
+import metascraperUrl from 'metascraper-url'
 import { Op, QueryTypes } from 'sequelize'
 
-import { AppError, InternalServerError, NotFoundError, UnprocessableEntityError } from '../errors/errors'
+const scraper = metascraper([
+    metascraperDescription(),
+    metascraperImage(),
+    metascraperTitle(),
+    metascraperUrl(),
+    metascraperAuthor(),
+])
+
+import {
+    AppError,
+    BadRequestError,
+    InternalServerError,
+    NotFoundError,
+    UnprocessableEntityError,
+} from '../errors/errors'
 import { ForBiddenError } from '../errors/errors'
 import { Message, MessageStatus, User } from '../models'
 import { Conversation, ConversationMember } from '../models'
@@ -840,6 +861,69 @@ class MessageService {
                 messages,
                 count,
             }
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            }
+
+            throw new InternalServerError({ message: error.message })
+        }
+    }
+
+    // cache for link preview
+    cache = new Map()
+    CACHE_TTL = 5 * 60 * 1000
+
+    async getLinkPreview(url: string) {
+        try {
+            const isValidUrl = (url: string) => {
+                try {
+                    new URL(url)
+                    return true
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                } catch (_) {
+                    return false
+                }
+            }
+
+            // Validate URL
+            if (!url || !isValidUrl(url)) {
+                throw new BadRequestError({ message: 'Invalid URL' })
+            }
+
+            // Check cache
+            const cacheKey = url
+            const cached = this.cache.get(cacheKey)
+            if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
+                return cached.data
+            }
+
+            // Fetch và parse metadata
+            const { body: html, url: targetUrl } = await got(url, {
+                timeout: 10000,
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (compatible; LinkPreview/1.0)',
+                },
+            })
+
+            const metadata = await scraper({ html, url: targetUrl })
+
+            const result = {
+                title: metadata.title || null,
+                description: metadata.description || null,
+                image: metadata.image || null,
+                url: metadata.url || url,
+                author: metadata.author || null,
+                success: true,
+            }
+
+            // Cache kết quả
+            this.cache.set(cacheKey, {
+                data: result,
+                timestamp: Date.now(),
+            })
+
+            return result
         } catch (error: any) {
             if (error instanceof AppError) {
                 throw error

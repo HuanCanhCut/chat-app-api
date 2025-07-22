@@ -244,6 +244,19 @@ class MessageController {
             return next(error)
         }
     }
+
+    // [POST] /api/messages/link-preview
+    async getLinkPreview(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const { url } = req.body
+
+            const preview = await MessageService.getLinkPreview(url)
+
+            res.json({ data: preview })
+        } catch (error: any) {
+            return next(error)
+        }
+    }
 }
 
 export default new MessageController()
