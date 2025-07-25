@@ -268,13 +268,15 @@ class MessageController {
         }
     }
 
-    // [GET] /api/messages/links
+    // [GET] /api/messages/:conversationUuid/links
     async getLinks(req: IRequest, res: Response, next: NextFunction) {
         try {
-            const { conversation_uuid, page, per_page } = req.query
+            const { page, per_page } = req.query
 
-            if (!conversation_uuid) {
-                return next(new UnprocessableEntityError({ message: 'conversation_uuid is required' }))
+            const { conversationUuid } = req.params
+
+            if (!conversationUuid) {
+                return next(new UnprocessableEntityError({ message: 'conversationUuid is required' }))
             }
 
             const decoded = req.decoded
@@ -284,7 +286,7 @@ class MessageController {
             }
 
             const { linkPreviews, count } = await MessageService.getLinks({
-                conversationUuid: conversation_uuid as string,
+                conversationUuid,
                 page: Number(page),
                 perPage: Number(per_page),
                 currentUserId: decoded.sub,
