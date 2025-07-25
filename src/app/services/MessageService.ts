@@ -870,12 +870,10 @@ class MessageService {
         }
     }
 
-    // cache for link preview
-    cache = new Map()
-    CACHE_TTL = 5 * 60 * 1000
-
-    async getLinkPreview(url: string) {
+    async getLinkPreviews(urls: string[], options?: { maxConcurrency?: number }) {
         try {
+            const { maxConcurrency = 5 } = options || {}
+
             const isValidUrl = (url: string) => {
                 try {
                     new URL(url)
@@ -886,16 +884,111 @@ class MessageService {
                 }
             }
 
-            // Validate URL
-            if (!url || !isValidUrl(url)) {
-                throw new BadRequestError({ message: 'Invalid URL' })
+            // Validate all URLs first
+            const validUrls: string[] = []
+            const invalidUrls: string[] = []
+
+            urls.forEach((url) => {
+                if (!url || !isValidUrl(url)) {
+                    invalidUrls.push(url)
+                } else {
+                    validUrls.push(url)
+                }
+            })
+
+            if (invalidUrls.length > 0) {
+                console.warn('Invalid URLs found:', invalidUrls)
             }
 
-            // Check cache
+            if (validUrls.length === 0) {
+                throw new BadRequestError({ message: 'No valid URLs provided' })
+            }
+
+            // Process URLs in batches with concurrency limit
+            const results = await this.processBatchWithConcurrency(
+                validUrls,
+                this.getSingleLinkPreview.bind(this),
+                maxConcurrency,
+            )
+
+            // Combine results with original URLs (including invalid ones)
+            const finalResults = urls.map((originalUrl) => {
+                if (invalidUrls.includes(originalUrl)) {
+                    return {
+                        url: originalUrl,
+                        success: false,
+                        error: 'Invalid URL format',
+                    }
+                }
+
+                const result = results.find((r) => r.originalUrl === originalUrl)
+
+                return (
+                    result || {
+                        url: originalUrl,
+                        success: false,
+                        error: 'Unknown error',
+                    }
+                )
+            })
+
+            return {
+                total: urls.length,
+                successful: finalResults.filter((r) => r.success).length,
+                failed: finalResults.filter((r) => !r.success).length,
+                invalidUrls,
+                results: finalResults,
+            }
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            }
+            throw new InternalServerError({ message: error.message })
+        }
+    }
+
+    private async processBatchWithConcurrency<T, R>(
+        items: T[],
+        processor: (item: T) => Promise<R>,
+        maxConcurrency: number,
+    ): Promise<R[]> {
+        const results: R[] = []
+
+        // Process in chunks
+        for (let i = 0; i < items.length; i += maxConcurrency) {
+            const chunk = items.slice(i, i + maxConcurrency)
+
+            // Process chunk concurrently
+            const chunkPromises = chunk.map((item) =>
+                processor(item).catch(
+                    (error) =>
+                        ({
+                            originalUrl: item,
+                            success: false,
+                            error: error.message || 'Processing failed',
+                        }) as R,
+                ),
+            )
+
+            const chunkResults = await Promise.all(chunkPromises)
+            results.push(...chunkResults)
+        }
+
+        return results
+    }
+
+    private async getSingleLinkPreview(url: string) {
+        try {
+            // Check cache first
             const cacheKey = url
-            const cached = this.cache.get(cacheKey)
-            if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
-                return cached.data
+
+            const cached = await redisClient.get(cacheKey)
+
+            if (cached) {
+                return {
+                    ...JSON.parse(cached),
+                    originalUrl: url,
+                }
             }
 
             // Fetch và parse metadata
@@ -909,6 +1002,7 @@ class MessageService {
             const metadata = await scraper({ html, url: targetUrl })
 
             const result = {
+                originalUrl: url,
                 title: metadata.title || null,
                 description: metadata.description || null,
                 image: metadata.image || null,
@@ -917,19 +1011,20 @@ class MessageService {
                 success: true,
             }
 
-            // Cache kết quả
-            this.cache.set(cacheKey, {
-                data: result,
-                timestamp: Date.now(),
-            })
+            await redisClient.set(cacheKey, JSON.stringify(result), { EX: 60 * 60 * 24 })
 
             return result
         } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
+            return {
+                originalUrl: url,
+                success: false,
+                error: error.message || 'Failed to fetch preview',
+                title: null,
+                description: null,
+                image: null,
+                url: url,
+                author: null,
             }
-
-            throw new InternalServerError({ message: error.message })
         }
     }
 }

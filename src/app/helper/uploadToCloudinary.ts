@@ -30,10 +30,17 @@ const uploadSingleFile = async ({
 
     return new Promise((resolve, reject) => {
         cloudinary.v2.uploader
-            .upload_stream({ resource_type: 'image', folder, public_id: `${publicId}-${folder}` }, (error, result) => {
-                if (error) reject(error)
-                else resolve({ result, type })
-            })
+            .upload_stream(
+                {
+                    resource_type: 'image',
+                    folder,
+                    public_id: `${publicId}-${folder}-${Math.random().toString(36).substring(2, 15)}`,
+                },
+                (error, result) => {
+                    if (error) reject(error)
+                    else resolve({ result, type })
+                },
+            )
             .end(bufferFile)
     })
 }

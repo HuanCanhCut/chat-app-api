@@ -248,11 +248,21 @@ class MessageController {
     // [POST] /api/messages/link-preview
     async getLinkPreview(req: IRequest, res: Response, next: NextFunction) {
         try {
-            const { url } = req.body
+            const { urls } = req.body
 
-            const preview = await MessageService.getLinkPreview(url)
+            if (!urls) {
+                return next(new UnprocessableEntityError({ message: 'Urls is required' }))
+            }
 
-            res.json({ data: preview })
+            if (!Array.isArray(urls)) {
+                return next(new UnprocessableEntityError({ message: 'Url must be an array' }))
+            }
+
+            const preview = await MessageService.getLinkPreviews(urls)
+
+            const { results, ...meta } = preview
+
+            res.json({ data: results, meta })
         } catch (error: any) {
             return next(error)
         }
