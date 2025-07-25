@@ -267,6 +267,43 @@ class MessageController {
             return next(error)
         }
     }
+
+    // [GET] /api/messages/links
+    async getLinks(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const { conversation_uuid, page, per_page } = req.query
+
+            if (!conversation_uuid) {
+                return next(new UnprocessableEntityError({ message: 'conversation_uuid is required' }))
+            }
+
+            const decoded = req.decoded
+
+            if (!page || !per_page) {
+                return next(new UnprocessableEntityError({ message: 'page and per_page are required' }))
+            }
+
+            const { linkPreviews, count } = await MessageService.getLinks({
+                conversationUuid: conversation_uuid as string,
+                page: Number(page),
+                perPage: Number(per_page),
+                currentUserId: decoded.sub,
+            })
+
+            res.json(
+                responseModel({
+                    data: linkPreviews.results,
+                    total: count,
+                    count: linkPreviews.results.length,
+                    current_page: Number(page),
+                    total_pages: Math.ceil(count / Number(per_page)),
+                    per_page: Number(per_page),
+                }),
+            )
+        } catch (error: any) {
+            return next(error)
+        }
+    }
 }
 
 export default new MessageController()

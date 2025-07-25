@@ -272,25 +272,25 @@ class MessageService {
                             include: [
                                 [
                                     sequelize.literal(`
-                                CASE 
-                                    WHEN 
-                                        message_status.receiver_id != ${sequelize.escape(currentUserId)} 
-                                        AND message_status.revoke_type = 'for-me' 
-                                    THEN 0
-                                    ELSE message_status.is_revoked 
-                                END
+                                        CASE 
+                                            WHEN 
+                                                message_status.receiver_id != ${sequelize.escape(currentUserId)} 
+                                                AND message_status.revoke_type = 'for-me' 
+                                            THEN 0
+                                            ELSE message_status.is_revoked 
+                                        END
                                 `),
                                     'is_revoked',
                                 ],
                                 [
                                     sequelize.literal(`
-                                CASE 
-                                    WHEN 
-                                        message_status.receiver_id != ${sequelize.escape(currentUserId)} 
-                                        AND message_status.revoke_type = 'for-me'
-                                    THEN NULL
-                                    ELSE message_status.revoke_type 
-                                END
+                                        CASE 
+                                            WHEN 
+                                                message_status.receiver_id != ${sequelize.escape(currentUserId)} 
+                                                AND message_status.revoke_type = 'for-me'
+                                            THEN NULL
+                                            ELSE message_status.revoke_type 
+                                        END
                             `),
                                     'revoke_type',
                                 ],
@@ -1025,6 +1025,77 @@ class MessageService {
                 url: url,
                 author: null,
             }
+        }
+    }
+
+    async getLinks({
+        conversationUuid,
+        page,
+        perPage,
+        currentUserId,
+    }: {
+        conversationUuid: string
+        page: number
+        perPage: number
+        currentUserId: number
+    }) {
+        try {
+            const conversation = await ConversationService.userAllowedToConversation({
+                conversationUuid,
+                userId: currentUserId,
+            })
+
+            const { rows: links, count } = await Message.findAndCountAll({
+                where: {
+                    conversation_id: conversation.id,
+                    type: 'text',
+                    [Op.and]: [sequelize.literal(`MATCH(content) AGAINST('http*' IN BOOLEAN MODE)`)],
+                    [Op.not]: {
+                        id: {
+                            [Op.in]: sequelize.literal(`
+                                (
+                                    SELECT message_id 
+                                    FROM message_statuses 
+                                    WHERE message_statuses.message_id = Message.id 
+                                    AND message_statuses.is_revoked = 1
+                                    AND message_statuses.receiver_id = ${sequelize.escape(currentUserId)}
+                                )
+                            `),
+                        },
+                    },
+                },
+                limit: perPage,
+                offset: (page - 1) * perPage,
+                order: [['id', 'DESC']],
+            })
+
+            const extractUrls = (text: string) => {
+                const urlRegex = /(https?:\/\/[^\s<>"{}|\\^`[\]]+)/gi
+                const matches = text.match(urlRegex)
+                return matches ? [...new Set(matches)] : []
+            }
+
+            const urls = []
+
+            for (const link of links) {
+                if (link.content) {
+                    const url = extractUrls(link.content)
+                    urls.push(...url)
+                }
+            }
+
+            const linkPreviews = await this.getLinkPreviews(urls)
+
+            return {
+                linkPreviews,
+                count,
+            }
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            }
+
+            throw new InternalServerError({ message: error.message })
         }
     }
 }
