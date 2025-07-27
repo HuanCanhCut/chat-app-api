@@ -104,11 +104,12 @@ const associations = () => {
         constraints: false,
         scope: { blockable_type: 'User' },
     })
+
     Block.belongsTo(User, { foreignKey: 'blockable_id', as: 'blocked_user', constraints: false })
 
-    Conversation.hasMany(Block, {
+    Conversation.hasOne(Block, {
         foreignKey: 'blockable_id',
-        as: 'blocks',
+        as: 'block_conversation',
         constraints: false,
         scope: { blockable_type: 'Conversation' },
     })

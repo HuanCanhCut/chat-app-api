@@ -164,12 +164,13 @@ class ConversationService {
 
     async getConversationByUuid({ currentUserId, uuid }: { currentUserId: number; uuid: string }) {
         try {
-            await this.userAllowedToConversation({ userId: currentUserId, conversationUuid: uuid, paranoid: false })
+            const allowedConversation = await this.userAllowedToConversation({
+                userId: currentUserId,
+                conversationUuid: uuid,
+                paranoid: false,
+            })
 
-            const conversation = await Conversation.findOne({
-                where: {
-                    uuid,
-                },
+            const conversation = await Conversation.findByPk(allowedConversation.id, {
                 include: [
                     {
                         model: ConversationMember,
@@ -198,11 +199,11 @@ class ConversationService {
                     },
                     {
                         model: Block,
-                        as: 'blocks',
+                        as: 'block_conversation',
                         include: [
                             {
                                 model: User,
-                                as: 'blocked_user',
+                                as: 'blocker',
                                 attributes: {
                                     exclude: ['password', 'email'],
                                 },
@@ -1075,7 +1076,7 @@ class ConversationService {
                 include: [
                     {
                         model: User,
-                        as: 'user',
+                        as: 'blocker',
                         attributes: {
                             exclude: ['password', 'email'],
                         },
