@@ -419,5 +419,26 @@ class ConversationController {
             return next(e)
         }
     }
+
+    // [POST] /api/conversations/:uuid/unblock
+    async unblockConversation(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const { uuid } = req.params
+            const decoded = req.decoded
+
+            if (!uuid) {
+                return next(new UnprocessableEntityError({ message: 'conversation_uuid is required' }))
+            }
+
+            await ConversationService.unblockConversation({
+                currentUserId: decoded.sub,
+                conversationUuid: uuid,
+            })
+
+            res.sendStatus(204)
+        } catch (e: any) {
+            return next(e)
+        }
+    }
 }
 export default new ConversationController()

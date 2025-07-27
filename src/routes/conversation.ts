@@ -40,5 +40,6 @@ router.delete(
 )
 router.delete('/:uuid/leave', verifyToken, ConversationController.leaveConversation.bind(ConversationController))
 router.post('/:uuid/block', verifyToken, ConversationController.blockConversation.bind(ConversationController))
+router.post('/:uuid/unblock', verifyToken, ConversationController.unblockConversation.bind(ConversationController))
 
 export default router

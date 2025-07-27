@@ -1098,5 +1098,46 @@ class ConversationService {
             throw new InternalServerError({ message: error.message })
         }
     }
+
+    async unblockConversation({
+        currentUserId,
+        conversationUuid,
+    }: {
+        currentUserId: number
+        conversationUuid: string
+    }) {
+        try {
+            const conversation = await this.userAllowedToConversation({
+                userId: currentUserId,
+                conversationUuid: conversationUuid,
+            })
+
+            if (conversation.is_group) {
+                throw new ForBiddenError({
+                    message: 'You are not allowed to unblock a group conversation',
+                })
+            }
+
+            const block = await Block.findOne({
+                where: {
+                    user_id: currentUserId,
+                    blockable_type: 'Conversation',
+                    blockable_id: conversation.id,
+                },
+            })
+
+            if (!block) {
+                throw new NotFoundError({ message: 'You are not blocked this conversation' })
+            }
+
+            await block.destroy()
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            }
+
+            throw new InternalServerError({ message: error.message })
+        }
+    }
 }
 export default new ConversationService()
