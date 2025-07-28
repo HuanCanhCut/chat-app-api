@@ -3,7 +3,7 @@ import { Op } from 'sequelize'
 import { Socket } from 'socket.io'
 
 import { InternalServerError } from '../errors/errors'
-import { Conversation, Message, MessageStatus } from '../models'
+import { Block, Conversation, Message, MessageStatus } from '../models'
 import { ConversationMember } from '../models'
 import { User } from '../models'
 import MessageReaction from '../models/MessageReactionModel'
@@ -206,7 +206,18 @@ class SocketMessageService {
             const conversation = await Conversation.findOne({
                 attributes: ['id'],
                 where: { uuid: conversation_uuid },
+                include: [
+                    {
+                        model: Block,
+                        as: 'block_conversation',
+                    },
+                ],
             })
+
+            // if conversation is blocked, don't save message
+            if (conversation?.get('block_conversation')) {
+                return
+            }
 
             if (!conversation?.dataValues?.id) {
                 // emit fail message status
