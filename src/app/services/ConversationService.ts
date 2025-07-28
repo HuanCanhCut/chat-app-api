@@ -1086,7 +1086,8 @@ class ConversationService {
 
             ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_BLOCKED, {
                 conversation_uuid: conversationUuid,
-                user_block: userBlock,
+                key: 'block_conversation',
+                value: userBlock,
             })
 
             return userBlock
@@ -1131,6 +1132,12 @@ class ConversationService {
             }
 
             await block.destroy()
+
+            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_UNBLOCKED, {
+                conversation_uuid: conversationUuid,
+                key: 'block_conversation',
+                value: null,
+            })
         } catch (error: any) {
             if (error instanceof AppError) {
                 throw error
