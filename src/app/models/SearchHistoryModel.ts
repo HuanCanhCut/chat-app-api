@@ -46,4 +46,5 @@ SearchHistory.init(
 )
 
 SearchHistory.addHook('afterFind', handleChildrenAfterFindHook)
+
 export default SearchHistory

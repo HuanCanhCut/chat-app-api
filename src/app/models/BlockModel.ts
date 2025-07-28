@@ -1,6 +1,7 @@
 import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
 
 import { sequelize } from '../../config/database'
+import handleChildrenAfterFindHook from '../helper/childrenAfterFindHook'
 
 class Block extends Model<InferAttributes<Block>, InferCreationAttributes<Block>> {
     declare id?: number
@@ -42,5 +43,7 @@ Block.init(
         tableName: 'blocks',
     },
 )
+
+Block.addHook('afterFind', handleChildrenAfterFindHook)
 
 export default Block

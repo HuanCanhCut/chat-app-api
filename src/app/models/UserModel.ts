@@ -2,6 +2,7 @@ import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequ
 
 import { sequelize } from '../../config/database'
 import handleChildrenAfterFindHook from '../helper/childrenAfterFindHook'
+import { getCurrentUser } from '../utils/userContext'
 import excludeBeforeFind from './hooks/excludeBeforeFind'
 import { redisClient } from '~/config/redis'
 import { RedisKey } from '~/enum/redis'
@@ -25,6 +26,7 @@ class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
     declare conversation?: { uuid: string }
     declare password?: string
     declare is_online?: boolean
+    declare active_status?: boolean
 }
 User.init(
     {
@@ -78,6 +80,11 @@ User.init(
             allowNull: false,
             defaultValue: '',
         },
+        active_status: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: true,
+        },
     },
     {
         tableName: 'users',
@@ -93,15 +100,26 @@ User.addHook('afterFind', handleChildrenAfterFindHook)
 
 User.afterFind(async (users: any) => {
     if (users) {
+        const currentUserId = getCurrentUser()
+
+        console.log({
+            users,
+            currentUserId,
+        })
+
         if (Array.isArray(users)) {
             for (const user of users) {
+                const showActiveStatus = user.dataValues.active_status
+
                 const isOnline = await redisClient.get(`${RedisKey.USER_ONLINE}${user.dataValues.id}`)
-                user.dataValues.is_online = isOnline ? JSON.parse(isOnline).is_online : false
+                user.dataValues.is_online = isOnline && showActiveStatus ? JSON.parse(isOnline).is_online : false
                 user.dataValues.last_online_at = isOnline ? JSON.parse(isOnline).last_online_at : null
             }
         } else {
+            const showActiveStatus = users.dataValues.active_status
+
             const isOnline = await redisClient.get(`${RedisKey.USER_ONLINE}${users.dataValues.id}`)
-            users.dataValues.is_online = isOnline ? JSON.parse(isOnline).is_online : false
+            users.dataValues.is_online = isOnline && showActiveStatus ? JSON.parse(isOnline).is_online : false
             users.dataValues.last_online_at = isOnline ? JSON.parse(isOnline).last_online_at : null
         }
     }

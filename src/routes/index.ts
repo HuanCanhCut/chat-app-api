@@ -7,9 +7,14 @@ import messageRoute from './message'
 import notificationRoute from './notification'
 import themeRoute from './theme'
 import userRoute from './user'
+import setUserContextMiddleware from '~/app/middlewares/userContext'
+import verifyToken from '~/app/middlewares/verifyToken'
 
 const route = (app: Express) => {
     app.use('/api/auth', authRoute)
+
+    app.use(verifyToken, setUserContextMiddleware)
+
     app.use('/api/users', userRoute)
     app.use('/api/me', meRoute)
     app.use('/api/notifications', notificationRoute)
