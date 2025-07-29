@@ -64,10 +64,10 @@ class MeController {
     // [PATCH] /auth/me/active-status
     async updateActiveStatus(req: IRequest, res: Response, next: NextFunction) {
         try {
-            const { is_open } = req.body
+            const { is_online } = req.body
 
             const updateData = await UserService.updateActiveStatus({
-                isOpen: is_open,
+                isOnline: is_online,
                 currentUserId: req.decoded.sub,
             })
 

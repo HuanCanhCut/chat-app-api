@@ -1,4 +1,4 @@
-import { DataTypes, InferAttributes, InferCreationAttributes, Model, QueryTypes, Sequelize } from 'sequelize'
+import { DataTypes, InferAttributes, InferCreationAttributes, Model, QueryTypes } from 'sequelize'
 
 import { sequelize } from '../../config/database'
 import handleChildrenAfterFindHook from '../helper/childrenAfterFindHook'

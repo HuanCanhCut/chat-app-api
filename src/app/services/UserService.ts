@@ -274,7 +274,7 @@ class UserService {
         }
     }
 
-    async updateActiveStatus({ currentUserId, isOpen }: { currentUserId: number; isOpen: boolean }) {
+    async updateActiveStatus({ currentUserId, isOnline }: { currentUserId: number; isOnline: boolean }) {
         try {
             const user = await User.findByPk(currentUserId)
 
@@ -282,7 +282,7 @@ class UserService {
                 throw new NotFoundError({ message: 'User not found' })
             }
 
-            user.active_status = isOpen
+            user.active_status = isOnline
 
             await user.save()
 
