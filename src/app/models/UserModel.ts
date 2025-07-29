@@ -1,4 +1,4 @@
-import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
+import { DataTypes, InferAttributes, InferCreationAttributes, Model, QueryTypes, Sequelize } from 'sequelize'
 
 import { sequelize } from '../../config/database'
 import handleChildrenAfterFindHook from '../helper/childrenAfterFindHook'
@@ -101,20 +101,29 @@ User.addHook('afterFind', handleChildrenAfterFindHook)
 User.afterFind(async (users: any) => {
     if (users) {
         const currentUserId = getCurrentUser()
+
+        const currentUserActiveStatus = await sequelize.query<{ active_status: boolean }>(
+            `SELECT active_status FROM users WHERE id = :currentUserId`,
+            {
+                type: QueryTypes.SELECT,
+                replacements: { currentUserId },
+            },
+        )
+
+        const processor = async (user: any) => {
+            const showActiveStatus = user.dataValues.active_status && currentUserActiveStatus[0].active_status
+
+            const isOnline = await redisClient.get(`${RedisKey.USER_ONLINE}${user.dataValues.id}`)
+            user.dataValues.is_online = isOnline && showActiveStatus ? JSON.parse(isOnline).is_online : false
+            user.dataValues.last_online_at = isOnline ? JSON.parse(isOnline).last_online_at : null
+        }
+
         if (Array.isArray(users)) {
-            for (const user of users) {
-                const showActiveStatus = user.dataValues.active_status
+            const promises = users.map(processor)
 
-                const isOnline = await redisClient.get(`${RedisKey.USER_ONLINE}${user.dataValues.id}`)
-                user.dataValues.is_online = isOnline && showActiveStatus ? JSON.parse(isOnline).is_online : false
-                user.dataValues.last_online_at = isOnline ? JSON.parse(isOnline).last_online_at : null
-            }
+            await Promise.all(promises)
         } else {
-            const showActiveStatus = users.dataValues.active_status
-
-            const isOnline = await redisClient.get(`${RedisKey.USER_ONLINE}${users.dataValues.id}`)
-            users.dataValues.is_online = isOnline && showActiveStatus ? JSON.parse(isOnline).is_online : false
-            users.dataValues.last_online_at = isOnline ? JSON.parse(isOnline).last_online_at : null
+            await processor(users)
         }
     }
 })
