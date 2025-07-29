@@ -1,7 +1,6 @@
 import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
 
 import { sequelize } from '../../config/database'
-import handleChildrenAfterFindHook from '../helper/childrenAfterFindHook'
 import User from './UserModel'
 
 class ConversationMember extends Model<
@@ -80,7 +79,5 @@ ConversationMember.init(
         paranoid: true,
     },
 )
-
-ConversationMember.addHook('afterFind', handleChildrenAfterFindHook)
 
 export default ConversationMember

@@ -1,7 +1,6 @@
 import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
 
 import { sequelize } from '../../config/database'
-import handleChildrenAfterFindHook from '../helper/childrenAfterFindHook'
 import MessageStatus from './MessageStatusModel'
 
 class Message extends Model<InferAttributes<Message>, InferCreationAttributes<Message>> {
@@ -71,7 +70,5 @@ Message.init(
         sequelize,
     },
 )
-
-Message.addHook('afterFind', handleChildrenAfterFindHook)
 
 export default Message

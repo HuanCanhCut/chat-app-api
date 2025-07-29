@@ -1,7 +1,6 @@
 import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
 
 import { sequelize } from '../../config/database'
-import handleChildrenAfterFindHook from '../helper/childrenAfterFindHook'
 
 class SearchHistory extends Model<InferAttributes<SearchHistory>, InferCreationAttributes<SearchHistory>> {
     declare id?: number
@@ -44,7 +43,5 @@ SearchHistory.init(
         sequelize,
     },
 )
-
-SearchHistory.addHook('afterFind', handleChildrenAfterFindHook)
 
 export default SearchHistory

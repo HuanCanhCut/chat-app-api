@@ -101,12 +101,6 @@ User.addHook('afterFind', handleChildrenAfterFindHook)
 User.afterFind(async (users: any) => {
     if (users) {
         const currentUserId = getCurrentUser()
-
-        console.log({
-            users,
-            currentUserId,
-        })
-
         if (Array.isArray(users)) {
             for (const user of users) {
                 const showActiveStatus = user.dataValues.active_status

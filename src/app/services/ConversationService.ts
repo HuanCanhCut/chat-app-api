@@ -183,6 +183,7 @@ class ConversationService {
                                 attributes: {
                                     exclude: ['password', 'email'],
                                 },
+                                runHooks: true,
                             },
                             {
                                 model: User,
@@ -190,6 +191,7 @@ class ConversationService {
                                 attributes: {
                                     exclude: ['password', 'email'],
                                 },
+                                runHooks: true,
                             },
                         ],
                     },

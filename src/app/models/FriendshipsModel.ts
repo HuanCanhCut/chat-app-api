@@ -1,7 +1,6 @@
 import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
 
 import { sequelize } from '../../config/database'
-import handleChildrenAfterFindHook from '../helper/childrenAfterFindHook'
 
 class Friendships extends Model<InferAttributes<Friendships>, InferCreationAttributes<Friendships>> {
     declare id?: number
@@ -52,7 +51,5 @@ Friendships.init(
         underscored: true,
     },
 )
-
-Friendships.addHook('afterFind', handleChildrenAfterFindHook)
 
 export default Friendships

@@ -1,7 +1,6 @@
 import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
 
 import { sequelize } from '../../config/database'
-import handleChildrenAfterFindHook from '../helper/childrenAfterFindHook'
 import ConversationMember from './ConversationMemberModel'
 import Message from './MessageModel'
 
@@ -65,7 +64,5 @@ Conversation.init(
         tableName: 'conversations',
     },
 )
-
-Conversation.addHook('afterFind', handleChildrenAfterFindHook)
 
 export default Conversation

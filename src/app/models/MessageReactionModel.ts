@@ -1,7 +1,6 @@
 import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
 
 import { sequelize } from '../../config/database'
-import handleChildrenAfterFindHook from '../helper/childrenAfterFindHook'
 import { UserModel } from '~/type'
 
 class MessageReaction extends Model<InferAttributes<MessageReaction>, InferCreationAttributes<MessageReaction>> {
@@ -52,7 +51,5 @@ MessageReaction.init(
         sequelize,
     },
 )
-
-MessageReaction.addHook('afterFind', handleChildrenAfterFindHook)
 
 export default MessageReaction

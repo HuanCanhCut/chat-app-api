@@ -1,4 +1,5 @@
 import { sequelize } from '../../config/database'
+import handleChildrenAfterFindHook from '../helper/childrenAfterFindHook'
 import associations from './association'
 import Block from './BlockModel'
 import ConversationMember from './ConversationMemberModel'
@@ -22,6 +23,8 @@ sequelize
         console.log('\x1b[36m%s\x1b[0m', 'All models were synchronized successfully.')
     })
     .catch((err) => console.error('Sync failed:', err))
+
+sequelize.addHook('afterFind', handleChildrenAfterFindHook)
 
 // Export all models
 export {
