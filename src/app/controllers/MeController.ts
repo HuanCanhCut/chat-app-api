@@ -60,6 +60,22 @@ class MeController {
             return next(error)
         }
     }
+
+    // [PATCH] /auth/me/active-status
+    async updateActiveStatus(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const { is_open } = req.body
+
+            const updateData = await UserService.updateActiveStatus({
+                isOpen: is_open,
+                currentUserId: req.decoded.sub,
+            })
+
+            res.status(200).json({ data: updateData })
+        } catch (error: any) {
+            return next(error)
+        }
+    }
 }
 
 export default new MeController()

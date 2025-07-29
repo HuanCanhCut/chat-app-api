@@ -108,6 +108,7 @@ class ConversationService {
                                 attributes: {
                                     exclude: ['password', 'email'],
                                 },
+                                runHooks: true,
                             },
                         ],
                     },

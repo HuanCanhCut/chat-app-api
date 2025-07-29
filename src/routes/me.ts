@@ -6,7 +6,7 @@ import upload from '~/app/middlewares/multer'
 
 router.get('/', MeController.getCurrentUser.bind(MeController))
 router.patch(
-    '/update',
+    '/',
 
     upload.fields([
         { name: 'avatar', maxCount: 1 },
@@ -14,5 +14,6 @@ router.patch(
     ]),
     MeController.updateCurrentUser.bind(MeController),
 )
+router.patch('/active-status', MeController.updateActiveStatus.bind(MeController))
 
 export default router

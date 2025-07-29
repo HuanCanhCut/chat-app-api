@@ -259,6 +259,7 @@ class UserService {
                     attributes: {
                         exclude: ['password', 'email'],
                     },
+                    runHooks: true,
                 },
                 limit: 8,
             })
@@ -269,6 +270,24 @@ class UserService {
                 throw error
             }
 
+            throw new InternalServerError({ message: error.message })
+        }
+    }
+
+    async updateActiveStatus({ currentUserId, isOpen }: { currentUserId: number; isOpen: boolean }) {
+        try {
+            const user = await User.findByPk(currentUserId)
+
+            if (!user) {
+                throw new NotFoundError({ message: 'User not found' })
+            }
+
+            user.active_status = isOpen
+
+            await user.save()
+
+            return user
+        } catch (error: any) {
             throw new InternalServerError({ message: error.message })
         }
     }

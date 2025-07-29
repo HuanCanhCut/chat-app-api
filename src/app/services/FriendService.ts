@@ -194,6 +194,7 @@ class FriendService {
                 required: boolean
                 on: Literal
                 where?: Literal
+                runHooks?: boolean
             }
 
             // Build the include for User, adding search if q is present
@@ -205,6 +206,7 @@ class FriendService {
                 as: 'user',
                 required: true,
                 on: this.friendShipJoinLiteral(Number(userId)),
+                runHooks: true,
             }
 
             if (q) {
@@ -458,7 +460,6 @@ class FriendService {
         per_page: number
     }) {
         try {
-            // Danh sách lời mời kết bạn
             const { rows: friendInvitations, count } = await Friendships.findAndCountAll<any>({
                 distinct: true,
                 where: {
@@ -474,6 +475,7 @@ class FriendService {
                     attributes: {
                         exclude: ['password', 'email'],
                     },
+                    runHooks: true,
                 },
                 limit: Number(per_page),
                 offset: (Number(page) - 1) * Number(per_page),

@@ -67,6 +67,7 @@ class SocketUserStatusService {
                                 required: true,
                                 nested: true,
                                 on: FriendService.friendShipJoinLiteral(Number(this.currentUserId)),
+                                runHooks: true,
                             },
                         ],
                     })
@@ -151,6 +152,7 @@ class SocketUserStatusService {
                                 as: 'user',
                                 required: true,
                                 on: FriendService.friendShipJoinLiteral(Number(this.currentUserId)),
+                                runHooks: true,
                             },
                         ],
                     })
