@@ -7,6 +7,7 @@ import { Conversation, User } from '../models'
 import SearchHistory from '../models/SearchHistoryModel'
 import ConversationService from './ConversationService'
 import FriendService from './FriendService'
+import SocketUserStatusService from './SocketUserStatusService'
 import cloudinary from '~/config/cloudinary'
 import { MulterRequest } from '~/type'
 
@@ -285,6 +286,14 @@ class UserService {
             user.active_status = isOnline
 
             await user.save()
+
+            const onlineFriends = await FriendService.getFriendsOnline({ currentUserId })
+
+            const socketUserStatusService = new SocketUserStatusService(undefined, currentUserId)
+
+            const promises = socketUserStatusService.userStatusPromises(onlineFriends, isOnline, null)
+
+            await Promise.all(promises)
 
             return user
         } catch (error: any) {

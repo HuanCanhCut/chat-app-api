@@ -1,6 +1,5 @@
 import { Socket } from 'socket.io'
 
-import { Friendships, User } from '../models'
 import FriendService from '~/app/services/FriendService'
 import { redisClient } from '~/config/redis'
 import { ioInstance } from '~/config/socket'
@@ -14,13 +13,13 @@ const FOUR_MINUTES = 60 * 4
 const userOfflineTimeouts = new Map<number, NodeJS.Timeout>()
 
 class SocketUserStatusService {
-    private socket: Socket
+    private socket?: Socket
     private userOnlineInterval: NodeJS.Timeout | undefined
     private currentUserId: number
 
-    constructor(socket: Socket) {
+    constructor(socket?: Socket, currentUserId?: number) {
         this.socket = socket
-        this.currentUserId = socket.data.decoded.sub
+        this.currentUserId = currentUserId || socket?.data.decoded.sub
     }
 
     userStatusPromises = (friends: any, isOnline: boolean, lastOnlineAt: string | null) => {
@@ -47,41 +46,9 @@ class SocketUserStatusService {
             const userOnline = await redisClient.get(`${RedisKey.USER_ONLINE}${this.currentUserId}`)
 
             if (!userOnline || !JSON.parse(userOnline).is_online) {
-                let friends = []
+                const onlineFriends = await FriendService.getFriendsOnline({ currentUserId: this.currentUserId })
 
-                const friendsCache = await redisClient.get(`${RedisKey.FRIENDS_ID_OF_USER}${this.currentUserId}`)
-
-                if (friendsCache) {
-                    friends = JSON.parse(friendsCache)
-                } else {
-                    friends = await Friendships.findAll({
-                        attributes: ['id'],
-                        where: {
-                            status: 'accepted',
-                        },
-                        include: [
-                            {
-                                attributes: ['id'],
-                                model: User,
-                                as: 'user',
-                                required: true,
-                                nested: true,
-                                on: FriendService.friendShipJoinLiteral(Number(this.currentUserId)),
-                                runHooks: true,
-                            },
-                        ],
-                    })
-
-                    await redisClient.set(
-                        `${RedisKey.FRIENDS_ID_OF_USER}${this.currentUserId}`,
-                        JSON.stringify(friends),
-                        {
-                            EX: 60 * 60 * 12, // 12 hours
-                        },
-                    )
-                }
-
-                const promises = this.userStatusPromises(friends, true, null)
+                const promises = this.userStatusPromises(onlineFriends, true, null)
 
                 await Promise.all(promises)
             }
@@ -135,35 +102,10 @@ class SocketUserStatusService {
                     { EX: TWELVE_HOURS },
                 )
 
-                let friends = []
-
-                const friendsCache = await redisClient.get(`${RedisKey.FRIENDS_ID_OF_USER}${this.currentUserId}`)
-
-                if (friendsCache) {
-                    friends = JSON.parse(friendsCache)
-                } else {
-                    friends = await Friendships.findAll({
-                        attributes: ['id'],
-                        where: { status: 'accepted' },
-                        include: [
-                            {
-                                attributes: ['id'],
-                                model: User,
-                                as: 'user',
-                                required: true,
-                                on: FriendService.friendShipJoinLiteral(Number(this.currentUserId)),
-                                runHooks: true,
-                            },
-                        ],
-                    })
-
-                    redisClient.set(`${RedisKey.FRIENDS_ID_OF_USER}${this.currentUserId}`, JSON.stringify(friends), {
-                        EX: 60 * 60 * 12,
-                    })
-                }
+                const onlineFriends = await FriendService.getFriendsOnline({ currentUserId: this.currentUserId })
 
                 const promises = this.userStatusPromises(
-                    friends,
+                    onlineFriends,
                     false,
                     new Date(Date.now() - FOUR_MINUTES * 1000).toISOString(),
                 )

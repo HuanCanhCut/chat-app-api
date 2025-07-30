@@ -1,8 +1,6 @@
-import { DataTypes, InferAttributes, InferCreationAttributes, Model, QueryTypes } from 'sequelize'
+import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
 
 import { sequelize } from '../../config/database'
-import handleChildrenAfterFindHook from '../helper/childrenAfterFindHook'
-import { getCurrentUser } from '../utils/userContext'
 import excludeBeforeFind from './hooks/excludeBeforeFind'
 import { redisClient } from '~/config/redis'
 import { RedisKey } from '~/enum/redis'
@@ -96,22 +94,10 @@ User.beforeFind((options) => {
     excludeBeforeFind(options, ['password', 'email'])
 })
 
-User.addHook('afterFind', handleChildrenAfterFindHook)
-
 User.afterFind(async (users: any) => {
     if (users) {
-        const currentUserId = getCurrentUser()
-
-        const currentUserActiveStatus = await sequelize.query<{ active_status: boolean }>(
-            `SELECT active_status FROM users WHERE id = :currentUserId`,
-            {
-                type: QueryTypes.SELECT,
-                replacements: { currentUserId },
-            },
-        )
-
         const processor = async (user: any) => {
-            const showActiveStatus = user.dataValues.active_status && currentUserActiveStatus[0].active_status
+            const showActiveStatus = user.dataValues.active_status
 
             const isOnline = await redisClient.get(`${RedisKey.USER_ONLINE}${user.dataValues.id}`)
             user.dataValues.is_online = isOnline && showActiveStatus ? JSON.parse(isOnline).is_online : false

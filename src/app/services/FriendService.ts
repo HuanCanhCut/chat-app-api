@@ -518,6 +518,62 @@ class FriendService {
             throw new InternalServerError({ message: error.message })
         }
     }
+
+    async getFriendsOnline({ currentUserId }: { currentUserId: number }) {
+        try {
+            // Get all keys for online users from Redis
+            const onlineUserKeys = await redisClient.keys(`${RedisKey.SOCKET_ID}*`)
+
+            if (!onlineUserKeys.length) {
+                return [] // No one is online
+            }
+
+            // Extract user IDs from Redis keys
+            const onlineUserIds = onlineUserKeys
+                .map((key) => {
+                    // Extract user ID from the Redis key format (socket_id:123)
+                    const keyPrefix = `${RedisKey.SOCKET_ID}`
+                    if (key.startsWith(keyPrefix)) {
+                        const idStr = key.substring(keyPrefix.length)
+                        return idStr ? parseInt(idStr) : null
+                    }
+                    return null
+                })
+                .filter((id): id is number => id !== null && id !== currentUserId)
+
+            if (!onlineUserIds.length) {
+                return [] // No other users are online
+            }
+
+            // Query only online friends
+            const friends = await Friendships.findAll({
+                attributes: ['id'],
+                where: {
+                    status: 'accepted',
+                    [Op.or]: [{ user_id: { [Op.in]: onlineUserIds } }, { friend_id: { [Op.in]: onlineUserIds } }],
+                },
+                include: [
+                    {
+                        attributes: ['id'],
+                        model: User,
+                        as: 'user',
+                        required: true,
+                        nested: true,
+                        on: this.friendShipJoinLiteral(Number(currentUserId)),
+                        runHooks: true,
+                    },
+                ],
+            })
+
+            return friends
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            }
+
+            throw new InternalServerError({ message: error.message })
+        }
+    }
 }
 
 export default new FriendService()
