@@ -288,13 +288,13 @@ class SocketMessageService {
                     continue
                 }
 
-                const isUserInRoom = ioInstance.sockets.sockets.get(this.socket?.id || '')?.rooms.has(conversation_uuid)
+                const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${user.id}`, 0, -1)
 
-                // user online but not in the room
-                if (!isUserInRoom && user.is_online) {
-                    const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${user.id}`, 0, -1)
+                for (const socketId of socketIds) {
+                    const isUserInRoom = ioInstance.sockets.sockets.get(socketId)?.rooms.has(conversation_uuid)
 
-                    if (socketIds && socketIds.length > 0) {
+                    // user online but not in the room
+                    if (!isUserInRoom && user.is_online) {
                         const conversationCache = await redisClient.get(
                             `${RedisKey.CONVERSATION_UUID}${conversation_uuid}`,
                         )
@@ -336,11 +336,6 @@ class SocketMessageService {
                             } catch (error) {
                                 console.log(error)
                             }
-                        }
-                    } else {
-                        // delete socket id from redis if socket id not exist
-                        if (this.socket) {
-                            await redisClient.lRem(`${RedisKey.SOCKET_ID}${user.id}`, 0, this.socket.id)
                         }
                     }
                 }
