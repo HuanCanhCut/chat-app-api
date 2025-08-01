@@ -1161,18 +1161,17 @@ class MessageService {
                     {
                         model: Message,
                         as: 'message',
-                        attributes: [],
+                        attributes: ['conversation_id'],
                     },
                 ],
                 distinct: true,
-                col: 'message_id',
+                group: ['message.conversation_id'],
                 where: sequelize.literal(
                     `MessageStatus.receiver_id = ${sequelize.escape(currentUserId)} AND MessageStatus.read_at IS NULL`,
                 ),
-                logging: true,
             })
 
-            return unreadConversationCount
+            return unreadConversationCount.length
         } catch (error: any) {
             if (error instanceof AppError) {
                 throw error
