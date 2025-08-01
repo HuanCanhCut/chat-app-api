@@ -18,13 +18,13 @@ const scraper = metascraper([
 import {
     AppError,
     BadRequestError,
+    ForBiddenError,
     InternalServerError,
     NotFoundError,
     UnprocessableEntityError,
 } from '../errors/errors'
-import { ForBiddenError } from '../errors/errors'
-import { Message, MessageStatus, User } from '../models'
-import { Conversation, ConversationMember } from '../models'
+import { Conversation, Message, MessageStatus, User } from '../models'
+import DeletedConversation from '../models/DeletedConversation'
 import MessageReaction from '../models/MessageReactionModel'
 import ConversationService from './ConversationService'
 import SocketMessageService from './SocketMessageService'
@@ -240,26 +240,17 @@ class MessageService {
         sort?: 'ASC' | 'DESC'
     }) {
         try {
-            // check if user is a member of the conversation
-            const hasMember = await Conversation.findOne({
-                attributes: ['id'],
-                where: {
-                    uuid: conversationUuid,
-                },
-                include: {
-                    model: ConversationMember,
-                    as: 'members',
-                    attributes: ['id', 'deleted_at'],
-                    where: {
-                        user_id: currentUserId,
-                    },
-                    paranoid: false,
-                },
+            const conversation = await ConversationService.userAllowedToConversation({
+                userId: Number(currentUserId),
+                conversationUuid,
             })
 
-            if (!hasMember) {
-                throw new ForBiddenError({ message: 'Permission denied' })
-            }
+            const removedConversation = await DeletedConversation.findOne({
+                where: {
+                    user_id: Number(currentUserId),
+                    conversation_id: conversation.id,
+                },
+            })
 
             const { rows: messages, count } = await Message.findAndCountAll<any>({
                 distinct: true,
@@ -303,7 +294,7 @@ class MessageService {
                                 attributes: {
                                     include: [
                                         [
-                                            this.lastReadMessageIdLiteral(Number(currentUserId), hasMember.id!),
+                                            this.lastReadMessageIdLiteral(Number(currentUserId), conversation.id!),
                                             'last_read_message_id',
                                         ],
                                     ],
@@ -350,7 +341,7 @@ class MessageService {
                     },
                 ],
                 where: {
-                    conversation_id: hasMember.id,
+                    conversation_id: conversation.id,
                     // Get all messages except messages that have been revoked for-me by the current user
                     [Op.not]: {
                         id: {
@@ -366,7 +357,14 @@ class MessageService {
                         },
                     },
                     created_at: {
-                        [Op.lte]: hasMember.members?.[0].deleted_at || new Date(),
+                        [Op.and]: [
+                            {
+                                [Op.lte]: conversation.members?.[0].deleted_at || new Date(),
+                            },
+                            {
+                                [Op.gte]: removedConversation?.deleted_at || conversation.created_at,
+                            },
+                        ],
                     },
                 },
                 limit,
@@ -595,6 +593,13 @@ class MessageService {
                 throw new NotFoundError({ message: 'Conversation not found' })
             }
 
+            const removedConversation = await DeletedConversation.findOne({
+                where: {
+                    user_id: Number(currentUserId),
+                    conversation_id: conversation.id,
+                },
+            })
+
             const { rows: messageImages, count } = await Message.findAndCountAll({
                 distinct: true,
                 where: {
@@ -612,6 +617,16 @@ class MessageService {
                                 )
                             `),
                         },
+                    },
+                    created_at: {
+                        [Op.and]: [
+                            {
+                                [Op.lte]: conversation.members?.[0].deleted_at || new Date(),
+                            },
+                            {
+                                [Op.gte]: removedConversation?.deleted_at || conversation.created_at,
+                            },
+                        ],
                     },
                 },
                 limit: Number(per_page),
@@ -745,24 +760,28 @@ class MessageService {
                 })
             }
 
-            const isMemberOfConversation = await Conversation.findOne({
-                attributes: ['id'],
+            const conversation = await ConversationService.userAllowedToConversation({
+                conversationUuid,
+                userId: currentUserId,
+            })
+
+            if (!conversation) {
+                throw new ForBiddenError({ message: 'Permission denied' })
+            }
+
+            const message = await Message.findByPk(messageId)
+
+            const removedConversation = await DeletedConversation.findOne({
                 where: {
-                    uuid: conversationUuid,
-                },
-                include: {
-                    model: ConversationMember,
-                    as: 'members',
-                    attributes: ['id'],
-                    where: {
-                        user_id: currentUserId,
-                    },
-                    paranoid: false,
+                    user_id: currentUserId,
+                    conversation_id: conversation.id,
                 },
             })
 
-            if (!isMemberOfConversation) {
-                throw new ForBiddenError({ message: 'Permission denied' })
+            if (message && removedConversation) {
+                if (message.get('created_at')! < removedConversation.get('deleted_at')!) {
+                    throw new UnprocessableEntityError({ message: 'Message not found or already revoked' })
+                }
             }
 
             const [, metadata] = await sequelize.query(updateStatusQuery, {
@@ -807,12 +826,21 @@ class MessageService {
         perPage: number
     }) {
         try {
-            const conversation = await Conversation.findOne({
-                attributes: ['id'],
+            const conversation = await ConversationService.userAllowedToConversation({
+                conversationUuid,
+                userId: currentUserId,
+            })
+
+            const removedConversation = await DeletedConversation.findOne({
                 where: {
-                    uuid: conversationUuid,
+                    user_id: currentUserId,
+                    conversation_id: conversation.id,
                 },
             })
+
+            if (!conversation) {
+                throw new ForBiddenError({ message: 'Permission denied' })
+            }
 
             const { rows: messages, count } = await Message.findAndCountAll({
                 distinct: true,
@@ -851,6 +879,16 @@ class MessageService {
                     [Op.and]: [
                         sequelize.literal(`MATCH(content) AGAINST(${sequelize.escape(q + '*')} IN BOOLEAN MODE)`),
                     ],
+                    created_at: {
+                        [Op.and]: [
+                            {
+                                [Op.lte]: conversation.members?.[0].deleted_at || new Date(),
+                            },
+                            {
+                                [Op.gte]: removedConversation?.deleted_at || conversation.created_at,
+                            },
+                        ],
+                    },
                 },
                 limit: Number(perPage),
                 offset: (Number(page) - 1) * Number(perPage),
@@ -1045,6 +1083,13 @@ class MessageService {
                 userId: currentUserId,
             })
 
+            const removedConversation = await DeletedConversation.findOne({
+                where: {
+                    user_id: currentUserId,
+                    conversation_id: conversation.id,
+                },
+            })
+
             const { rows: links, count } = await Message.findAndCountAll({
                 where: {
                     conversation_id: conversation.id,
@@ -1062,6 +1107,16 @@ class MessageService {
                                 )
                             `),
                         },
+                    },
+                    created_at: {
+                        [Op.and]: [
+                            {
+                                [Op.lte]: conversation.members?.[0].deleted_at || new Date(),
+                            },
+                            {
+                                [Op.gte]: removedConversation?.deleted_at || conversation.created_at,
+                            },
+                        ],
                     },
                 },
                 limit: perPage,

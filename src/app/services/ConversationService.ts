@@ -3,6 +3,7 @@ import { Op, QueryTypes } from 'sequelize'
 import { AppError, ConflictError, ForBiddenError, InternalServerError, NotFoundError } from '../errors/errors'
 import uploadSingleFile from '../helper/uploadToCloudinary'
 import { Block, Conversation, ConversationMember, ConversationTheme, User } from '../models'
+import DeletedConversation from '../models/DeletedConversation'
 import { addSystemMessageJob } from '../queue/systemMessage'
 import MessageService from '../services/MessageService'
 import { sequelize } from '~/config/database'
@@ -40,6 +41,7 @@ class ConversationService {
                 },
                 paranoid,
             },
+            logging: true,
         })
 
         if (!conversation) {
@@ -95,7 +97,8 @@ class ConversationService {
         per_page: string
     }) {
         try {
-            const conversations = await Conversation.findAll({
+            const { rows: conversations, count } = await Conversation.findAndCountAll({
+                distinct: true,
                 include: [
                     {
                         model: ConversationMember,
@@ -121,6 +124,16 @@ class ConversationService {
                             WHERE user_id = ${currentUserId}
                         )`),
                     },
+                    [Op.and]: sequelize.literal(`EXISTS (
+                        SELECT 1
+                        FROM messages
+                        WHERE messages.conversation_id = \`Conversation\`.\`id\`
+                        AND messages.created_at > COALESCE((
+                            SELECT deleted_at
+                            FROM deleted_conversations
+                            WHERE user_id = ${sequelize.escape(currentUserId)} AND conversation_id = \`Conversation\`.\`id\`
+                        ), '1970-01-01')
+                    )`),
                 },
                 // Sắp xếp các cuộc trò chuyện theo thời gian của tin nhắn mới nhất
                 order: [
@@ -130,12 +143,6 @@ class ConversationService {
                         WHERE messages.conversation_id = Conversation.id
                     ) DESC`), // Sắp xếp theo tin nhắn mới nhất
                 ],
-                // Lọc chỉ những cuộc trò chuyện có ít nhất 1 tin nhắn
-                having: sequelize.literal(`EXISTS (
-                    SELECT 1
-                    FROM messages
-                    WHERE messages.conversation_id = Conversation.id
-                )`),
                 limit: Number(per_page),
                 offset: (Number(page) - 1) * Number(per_page),
             })
@@ -153,7 +160,7 @@ class ConversationService {
 
             await Promise.all(promises)
 
-            return conversations
+            return { conversations, count }
         } catch (error: any) {
             if (error instanceof AppError) {
                 throw error
@@ -1141,6 +1148,48 @@ class ConversationService {
                 key: 'block_conversation',
                 value: null,
             })
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            }
+
+            throw new InternalServerError({ message: error.message })
+        }
+    }
+
+    async removeConversation({ currentUserId, conversationUuid }: { currentUserId: number; conversationUuid: string }) {
+        try {
+            const conversation = await this.userAllowedToConversation({
+                userId: currentUserId,
+                conversationUuid: conversationUuid,
+            })
+
+            const isRemoved = await DeletedConversation.findOne({
+                where: {
+                    user_id: currentUserId,
+                    conversation_id: conversation.id,
+                },
+            })
+
+            if (isRemoved) {
+                await DeletedConversation.update(
+                    {
+                        deleted_at: new Date(),
+                    },
+                    {
+                        where: {
+                            user_id: currentUserId,
+                            conversation_id: conversation.id,
+                        },
+                    },
+                )
+            } else {
+                await DeletedConversation.create({
+                    user_id: currentUserId,
+                    conversation_id: conversation.id,
+                    deleted_at: new Date(),
+                })
+            }
         } catch (error: any) {
             if (error instanceof AppError) {
                 throw error

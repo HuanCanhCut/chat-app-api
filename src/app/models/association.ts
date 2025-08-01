@@ -2,6 +2,7 @@ import Block from './BlockModel'
 import ConversationMember from './ConversationMemberModel'
 import Conversation from './ConversationModel'
 import ConversationTheme from './ConversationThemeModel'
+import DeletedConversation from './DeletedConversation'
 import Friendships from './FriendshipsModel'
 import Message from './MessageModel'
 import MessageReaction from './MessageReactionModel'
@@ -114,6 +115,15 @@ const associations = () => {
         scope: { blockable_type: 'Conversation' },
     })
     Block.belongsTo(Conversation, { foreignKey: 'blockable_id', as: 'blocked_conversation', constraints: false })
+
+    /**
+     * Deleted conversation model
+     */
+    Conversation.hasMany(DeletedConversation, { foreignKey: 'conversation_id', as: 'deleted_conversations' })
+    DeletedConversation.belongsTo(Conversation, { foreignKey: 'conversation_id', as: 'conversation' })
+
+    User.hasMany(DeletedConversation, { foreignKey: 'user_id', as: 'deleted_conversations' })
+    DeletedConversation.belongsTo(User, { foreignKey: 'user_id', as: 'user' })
 }
 
 export default associations

@@ -2,6 +2,7 @@ import { NextFunction, Response } from 'express'
 
 import { ForBiddenError, NotFoundError, UnprocessableEntityError } from '../errors/errors'
 import ConversationService from '../services/ConversationService'
+import { responseModel } from '../utils/responseModel'
 import { IRequest } from '~/type'
 
 class ConversationController {
@@ -16,13 +17,22 @@ class ConversationController {
                 return next(new UnprocessableEntityError({ message: 'Page and per page are required' }))
             }
 
-            const conversations = await ConversationService.getConversations({
+            const { conversations, count } = await ConversationService.getConversations({
                 currentUserId: decoded.sub,
                 page: page as string,
                 per_page: per_page as string,
             })
 
-            res.json({ data: conversations })
+            res.json(
+                responseModel({
+                    data: conversations,
+                    total: count,
+                    count: conversations.length,
+                    current_page: Number(page),
+                    total_pages: Math.ceil(count / Number(per_page)),
+                    per_page: Number(per_page),
+                }),
+            )
         } catch (error: any) {
             return next(error)
         }
@@ -431,6 +441,28 @@ class ConversationController {
             }
 
             await ConversationService.unblockConversation({
+                currentUserId: decoded.sub,
+                conversationUuid: uuid,
+            })
+
+            res.sendStatus(204)
+        } catch (e: any) {
+            return next(e)
+        }
+    }
+
+    // [DELETE] /api/conversations/:uuid/remove
+    async removeConversation(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const { uuid } = req.params
+
+            const decoded = req.decoded
+
+            if (!uuid) {
+                return next(new UnprocessableEntityError({ message: 'conversation_uuid is required' }))
+            }
+
+            await ConversationService.removeConversation({
                 currentUserId: decoded.sub,
                 conversationUuid: uuid,
             })

@@ -6,6 +6,7 @@ import upload from '~/app/middlewares/multer'
 router.get('/', ConversationController.getConversations.bind(ConversationController))
 router.get('/search', ConversationController.searchConversation.bind(ConversationController))
 router.get('/:uuid', ConversationController.getConversationByUuid.bind(ConversationController))
+router.delete('/:uuid/remove', ConversationController.removeConversation.bind(ConversationController))
 router.patch('/:uuid/rename', ConversationController.renameConversation.bind(ConversationController))
 router.patch(
     '/:uuid/avatar',
