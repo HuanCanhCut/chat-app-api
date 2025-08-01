@@ -41,7 +41,6 @@ class ConversationService {
                 },
                 paranoid,
             },
-            logging: true,
         })
 
         if (!conversation) {

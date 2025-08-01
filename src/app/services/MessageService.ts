@@ -938,7 +938,7 @@ class MessageService {
                 console.warn('Invalid URLs found:', invalidUrls)
             }
 
-            if (validUrls.length === 0) {
+            if (validUrls.length === 0 && urls.length > 0) {
                 throw new BadRequestError({ message: 'No valid URLs provided' })
             }
 
