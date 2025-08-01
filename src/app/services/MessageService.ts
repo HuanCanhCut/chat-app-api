@@ -1153,6 +1153,34 @@ class MessageService {
             throw new InternalServerError({ message: error.message })
         }
     }
+
+    async getUnseenCount(currentUserId: number) {
+        try {
+            const unreadConversationCount = await MessageStatus.count({
+                include: [
+                    {
+                        model: Message,
+                        as: 'message',
+                        attributes: [],
+                    },
+                ],
+                distinct: true,
+                col: 'message_id',
+                where: sequelize.literal(
+                    `MessageStatus.receiver_id = ${sequelize.escape(currentUserId)} AND MessageStatus.read_at IS NULL`,
+                ),
+                logging: true,
+            })
+
+            return unreadConversationCount
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            }
+
+            throw new InternalServerError({ message: error.message })
+        }
+    }
 }
 
 export default new MessageService()

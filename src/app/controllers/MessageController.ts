@@ -306,6 +306,21 @@ class MessageController {
             return next(error)
         }
     }
+
+    // [GET] /api/messages/unseen-count
+    async getUnseenCount(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const decoded = req.decoded
+
+            const unseenCount = await MessageService.getUnseenCount(decoded.sub)
+
+            res.json({
+                count: unseenCount,
+            })
+        } catch (error: any) {
+            return next(error)
+        }
+    }
 }
 
 export default new MessageController()

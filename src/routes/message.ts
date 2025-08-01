@@ -4,6 +4,7 @@ const router = express.Router()
 import MessageController from '../app/controllers/MessageController'
 
 router.get('/search', MessageController.searchMessages.bind(MessageController))
+router.get('/unseen-count', MessageController.getUnseenCount.bind(MessageController))
 router.get('/:conversationUuid/links', MessageController.getLinks.bind(MessageController))
 router.post('/link-preview', MessageController.getLinkPreview.bind(MessageController))
 router.get('/:messageId/reactions', MessageController.getReactions.bind(MessageController))
