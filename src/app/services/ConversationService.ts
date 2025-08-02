@@ -4,7 +4,6 @@ import { AppError, ConflictError, ForBiddenError, InternalServerError, NotFoundE
 import uploadSingleFile from '../helper/uploadToCloudinary'
 import { Block, Conversation, ConversationMember, ConversationTheme, User } from '../models'
 import DeletedConversation from '../models/DeletedConversation'
-import { addSystemMessageJob } from '../queue/systemMessage'
 import MessageService from '../services/MessageService'
 import { sequelize } from '~/config/database'
 import { redisClient } from '~/config/redis'
@@ -41,7 +40,6 @@ class ConversationService {
                 },
                 paranoid,
             },
-            logging: console.log,
         })
 
         if (!conversation) {
@@ -145,7 +143,6 @@ class ConversationService {
                 ],
                 limit: Number(per_page),
                 offset: (Number(page) - 1) * Number(per_page),
-                logging: console.log,
             })
 
             const promises = conversations.map(async (conversation) => {
@@ -329,7 +326,7 @@ class ConversationService {
                 value: conversationName,
             })
 
-            await addSystemMessageJob({
+            await MessageService.createSystemMessage({
                 conversationUuid,
                 message: `${JSON.stringify({
                     user_id: currentUserId,
@@ -396,7 +393,7 @@ class ConversationService {
                 value: result?.secure_url,
             })
 
-            await addSystemMessageJob({
+            await MessageService.createSystemMessage({
                 conversationUuid,
                 message: `${JSON.stringify({
                     user_id: currentUserId,
@@ -470,7 +467,7 @@ class ConversationService {
                 emoji = String.fromCodePoint(parseInt(theme.emoji, 16))
             }
 
-            await addSystemMessageJob({
+            await MessageService.createSystemMessage({
                 conversationUuid,
                 message: `${JSON.stringify({
                     user_id: currentUserId,
@@ -523,7 +520,7 @@ class ConversationService {
                 value: unifiedEmoji,
             })
 
-            await addSystemMessageJob({
+            await MessageService.createSystemMessage({
                 conversationUuid,
                 message: `${JSON.stringify({
                     user_id: currentUserId,
@@ -603,7 +600,7 @@ class ConversationService {
                 value: nickname,
             })
 
-            await addSystemMessageJob({
+            await MessageService.createSystemMessage({
                 conversationUuid,
                 message: `${JSON.stringify({
                     user_id: currentUserId,
@@ -751,7 +748,6 @@ class ConversationService {
             })
 
             // emit event to new members
-
             for (const member of members) {
                 if (member) {
                     const socketIds = await redisClient.lRange(
@@ -772,7 +768,7 @@ class ConversationService {
                         return
                     }
 
-                    return addSystemMessageJob({
+                    return MessageService.createSystemMessage({
                         conversationUuid: conversation.uuid,
                         message: `${JSON.stringify({
                             user_id: currentUserId,
@@ -903,7 +899,7 @@ class ConversationService {
                     break
             }
 
-            await addSystemMessageJob({
+            await MessageService.createSystemMessage({
                 conversationUuid,
                 message,
                 type: 'system_change_leader_role',
@@ -987,14 +983,14 @@ class ConversationService {
                 })
             }
 
-            await member.save()
+            await member.destroy()
 
             ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_MEMBER_REMOVED, {
                 conversation_uuid: conversationUuid,
                 member_id: memberId,
             })
 
-            await addSystemMessageJob({
+            await MessageService.createSystemMessage({
                 conversationUuid,
                 message: `${JSON.stringify({
                     user_id: currentUserId,
@@ -1039,16 +1035,48 @@ class ConversationService {
                 throw new ForBiddenError({ message: 'You are not a member of this conversation' })
             }
 
+            const memberCount = await ConversationMember.count({
+                where: {
+                    conversation_id: conversation.id,
+                },
+            })
+
+            if (memberCount === 1) {
+                await conversation.destroy()
+
+                return
+            }
+
+            // if user is admin or leader, we need to choose a new leader is the oldest member of the group
+            if (userMember.role === 'admin' || userMember.role === 'leader') {
+                const oldestMember = await ConversationMember.findOne({
+                    where: {
+                        conversation_id: conversation.id,
+                        user_id: {
+                            [Op.ne]: currentUserId,
+                        },
+                    },
+                    order: [['joined_at', 'ASC']],
+                })
+
+                if (oldestMember) {
+                    await this.changeLeaderRole({
+                        currentUserId,
+                        conversationUuid,
+                        userId: oldestMember.user_id,
+                        userMember: oldestMember,
+                        role: 'leader',
+                    })
+                }
+            }
+
             userMember.deleted_type = 'left'
+
+            const userMemberId = userMember.id
 
             await Promise.all([userMember.save(), userMember.destroy()])
 
-            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_MEMBER_LEAVED, {
-                conversation_uuid: conversationUuid,
-                member_id: currentUserId,
-            })
-
-            await addSystemMessageJob({
+            await MessageService.createSystemMessage({
                 conversationUuid,
                 message: `${JSON.stringify({
                     user_id: currentUserId,
@@ -1056,6 +1084,11 @@ class ConversationService {
                 })} đã rời khỏi nhóm.`,
                 type: 'system_leave_group',
                 currentUserId,
+            })
+
+            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_MEMBER_LEAVED, {
+                conversation_uuid: conversationUuid,
+                member_id: userMemberId,
             })
         } catch (error: any) {
             if (error instanceof AppError) {
