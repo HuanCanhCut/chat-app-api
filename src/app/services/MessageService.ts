@@ -243,6 +243,7 @@ class MessageService {
             const conversation = await ConversationService.userAllowedToConversation({
                 userId: Number(currentUserId),
                 conversationUuid,
+                paranoid: false,
             })
 
             const removedConversation = await DeletedConversation.findOne({
@@ -582,11 +583,10 @@ class MessageService {
         page: number
     }) {
         try {
-            const conversation = await Conversation.findOne({
-                attributes: ['id'],
-                where: {
-                    uuid: conversationUuid,
-                },
+            const conversation = await ConversationService.userAllowedToConversation({
+                conversationUuid,
+                userId: currentUserId,
+                paranoid: false,
             })
 
             if (!conversation) {
@@ -829,6 +829,7 @@ class MessageService {
             const conversation = await ConversationService.userAllowedToConversation({
                 conversationUuid,
                 userId: currentUserId,
+                paranoid: false,
             })
 
             const removedConversation = await DeletedConversation.findOne({
@@ -1081,6 +1082,7 @@ class MessageService {
             const conversation = await ConversationService.userAllowedToConversation({
                 conversationUuid,
                 userId: currentUserId,
+                paranoid: false,
             })
 
             const removedConversation = await DeletedConversation.findOne({

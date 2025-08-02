@@ -18,6 +18,7 @@ class ConversationMember extends Model<
     declare created_at?: Date
     declare updated_at?: Date
     declare deleted_at?: Date
+    declare deleted_type?: 'left' | 'removed'
 }
 
 ConversationMember.init(
@@ -71,6 +72,11 @@ ConversationMember.init(
             },
             onDelete: 'CASCADE',
             onUpdate: 'CASCADE',
+        },
+        deleted_type: {
+            type: DataTypes.ENUM('left', 'removed'),
+            allowNull: true,
+            defaultValue: 'left',
         },
     },
     {

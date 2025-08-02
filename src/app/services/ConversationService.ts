@@ -41,6 +41,7 @@ class ConversationService {
                 },
                 paranoid,
             },
+            logging: console.log,
         })
 
         if (!conversation) {
@@ -118,9 +119,10 @@ class ConversationService {
                 where: {
                     id: {
                         [Op.in]: sequelize.literal(`(
-                            SELECT conversation_id
+                            SELECT DISTINCT conversation_id
                             FROM conversation_members
                             WHERE user_id = ${currentUserId}
+                            AND (deleted_type IS NULL OR deleted_type = 'removed')
                         )`),
                     },
                     [Op.and]: sequelize.literal(`EXISTS (
@@ -134,16 +136,16 @@ class ConversationService {
                         ), '1970-01-01')
                     )`),
                 },
-                // Sắp xếp các cuộc trò chuyện theo thời gian của tin nhắn mới nhất
                 order: [
                     sequelize.literal(`(
                         SELECT MAX(messages.created_at)
                         FROM messages
                         WHERE messages.conversation_id = Conversation.id
-                    ) DESC`), // Sắp xếp theo tin nhắn mới nhất
+                    ) DESC`),
                 ],
                 limit: Number(per_page),
                 offset: (Number(page) - 1) * Number(per_page),
+                logging: console.log,
             })
 
             const promises = conversations.map(async (conversation) => {
@@ -985,7 +987,7 @@ class ConversationService {
                 })
             }
 
-            await member.destroy()
+            await member.save()
 
             ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_MEMBER_REMOVED, {
                 conversation_uuid: conversationUuid,
@@ -1037,7 +1039,9 @@ class ConversationService {
                 throw new ForBiddenError({ message: 'You are not a member of this conversation' })
             }
 
-            await userMember.destroy()
+            userMember.deleted_type = 'left'
+
+            await Promise.all([userMember.save(), userMember.destroy()])
 
             ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_MEMBER_LEAVED, {
                 conversation_uuid: conversationUuid,
