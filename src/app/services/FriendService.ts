@@ -250,18 +250,24 @@ class FriendService {
                 )
             }
 
-            const [{ rows: friends, count }, currentUserFriends] = await Promise.all([
-                Friendships.findAndCountAll({
-                    distinct: true,
-                    where: {
-                        status: 'accepted',
-                    },
-                    include: [userInclude],
-                    limit: Number(per_page),
-                    offset: (Number(page) - 1) * Number(per_page),
-                }),
+            const { rows: friends, count } = await Friendships.findAndCountAll({
+                distinct: true,
+                where: {
+                    status: 'accepted',
+                },
+                include: [userInclude],
+                limit: Number(per_page),
+                offset: (Number(page) - 1) * Number(per_page),
+            })
 
-                Friendships.findAll({
+            const currentUserFriendsIdsCached = await redisClient.get(`${RedisKey.FRIENDS_IDS_OF_USER}${currentUserId}`)
+
+            let currentFriendsIds = []
+
+            if (currentUserFriendsIdsCached) {
+                currentFriendsIds = JSON.parse(currentUserFriendsIdsCached)
+            } else {
+                const currentUserFriends = await Friendships.findAll({
                     where: {
                         status: 'accepted',
                     },
@@ -280,14 +286,20 @@ class FriendService {
                     ],
                     limit: Number(per_page),
                     offset: (Number(page) - 1) * Number(per_page),
-                }),
-            ])
+                })
 
-            const currentFriendsIds = currentUserFriends.map((friend) => {
-                const user = friend.get('user') as User
+                currentFriendsIds = currentUserFriends.map((friend) => {
+                    const user = friend.get('user') as User
 
-                return Number(user.id)
-            })
+                    return Number(user.id)
+                })
+
+                await redisClient.set(
+                    `${RedisKey.FRIENDS_IDS_OF_USER}${currentUserId}`,
+                    JSON.stringify(currentFriendsIds),
+                    { EX: 60 * 60 }, // 1 hour
+                )
+            }
 
             const promises = friends.map(async (friend) => {
                 const user = friend.get('user') as User
@@ -397,6 +409,8 @@ class FriendService {
             if (socketIds && socketIds.length > 0) {
                 ioInstance.to(socketIds).emit(SocketEvent.NEW_NOTIFICATION, notificationData)
             }
+
+            await redisClient.del(`${RedisKey.FRIENDS_IDS_OF_USER}${currentUserId}`)
         } catch (error: any) {
             if (error instanceof AppError) {
                 throw error
@@ -463,6 +477,8 @@ class FriendService {
                     ],
                 },
             })
+
+            await redisClient.del(`${RedisKey.FRIENDS_IDS_OF_USER}${currentUserId}`)
         } catch (error: any) {
             if (error instanceof AppError) {
                 throw error
