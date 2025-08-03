@@ -312,6 +312,13 @@ class FriendService {
                 if (user.id !== Number(currentUserId)) {
                     user.setDataValue('mutual_friends_count', mutualFriendCount)
                 }
+
+                const friendCount = await this.friendCount(Number(user.id))
+
+                const isFriend = await this.isFriend({ currentUserId, userId: Number(user.id) })
+
+                user.setDataValue('friends_count', friendCount ?? 0)
+                user.setDataValue('is_friend', isFriend)
             })
 
             await Promise.all(promises)
@@ -440,11 +447,12 @@ class FriendService {
 
             await Promise.all([
                 isMakeFriendRequest.destroy(),
-                Notification.destroy({
-                    where: {
-                        id: notification?.id,
-                    },
-                }),
+                notification &&
+                    Notification.destroy({
+                        where: {
+                            id: notification?.id,
+                        },
+                    }),
             ])
 
             const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${Number(currentUserId)}`, 0, -1)
