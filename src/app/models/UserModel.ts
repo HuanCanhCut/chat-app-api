@@ -18,6 +18,7 @@ class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
     declare sent_friend_request?: boolean
     declare is_friend?: boolean | string
     declare friends_count?: number
+    declare mutual_friends_count?: number
     declare created_at?: Date
     declare updated_at?: Date
     declare friend_request?: boolean

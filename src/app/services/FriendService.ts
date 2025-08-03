@@ -1,4 +1,4 @@
-import { literal, Op, Sequelize } from 'sequelize'
+import { literal, Op, QueryTypes, Sequelize } from 'sequelize'
 import { Literal } from 'sequelize/types/utils'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -171,6 +171,41 @@ class FriendService {
         }
     }
 
+    async mutualFriendCount({ userId, friendIds }: { userId: number; friendIds: number[] }) {
+        try {
+            const mutualFriendCountQuery = `
+                SELECT COUNT(*) AS mutual_friends_count FROM (
+                    SELECT fs.friend_id AS friend
+                    FROM friendships fs
+                    WHERE fs.status = 'accepted' AND fs.user_id = :userId AND fs.friend_id IN (:friendIds)
+                    
+                    UNION ALL
+                    
+                    SELECT fs.user_id AS friend
+                    FROM friendships fs
+                    WHERE fs.status = 'accepted' AND fs.friend_id = :userId AND fs.user_id IN (:friendIds)
+                ) AS mutual_friends_count
+            `
+
+            interface MutualFriendCount {
+                mutual_friends_count: number
+            }
+
+            const mutualFriendCount = await sequelize.query<MutualFriendCount>(mutualFriendCountQuery, {
+                replacements: { userId, friendIds },
+                type: QueryTypes.SELECT,
+            })
+
+            return mutualFriendCount[0].mutual_friends_count
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            }
+
+            throw new InternalServerError({ message: error.message })
+        }
+    }
+
     async getAllFriends({
         currentUserId,
         userId,
@@ -215,25 +250,56 @@ class FriendService {
                 )
             }
 
-            const { rows: friends, count } = await Friendships.findAndCountAll<any>({
-                distinct: true,
-                where: {
-                    status: 'accepted',
-                },
-                include: [userInclude],
-                limit: Number(per_page),
-                offset: (Number(page) - 1) * Number(per_page),
+            const [{ rows: friends, count }, currentUserFriends] = await Promise.all([
+                Friendships.findAndCountAll({
+                    distinct: true,
+                    where: {
+                        status: 'accepted',
+                    },
+                    include: [userInclude],
+                    limit: Number(per_page),
+                    offset: (Number(page) - 1) * Number(per_page),
+                }),
+
+                Friendships.findAll({
+                    where: {
+                        status: 'accepted',
+                    },
+                    attributes: ['id'],
+                    include: [
+                        {
+                            attributes: {
+                                exclude: ['password', 'email'],
+                            },
+                            model: User,
+                            as: 'user',
+                            required: true,
+                            on: this.friendShipJoinLiteral(Number(currentUserId)),
+                            runHooks: true,
+                        },
+                    ],
+                    limit: Number(per_page),
+                    offset: (Number(page) - 1) * Number(per_page),
+                }),
+            ])
+
+            const currentFriendsIds = currentUserFriends.map((friend) => {
+                const user = friend.get('user') as User
+
+                return Number(user.id)
             })
 
             const promises = friends.map(async (friend) => {
                 const user = friend.get('user') as User
 
-                const friendCount = await this.friendCount(Number(user.id))
+                const mutualFriendCount = await this.mutualFriendCount({
+                    userId: Number(user.id),
+                    friendIds: currentFriendsIds,
+                })
 
-                const isFriend = await this.isFriend({ currentUserId, userId: Number(user.id) })
-
-                user.setDataValue('friends_count', friendCount ?? 0)
-                user.setDataValue('is_friend', isFriend)
+                if (user.id !== Number(currentUserId)) {
+                    user.setDataValue('mutual_friends_count', mutualFriendCount)
+                }
             })
 
             await Promise.all(promises)

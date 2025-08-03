@@ -1,6 +1,7 @@
 import { NextFunction, Response } from 'express'
 
 import { UnprocessableEntityError } from '../errors/errors'
+import { User } from '../models'
 import ConversationService from '../services/ConversationService'
 import { responseModel } from '../utils/responseModel'
 import FriendService from '~/app/services/FriendService'
@@ -46,13 +47,13 @@ class FriendController {
 
             const friendsWithConversation = await Promise.all(
                 friends.map(async (friend) => {
-                    const conversation = await ConversationService.generalConversation({
+                    const conversation = (await ConversationService.generalConversation({
                         currentUserId: decoded.sub,
-                        targetUserId: friend.get('user').id,
-                    })
+                        targetUserId: (friend.get('user') as User).id,
+                    })) as { uuid: string } | undefined
 
                     if (conversation) {
-                        friend.get('user').setDataValue('conversation', conversation)
+                        ;(friend.get('user') as User).setDataValue('conversation', conversation)
                     }
 
                     return friend
