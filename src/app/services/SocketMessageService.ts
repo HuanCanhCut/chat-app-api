@@ -48,21 +48,27 @@ class SocketMessageService {
 
         try {
             // save message to database
-            const newMessage = await Message.create({
-                conversation_id: conversationId,
-                sender_id: senderId,
-                content: message,
-                type,
-                parent_id: parent_id || null,
-            })
+            const newMessage = await Message.create(
+                {
+                    conversation_id: conversationId,
+                    sender_id: senderId,
+                    content: message,
+                    type,
+                    parent_id: parent_id || null,
+                },
+                { transaction },
+            )
 
             if (newMessage.id) {
                 for (const userId of userIds) {
-                    await MessageStatus.create({
-                        message_id: newMessage.id,
-                        receiver_id: userId.id,
-                        status: userId.is_online ? 'delivered' : 'sent',
-                    })
+                    await MessageStatus.create(
+                        {
+                            message_id: newMessage.id,
+                            receiver_id: userId.id,
+                            status: userId.is_online ? 'delivered' : 'sent',
+                        },
+                        { transaction },
+                    )
                 }
             }
 

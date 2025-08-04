@@ -1,4 +1,5 @@
 import { Op, QueryTypes } from 'sequelize'
+import { v4 as uuidv4 } from 'uuid'
 
 import { AppError, ConflictError, ForBiddenError, InternalServerError, NotFoundError } from '../errors/errors'
 import uploadSingleFile from '../helper/uploadToCloudinary'
@@ -627,10 +628,12 @@ class ConversationService {
         currentUserId,
         conversationUuid,
         userIds,
+        isCreateConversation = false,
     }: {
         currentUserId: number
         conversationUuid: string
         userIds: number[]
+        isCreateConversation?: boolean
     }) {
         try {
             const conversation = await this.userAllowedToConversation({
@@ -762,26 +765,28 @@ class ConversationService {
                 }
             }
 
-            await Promise.all(
-                members.map((member) => {
-                    if (!member) {
-                        return
-                    }
+            if (!isCreateConversation) {
+                await Promise.all(
+                    members.map((member) => {
+                        if (!member) {
+                            return
+                        }
 
-                    return MessageService.createSystemMessage({
-                        conversationUuid: conversation.uuid,
-                        message: `${JSON.stringify({
-                            user_id: currentUserId,
-                            name: conversation.members![0].nickname || conversation.members![0].user?.full_name,
-                        })} đã thêm ${JSON.stringify({
-                            user_id: member.get('user_id'),
-                            name: member.get('user')?.get('full_name'),
-                        })} vào nhóm.`,
-                        type: 'system_add_user',
-                        currentUserId,
-                    })
-                }),
-            )
+                        return MessageService.createSystemMessage({
+                            conversationUuid: conversation.uuid,
+                            message: `${JSON.stringify({
+                                user_id: currentUserId,
+                                name: conversation.members![0].nickname || conversation.members![0].user?.full_name,
+                            })} đã thêm ${JSON.stringify({
+                                user_id: member.get('user_id'),
+                                name: member.get('user')?.get('full_name'),
+                            })} vào nhóm.`,
+                            type: 'system_add_user',
+                            currentUserId,
+                        })
+                    }),
+                )
+            }
 
             return members
         } catch (error: any) {
@@ -1226,6 +1231,104 @@ class ConversationService {
                     deleted_at: new Date(),
                 })
             }
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            }
+
+            throw new InternalServerError({ message: error.message })
+        }
+    }
+
+    async createConversation({
+        currentUserId,
+        name,
+        avatar,
+        userIds,
+    }: {
+        currentUserId: number
+        name: string
+        avatar: Express.Multer.File
+        userIds: number[]
+    }) {
+        try {
+            const newConversation = await Conversation.create(
+                // @ts-expect-error - id is not required because it is auto-increment
+                {
+                    uuid: uuidv4(),
+                    name,
+                    is_group: true,
+                },
+            )
+
+            const { result } = await uploadSingleFile({
+                file: avatar,
+                folder: 'conversations',
+                publicId: newConversation.get('uuid'),
+                type: 'avatar',
+            })
+
+            if (result) {
+                newConversation.avatar = result.secure_url
+            }
+
+            await newConversation.save()
+
+            await ConversationMember.create({
+                conversation_id: newConversation.id,
+                user_id: currentUserId,
+                role: 'admin',
+            })
+
+            // add members to conversation
+            await this.addUserToConversation({
+                currentUserId,
+                conversationUuid: newConversation.get('uuid'),
+                userIds,
+                isCreateConversation: true,
+            })
+
+            const currentUser = await User.findByPk(currentUserId, {
+                attributes: {
+                    include: ['full_name'],
+                },
+            })
+
+            await MessageService.createSystemMessage({
+                conversationUuid: newConversation.uuid,
+                message: `${JSON.stringify({
+                    user_id: currentUserId,
+                    name: currentUser?.full_name,
+                })} đã tạo nhóm.`,
+                type: 'system_create_group',
+                currentUserId,
+            })
+
+            const conversation = await this.getConversationByUuid({
+                currentUserId,
+                uuid: newConversation.get('uuid'),
+            })
+
+            for (const userId of [...new Set([...userIds, currentUserId])]) {
+                const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${userId}`, 0, -1)
+
+                if (socketIds && socketIds.length > 0) {
+                    ioInstance?.to(socketIds).emit(SocketEvent.NEW_CONVERSATION, conversation)
+                }
+            }
+
+            const lastMessage = await MessageService.getLastMessage({
+                conversationUuid: newConversation.uuid,
+                currentUserId,
+            })
+
+            if (lastMessage) {
+                if (conversation) {
+                    conversation.dataValues.last_message = lastMessage
+                }
+            }
+
+            return conversation
         } catch (error: any) {
             if (error instanceof AppError) {
                 throw error

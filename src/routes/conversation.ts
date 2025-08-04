@@ -4,6 +4,7 @@ import ConversationController from '../app/controllers/ConversationController'
 import upload from '~/app/middlewares/multer'
 
 router.get('/', ConversationController.getConversations.bind(ConversationController))
+router.post('/', upload.single('avatar'), ConversationController.createConversation.bind(ConversationController))
 router.get('/search', ConversationController.searchConversation.bind(ConversationController))
 router.get('/:uuid', ConversationController.getConversationByUuid.bind(ConversationController))
 router.delete('/:uuid/remove', ConversationController.removeConversation.bind(ConversationController))

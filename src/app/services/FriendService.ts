@@ -385,28 +385,37 @@ class FriendService {
             })
 
             if (!hasConversation) {
-                await sequelize.transaction(async () => {
+                await sequelize.transaction(async (t) => {
                     // create conversation between two users
-                    const conversation = await Conversation.create({
-                        uuid: uuidv4(),
-                        is_group: false,
-                    } as any)
+                    const conversation = await Conversation.create(
+                        {
+                            uuid: uuidv4(),
+                            is_group: false,
+                        } as any,
+                        { transaction: t },
+                    )
 
                     // add two members to conversation
                     if (conversation.id) {
-                        await ConversationMember.create({
-                            conversation_id: conversation.id,
-                            user_id: currentUserId,
-                            joined_at: new Date(),
-                            role: 'member',
-                        })
+                        await ConversationMember.create(
+                            {
+                                conversation_id: conversation.id,
+                                user_id: currentUserId,
+                                joined_at: new Date(),
+                                role: 'member',
+                            },
+                            { transaction: t },
+                        )
 
-                        await ConversationMember.create({
-                            conversation_id: conversation.id,
-                            user_id: Number(userId),
-                            joined_at: new Date(),
-                            role: 'member',
-                        })
+                        await ConversationMember.create(
+                            {
+                                conversation_id: conversation.id,
+                                user_id: Number(userId),
+                                joined_at: new Date(),
+                                role: 'member',
+                            },
+                            { transaction: t },
+                        )
                     }
                 })
             }

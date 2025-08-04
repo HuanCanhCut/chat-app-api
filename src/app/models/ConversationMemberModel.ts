@@ -76,7 +76,7 @@ ConversationMember.init(
         deleted_type: {
             type: DataTypes.ENUM('left', 'removed'),
             allowNull: true,
-            defaultValue: 'left',
+            defaultValue: null,
         },
     },
     {

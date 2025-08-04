@@ -20,6 +20,7 @@ export enum SocketEvent {
     REMOVE_REACTION = 'message:remove_reaction',
 
     // ------------------------------- Conversation -------------------------------
+    NEW_CONVERSATION = 'conversation:new',
     CONVERSATION_RENAMED = 'conversation:renamed',
     CONVERSATION_AVATAR_CHANGED = 'conversation:avatar_changed',
     CONVERSATION_THEME_CHANGED = 'conversation:theme_changed',

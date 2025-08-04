@@ -472,5 +472,52 @@ class ConversationController {
             return next(e)
         }
     }
+
+    // [POST] /api/conversations
+    async createConversation(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const { name } = req.body
+            const { user_id } = req.body
+            const avatar = req.file
+
+            const decoded = req.decoded
+
+            const validations = {
+                name: { isValid: !!name, message: 'name is required' },
+                avatar: { isValid: !!avatar, message: 'avatar is required' },
+                user_id: {
+                    isValid: !!user_id && Array.isArray(user_id),
+                    message: user_id ? 'user_id must be an array' : 'user_id is required',
+                },
+            }
+
+            for (const key in validations) {
+                const validationKey = key as keyof typeof validations
+
+                if (!validations[validationKey].isValid) {
+                    return next(new UnprocessableEntityError({ message: validations[validationKey].message }))
+                }
+            }
+
+            const memberLength = [...new Set([...user_id.map(Number), decoded.sub])].length // include current user
+
+            if (memberLength < 2) {
+                return next(
+                    new UnprocessableEntityError({ message: 'At least 2 users are required to create a conversation' }),
+                )
+            }
+
+            const createdConversation = await ConversationService.createConversation({
+                currentUserId: decoded.sub,
+                name,
+                avatar: avatar as Express.Multer.File,
+                userIds: user_id.map(Number),
+            })
+
+            res.json({ data: createdConversation })
+        } catch (e: any) {
+            return next(e)
+        }
+    }
 }
 export default new ConversationController()

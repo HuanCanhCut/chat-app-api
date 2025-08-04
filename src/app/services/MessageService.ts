@@ -123,9 +123,7 @@ class MessageService {
                             message.setDataValue('content', null)
                         }
 
-                        if (messageStatus.get('status') === 'read') {
-                            message.setDataValue('is_read', true)
-                        }
+                        message.setDataValue('is_read', messageStatus.get('status') === 'read')
                     }
                 }
 

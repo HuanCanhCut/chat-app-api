@@ -7,7 +7,6 @@ import upload from '~/app/middlewares/multer'
 router.get('/', MeController.getCurrentUser.bind(MeController))
 router.patch(
     '/',
-
     upload.fields([
         { name: 'avatar', maxCount: 1 },
         { name: 'cover_photo', maxCount: 1 },
