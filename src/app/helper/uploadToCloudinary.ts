@@ -19,11 +19,11 @@ const uploadSingleFile = async ({
 
     const fallbackWidth = 500
 
-    const width = metadata.width ? Math.round(metadata.width * 0.7) : fallbackWidth
+    const width = metadata.width ? Math.round(metadata.width * 0.6) : fallbackWidth
 
     const bufferFile = await sharp(file.buffer)
         .resize({ width, fit: 'inside' })
-        .toFormat('webp', { quality: 70 })
+        .toFormat('webp', { quality: 60 })
         .toBuffer()
 
     folder = `chat-app-${process.env.NODE_ENV}/${folder}`
