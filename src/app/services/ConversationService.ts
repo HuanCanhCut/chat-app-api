@@ -1309,14 +1309,6 @@ class ConversationService {
                 uuid: newConversation.get('uuid'),
             })
 
-            for (const userId of [...new Set([...userIds, currentUserId])]) {
-                const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${userId}`, 0, -1)
-
-                if (socketIds && socketIds.length > 0) {
-                    ioInstance?.to(socketIds).emit(SocketEvent.NEW_CONVERSATION, conversation)
-                }
-            }
-
             const lastMessage = await MessageService.getLastMessage({
                 conversationUuid: newConversation.uuid,
                 currentUserId,
@@ -1325,6 +1317,14 @@ class ConversationService {
             if (lastMessage) {
                 if (conversation) {
                     conversation.dataValues.last_message = lastMessage
+
+                    for (const userId of [...new Set([...userIds, currentUserId])]) {
+                        const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${userId}`, 0, -1)
+
+                        if (socketIds && socketIds.length > 0) {
+                            ioInstance?.to(socketIds).emit(SocketEvent.NEW_CONVERSATION, conversation)
+                        }
+                    }
                 }
             }
 
