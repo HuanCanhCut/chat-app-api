@@ -7,7 +7,7 @@ router.get('/', ConversationController.getConversations.bind(ConversationControl
 router.post('/', upload.single('avatar'), ConversationController.createConversation.bind(ConversationController))
 router.get('/search', ConversationController.searchConversation.bind(ConversationController))
 router.get('/:uuid', ConversationController.getConversationByUuid.bind(ConversationController))
-router.delete('/:uuid/remove', ConversationController.removeConversation.bind(ConversationController))
+router.delete('/:uuid', ConversationController.deleteConversation.bind(ConversationController))
 router.patch('/:uuid/rename', ConversationController.renameConversation.bind(ConversationController))
 router.patch(
     '/:uuid/avatar',

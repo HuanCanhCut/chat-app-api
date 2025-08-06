@@ -1198,7 +1198,7 @@ class ConversationService {
         }
     }
 
-    async removeConversation({ currentUserId, conversationUuid }: { currentUserId: number; conversationUuid: string }) {
+    async deleteConversation({ currentUserId, conversationUuid }: { currentUserId: number; conversationUuid: string }) {
         try {
             const conversation = await this.userAllowedToConversation({
                 userId: currentUserId,

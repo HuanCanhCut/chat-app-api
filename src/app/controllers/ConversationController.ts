@@ -452,7 +452,7 @@ class ConversationController {
     }
 
     // [DELETE] /api/conversations/:uuid/remove
-    async removeConversation(req: IRequest, res: Response, next: NextFunction) {
+    async deleteConversation(req: IRequest, res: Response, next: NextFunction) {
         try {
             const { uuid } = req.params
 
@@ -462,7 +462,7 @@ class ConversationController {
                 return next(new UnprocessableEntityError({ message: 'conversation_uuid is required' }))
             }
 
-            await ConversationService.removeConversation({
+            await ConversationService.deleteConversation({
                 currentUserId: decoded.sub,
                 conversationUuid: uuid,
             })
