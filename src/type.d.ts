@@ -15,6 +15,30 @@ export interface UserModel {
     updated_at?: Date
     cover_photo?: string
     password?: string
+    active_status?: boolean
+    is_online?: boolean
+    last_online_at?: Date | null
+}
+
+export interface ConversationMemberModel {
+    joined_at: string
+    added_by_id: number | null
+    deleted_type: string | null
+    id: number | null
+    conversation_id: number | null
+    user_id: number | string
+    role: string
+    user: UserModel
+}
+
+export interface TempConversationModel {
+    emoji?: string
+    theme_id?: number
+    id: number | null
+    uuid: string
+    is_group: boolean
+    members: ConversationMemberModel[]
+    temp: boolean
 }
 
 export interface ConversationModel {

@@ -519,5 +519,27 @@ class ConversationController {
             return next(e)
         }
     }
+
+    // [POST] /api/conversations/temp
+    async createTempConversation(req: IRequest, res: Response, next: NextFunction) {
+        try {
+            const { user_id } = req.body
+
+            if (!user_id) {
+                return next(new UnprocessableEntityError({ message: 'user_id is required' }))
+            }
+
+            const decoded = req.decoded
+
+            const createdConversation = await ConversationService.createTempConversation({
+                currentUserId: decoded.sub,
+                userId: user_id,
+            })
+
+            res.json({ data: createdConversation })
+        } catch (e: any) {
+            return next(e)
+        }
+    }
 }
 export default new ConversationController()

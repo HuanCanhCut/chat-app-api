@@ -15,6 +15,7 @@ import { ioInstance } from '~/config/socket'
 import { RedisKey } from '~/enum/redis'
 import { SocketEvent } from '~/enum/socketEvent'
 import logger from '~/logger/logger'
+import { TempConversationModel } from '~/type'
 
 class SocketMessageService {
     private socket?: Socket
@@ -209,6 +210,35 @@ class SocketMessageService {
         parent_id?: number | null
     }) => {
         try {
+            const tempConversationCache = await redisClient.get(`${RedisKey.TEMP_CONVERSATION}${conversation_uuid}`)
+
+            // if conversation is temp, create new conversation
+            if (tempConversationCache) {
+                const tempConversationParsed: TempConversationModel = JSON.parse(tempConversationCache)
+
+                conversation_uuid = tempConversationParsed.uuid
+
+                // @ts-expect-error - id is not required because it is auto-increment
+                const conversation = await Conversation.create({
+                    uuid: conversation_uuid,
+                    is_group: false,
+                })
+
+                const memberIds = tempConversationParsed.members.map((member) => member.user_id as number)
+
+                const promises = memberIds.map(async (memberId) => {
+                    return await ConversationMember.create({
+                        conversation_id: conversation.get('id') as number,
+                        user_id: memberId,
+                        role: 'member',
+                    })
+                })
+
+                await Promise.all(promises)
+
+                await redisClient.del(`${RedisKey.TEMP_CONVERSATION}${conversation_uuid}`)
+            }
+
             const conversation = await Conversation.findOne({
                 attributes: ['id'],
                 where: { uuid: conversation_uuid },
@@ -233,7 +263,7 @@ class SocketMessageService {
             const userIds = await this.getUsersOnlineStatus(conversation_uuid)
 
             if (!this.currentUserId) {
-                throw new InternalServerError({ message: 'Current user id is required' })
+                return
             }
 
             const newMessage = await this.saveMessageToDatabase({
@@ -290,10 +320,6 @@ class SocketMessageService {
             }
 
             for (const user of userIds) {
-                if (user.id === this.currentUserId) {
-                    continue
-                }
-
                 const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${user.id}`, 0, -1)
 
                 for (const socketId of socketIds) {

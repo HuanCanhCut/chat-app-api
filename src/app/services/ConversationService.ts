@@ -6,6 +6,7 @@ import uploadSingleFile from '../helper/uploadToCloudinary'
 import { Block, Conversation, ConversationMember, ConversationTheme, User } from '../models'
 import DeletedConversation from '../models/DeletedConversation'
 import MessageService from '../services/MessageService'
+import UserService from './UserService'
 import { sequelize } from '~/config/database'
 import { redisClient } from '~/config/redis'
 import { ioInstance } from '~/config/socket'
@@ -171,6 +172,12 @@ class ConversationService {
 
     async getConversationByUuid({ currentUserId, uuid }: { currentUserId: number; uuid: string }) {
         try {
+            const tempConversationCache = await redisClient.get(`${RedisKey.TEMP_CONVERSATION}${uuid}`)
+
+            if (tempConversationCache) {
+                return JSON.parse(tempConversationCache)
+            }
+
             const allowedConversation = await this.userAllowedToConversation({
                 userId: currentUserId,
                 conversationUuid: uuid,
@@ -1337,5 +1344,77 @@ class ConversationService {
             throw new InternalServerError({ message: error.message })
         }
     }
+
+    async createTempConversation({ currentUserId, userId }: { currentUserId: number; userId: number }) {
+        try {
+            // do not save conversation to database, just save to redis
+
+            // If there is a common conversation between two users, do not create a temporary group.
+            const commonConversation = await Conversation.findOne({
+                where: {
+                    is_group: false,
+                },
+                include: [
+                    {
+                        model: ConversationMember,
+                        as: 'members',
+                        required: true,
+                        where: {
+                            user_id: {
+                                [Op.in]: [currentUserId, userId],
+                            },
+                        },
+                    },
+                ],
+                logging: console.log,
+            })
+
+            if (commonConversation) {
+                throw new ConflictError({
+                    message: 'There is a common conversation between two users, do not create a temporary group.',
+                })
+            }
+
+            // @ts-expect-error - id is not required because it is auto-increment
+            const conversation = Conversation.build({
+                uuid: uuidv4(),
+                is_group: false,
+            })
+
+            const userIds = [currentUserId, userId]
+
+            const members = []
+
+            for (const userId of userIds) {
+                const member = ConversationMember.build({
+                    conversation_id: conversation.id,
+                    user_id: userId,
+                    role: 'member',
+                })
+
+                const user = await UserService.getUserById(userId)
+
+                member.setDataValue('user', user)
+
+                members.push(member)
+            }
+
+            conversation.setDataValue('members', members)
+            conversation.setDataValue('temp', true)
+
+            await redisClient.set(`${RedisKey.TEMP_CONVERSATION}${conversation.uuid}`, JSON.stringify(conversation), {
+                EX: 60 * 10, // 10 minutes
+            })
+
+            return conversation
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            }
+
+            throw new InternalServerError({ message: error.message })
+        }
+    }
 }
+
 export default new ConversationService()
