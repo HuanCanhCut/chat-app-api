@@ -38,7 +38,7 @@ export interface TempConversationModel {
     uuid: string
     is_group: boolean
     members: ConversationMemberModel[]
-    temp: boolean
+    is_temp: boolean
 }
 
 export interface ConversationModel {

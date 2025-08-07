@@ -7,7 +7,7 @@ import Message from './MessageModel'
 class Conversation extends Model<InferAttributes<Conversation>, InferCreationAttributes<Conversation>> {
     declare id: number
     declare is_group: boolean
-    declare temp?: boolean
+    declare is_temp?: boolean
     declare name?: string
     declare avatar?: string
     declare uuid: string

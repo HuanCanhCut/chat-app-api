@@ -1350,23 +1350,9 @@ class ConversationService {
             // do not save conversation to database, just save to redis
 
             // If there is a common conversation between two users, do not create a temporary group.
-            const commonConversation = await Conversation.findOne({
-                where: {
-                    is_group: false,
-                },
-                include: [
-                    {
-                        model: ConversationMember,
-                        as: 'members',
-                        required: true,
-                        where: {
-                            user_id: {
-                                [Op.in]: [currentUserId, userId],
-                            },
-                        },
-                    },
-                ],
-                logging: console.log,
+            const commonConversation = await this.generalConversation({
+                currentUserId,
+                targetUserId: userId,
             })
 
             if (commonConversation) {
@@ -1400,7 +1386,7 @@ class ConversationService {
             }
 
             conversation.setDataValue('members', members)
-            conversation.setDataValue('temp', true)
+            conversation.setDataValue('is_temp', true)
 
             await redisClient.set(`${RedisKey.TEMP_CONVERSATION}${conversation.uuid}`, JSON.stringify(conversation), {
                 EX: 60 * 10, // 10 minutes

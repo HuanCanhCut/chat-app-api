@@ -304,14 +304,14 @@ class FriendService {
             const promises = friends.map(async (friend) => {
                 const user = friend.get('user') as User
 
-                const mutualFriendCount = await this.mutualFriendCount({
-                    userId: Number(user.id),
-                    friendIds: currentFriendsIds,
-                })
+                // const mutualFriendCount = await this.mutualFriendCount({
+                //     userId: Number(user.id),
+                //     friendIds: currentFriendsIds,
+                // })
 
-                if (user.id !== Number(currentUserId)) {
-                    user.setDataValue('mutual_friends_count', mutualFriendCount)
-                }
+                // if (user.id !== Number(currentUserId)) {
+                //     user.setDataValue('mutual_friends_count', mutualFriendCount)
+                // }
 
                 const friendCount = await this.friendCount(Number(user.id))
 
