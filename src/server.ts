@@ -6,6 +6,7 @@ import cors from 'cors'
 import express, { Request, Response } from 'express'
 import admin from 'firebase-admin'
 import http from 'http'
+import { PeerServer } from 'peer'
 import { Server } from 'socket.io'
 
 import 'express-async-errors'
@@ -18,13 +19,6 @@ import socketIO from './config/socket'
 import route from './routes/index'
 const app = express()
 const server = http.createServer(app)
-
-const io = new Server(server, {
-    cors: {
-        origin: process.env.ORIGIN_URL,
-        credentials: true,
-    },
-})
 
 const allowedOrigins: string[] = ['https://huancanhcut.click', 'https://chatapp.local']
 
@@ -47,6 +41,20 @@ const corsOptions: cors.CorsOptions = {
 }
 
 app.use(cors(corsOptions))
+
+const io = new Server(server, {
+    cors: {
+        origin: function (origin, callback) {
+            if (!origin) return callback(null, true)
+            if (allowedOrigins.includes(origin)) {
+                callback(null, true)
+            } else {
+                callback(new Error('CORS not allowed by server'))
+            }
+        },
+        credentials: true,
+    },
+})
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),

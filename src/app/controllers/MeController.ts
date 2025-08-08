@@ -16,7 +16,7 @@ class MeController {
             res.json({ data: user })
         } catch (error: any) {
             if (error instanceof NotFoundError) {
-                clearCookie({ res, cookies: ['access_token', 'refresh_token'] })
+                clearCookie({ res, cookies: ['access_token', 'refresh_token'], req })
             }
 
             return next(error)

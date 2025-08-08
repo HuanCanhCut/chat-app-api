@@ -12,7 +12,7 @@ const verifyToken = async (req: IRequest, res: any, next: NextFunction) => {
         const tokenInvalid = await redisClient.get(`blacklist-${access_token}`)
 
         if (tokenInvalid) {
-            clearCookie({ res, cookies: ['access_token', 'refresh_token'] })
+            clearCookie({ res, cookies: ['access_token', 'refresh_token'], req })
 
             return res.status(401).json({
                 message: 'Failed to authenticate because of bad credentials or an invalid authorization header.',
@@ -34,7 +34,7 @@ const verifyToken = async (req: IRequest, res: any, next: NextFunction) => {
                         code: 'TOKEN_EXPIRED',
                     })
                 } else {
-                    clearCookie({ res, cookies: ['access_token', 'refresh_token'] })
+                    clearCookie({ res, cookies: ['access_token', 'refresh_token'], req })
 
                     return res.status(401).json({
                         error: 'Failed to authenticate because of bad credentials or an invalid authorization header.',
@@ -48,7 +48,7 @@ const verifyToken = async (req: IRequest, res: any, next: NextFunction) => {
 
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
-        clearCookie({ res, cookies: ['access_token', 'refresh_token'] })
+        clearCookie({ res, cookies: ['access_token', 'refresh_token'], req })
 
         return res.status(401).json({
             message: 'Token signature could not be verified.',

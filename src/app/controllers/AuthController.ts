@@ -13,12 +13,14 @@ class AuthController {
         token,
         refreshToken,
         status = 200,
+        req,
     }: {
         res: Response
         user: User
         token: string
         refreshToken: string
         status?: number
+        req: Request
     }) {
         await RefreshToken.create({
             user_id: user.id as number,
@@ -27,8 +29,8 @@ class AuthController {
 
         res.status(status)
             .setHeader('Set-Cookie', [
-                `access_token=${token}; max-age=${60820005}; httpOnly; path=/; sameSite=None; secure; Partitioned; domain=${process.env.DOMAIN}`,
-                `refresh_token=${refreshToken}; max-age=${Number(process.env.EXPIRED_REFRESH_TOKEN)}; httpOnly; path=/; sameSite=None; secure; Partitioned; domain=${process.env.DOMAIN}`,
+                `access_token=${token}; max-age=${60820005}; httpOnly; path=/; sameSite=None; secure; Partitioned; domain=${req?.headers.origin?.split('://')[1].split(':')[0]}`,
+                `refresh_token=${refreshToken}; max-age=${Number(process.env.EXPIRED_REFRESH_TOKEN)}; httpOnly; path=/; sameSite=None; secure; Partitioned; domain=${req?.headers.origin?.split('://')[1].split(':')[0]}`,
             ])
             .json({
                 data: user,
@@ -45,7 +47,7 @@ class AuthController {
 
             const { token, refreshToken, user } = await AuthService.register({ email, password })
 
-            this.sendToClient({ res, user, token, refreshToken, status: 201 })
+            this.sendToClient({ res, user, token, refreshToken, status: 201, req })
         } catch (error: any) {
             return next(error)
         }
@@ -62,7 +64,7 @@ class AuthController {
 
             const { token, refreshToken, user } = await AuthService.login({ email, password })
 
-            this.sendToClient({ res, user, token, refreshToken })
+            this.sendToClient({ res, user, token, refreshToken, req })
         } catch (error: any) {
             return next(error)
         }
@@ -75,7 +77,7 @@ class AuthController {
 
             await AuthService.logout({ access_token, refresh_token })
 
-            clearCookie({ res, cookies: ['access_token', 'refresh_token'] })
+            clearCookie({ res, cookies: ['access_token', 'refresh_token'], req })
 
             res.sendStatus(204)
         } catch (error: any) {
@@ -94,7 +96,7 @@ class AuthController {
 
             const { token: accessToken, refreshToken, user } = await AuthService.loginWithToken({ token })
 
-            this.sendToClient({ res, user, token: accessToken, refreshToken })
+            this.sendToClient({ res, user, token: accessToken, refreshToken, req })
         } catch (error: any) {
             return next(error)
         }
@@ -112,8 +114,8 @@ class AuthController {
             const { newAccessToken, newRefreshToken } = await AuthService.refreshToken({ refresh_token })
 
             res.setHeader('Set-Cookie', [
-                `access_token=${newAccessToken}; max-age=${60820005}; path=/; sameSite=None; secure; Partitioned; domain=${process.env.DOMAIN}`,
-                `refresh_token=${newRefreshToken}; max-age=${Number(process.env.EXPIRED_REFRESH_TOKEN)}; path=/; sameSite=None; secure; Partitioned; domain=${process.env.DOMAIN}`,
+                `access_token=${newAccessToken}; max-age=${60820005}; path=/; sameSite=None; secure; Partitioned; domain=${req?.headers.origin?.split('://')[1].split(':')[0]}`,
+                `refresh_token=${newRefreshToken}; max-age=${Number(process.env.EXPIRED_REFRESH_TOKEN)}; path=/; sameSite=None; secure; Partitioned; domain=${req?.headers.origin?.split('://')[1].split(':')[0]}`,
             ])
                 .status(200)
                 .json({
@@ -122,7 +124,7 @@ class AuthController {
                 })
         } catch (error: any) {
             if (error instanceof UnauthorizedError) {
-                clearCookie({ res, cookies: ['access_token', 'refresh_token'] })
+                clearCookie({ res, cookies: ['access_token', 'refresh_token'], req })
             }
 
             return next(error)
