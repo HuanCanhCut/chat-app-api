@@ -1,6 +1,8 @@
 import jwt from 'jsonwebtoken'
 import { Server, Socket } from 'socket.io'
 
+import CallSocketService from '../services/SocketCallService'
+import callListener from './call'
 import conversationListener from './conversation'
 import userStatusListener from './userStatus'
 import messageListener from '~/app/socket/message'
@@ -31,6 +33,7 @@ const onConnection = async (socketInstance: Socket, ioInstance: Server) => {
                 new messageListener(socketInstance)
                 new userStatusListener(socketInstance)
                 new conversationListener(socketInstance)
+                new callListener(socketInstance)
             }
         } catch (error) {
             console.log(error)

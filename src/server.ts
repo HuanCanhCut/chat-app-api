@@ -20,6 +20,11 @@ import route from './routes/index'
 const app = express()
 const server = http.createServer(app)
 
+PeerServer({
+    port: 9000,
+    path: '/peerjs',
+})
+
 const allowedOrigins: string[] = ['https://huancanhcut.click', 'https://chatapp.local']
 
 const corsOptions: cors.CorsOptions = {

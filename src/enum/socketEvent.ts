@@ -34,4 +34,8 @@ export enum SocketEvent {
     CONVERSATION_BLOCKED = 'conversation:blocked',
     CONVERSATION_UNBLOCKED = 'conversation:unblocked',
     LEAVE_ROOM = 'conversation:leave',
+
+    // ------------------------------- Call -------------------------------
+    INITIATE_CALL = 'call:initiate',
+    ACCEPTED_CALL = 'call:accepted',
 }
