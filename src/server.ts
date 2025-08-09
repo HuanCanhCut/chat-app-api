@@ -21,7 +21,7 @@ const app = express()
 const server = http.createServer(app)
 
 PeerServer({
-    port: 9000,
+    port: Number(process.env.PEER_PORT),
     path: '/peerjs',
 })
 
