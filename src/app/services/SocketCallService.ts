@@ -88,6 +88,80 @@ class SocketCallService {
             logger.error(error)
         }
     }
+
+    async RENEGOTIATION_OFFER({
+        from_user_id,
+        to_user_id,
+        caller_id,
+        callee_id,
+        offer,
+    }: {
+        from_user_id: number
+        to_user_id: number
+        caller_id: number
+        callee_id: number
+        offer: RTCSessionDescriptionInit
+    }) {
+        try {
+            console.log(`Renegotiation offer from ${from_user_id} to ${to_user_id}`)
+
+            const toUserSocketIds = await redisClient
+                .lRange(`${RedisKey.SOCKET_ID}${to_user_id}`, 0, -1)
+                .then((socketIds) => {
+                    return socketIds
+                })
+
+            if (toUserSocketIds && toUserSocketIds.length > 0) {
+                ioInstance.to(toUserSocketIds).emit(SocketEvent.RENEGOTIATION_OFFER, {
+                    from_user_id,
+                    caller_id,
+                    callee_id,
+                    offer,
+                })
+            } else {
+                console.warn(`No socket found for user ${to_user_id}`)
+            }
+        } catch (error) {
+            logger.error('Error in RENEGOTIATION_OFFER:', error)
+        }
+    }
+
+    async RENEGOTIATION_ANSWER({
+        from_user_id,
+        to_user_id,
+        caller_id,
+        callee_id,
+        answer,
+    }: {
+        from_user_id: number
+        to_user_id: number
+        caller_id: number
+        callee_id: number
+        answer: RTCSessionDescriptionInit
+    }) {
+        try {
+            console.log(`Renegotiation answer from ${from_user_id} to ${to_user_id}`)
+
+            const toUserSocketIds = await redisClient
+                .lRange(`${RedisKey.SOCKET_ID}${to_user_id}`, 0, -1)
+                .then((socketIds) => {
+                    return socketIds
+                })
+
+            if (toUserSocketIds && toUserSocketIds.length > 0) {
+                ioInstance.to(toUserSocketIds).emit(SocketEvent.RENEGOTIATION_ANSWER, {
+                    from_user_id,
+                    caller_id,
+                    callee_id,
+                    answer,
+                })
+            } else {
+                console.warn(`No socket found for user ${to_user_id}`)
+            }
+        } catch (error) {
+            logger.error('Error in RENEGOTIATION_ANSWER:', error)
+        }
+    }
 }
 
 export default SocketCallService
