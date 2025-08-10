@@ -62,6 +62,32 @@ class SocketCallService {
             logger.error(error)
         }
     }
+
+    async END_CALL({ caller_id, callee_id }: { caller_id: number; callee_id: number }) {
+        try {
+            // Lấy socket IDs của cả người gọi và người nhận
+            const calleeSocketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${callee_id}`, 0, -1)
+            const callerSocketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${caller_id}`, 0, -1)
+
+            // Gửi sự kiện kết thúc cuộc gọi đến người nhận
+            if (calleeSocketIds && calleeSocketIds.length > 0) {
+                ioInstance.to(calleeSocketIds).emit(SocketEvent.END_CALL, {
+                    caller_id,
+                    callee_id,
+                })
+            }
+
+            // Gửi sự kiện kết thúc cuộc gọi đến người gọi
+            if (callerSocketIds && callerSocketIds.length > 0) {
+                ioInstance.to(callerSocketIds).emit(SocketEvent.END_CALL, {
+                    caller_id,
+                    callee_id,
+                })
+            }
+        } catch (error) {
+            logger.error(error)
+        }
+    }
 }
 
 export default SocketCallService
