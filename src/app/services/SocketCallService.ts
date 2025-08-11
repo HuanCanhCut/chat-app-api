@@ -16,7 +16,7 @@ class SocketCallService {
         this.currentUserId = currentUserId || socket?.data.decoded.sub
     }
 
-    async INITIATE_CALL({
+    INITIATE_CALL = async ({
         callee_id,
         caller_id,
         type,
@@ -24,7 +24,7 @@ class SocketCallService {
         callee_id: number
         caller_id: number
         type: 'video' | 'voice'
-    }) {
+    }) => {
         try {
             const caller = await UserService.getUserById(caller_id)
 
@@ -41,11 +41,19 @@ class SocketCallService {
                 })
             }
         } catch (error) {
-            logger.error(error)
+            logger.error('INITIATE_CALL', error)
         }
     }
 
-    async ACCEPTED_CALL({ caller_id, peer_id }: { caller_id: number; peer_id: string }) {
+    ACCEPTED_CALL = async ({
+        caller_id,
+        peer_id,
+        callee_id,
+    }: {
+        caller_id: number
+        peer_id: string
+        callee_id: number
+    }) => {
         try {
             const callerSocketIds = await redisClient
                 .lRange(`${RedisKey.SOCKET_ID}${caller_id}`, 0, -1)
@@ -53,17 +61,31 @@ class SocketCallService {
                     return socketIds
                 })
 
+            const calleeSocketIds = await redisClient
+                .lRange(`${RedisKey.SOCKET_ID}${callee_id}`, 0, -1)
+                .then((socketIds) => {
+                    return socketIds
+                })
+
+            const otherCalleeSocketIds = calleeSocketIds.filter((socketId) => socketId !== this.socket?.id)
+
+            if (otherCalleeSocketIds && otherCalleeSocketIds.length > 0) {
+                ioInstance.to(otherCalleeSocketIds).emit(SocketEvent.CANCEL_INCOMING_CALL, {
+                    caller_id,
+                })
+            }
+
             if (callerSocketIds && callerSocketIds.length > 0) {
                 ioInstance.to(callerSocketIds).emit(SocketEvent.ACCEPTED_CALL, {
                     peer_id,
                 })
             }
         } catch (error) {
-            logger.error(error)
+            logger.error('ACCEPTED_CALL', error)
         }
     }
 
-    async END_CALL({ caller_id, callee_id }: { caller_id: number; callee_id: number }) {
+    END_CALL = async ({ caller_id, callee_id }: { caller_id: number; callee_id: number }) => {
         try {
             // Lấy socket IDs của cả người gọi và người nhận
             const calleeSocketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${callee_id}`, 0, -1)
@@ -85,11 +107,11 @@ class SocketCallService {
                 })
             }
         } catch (error) {
-            logger.error(error)
+            logger.error('END_CALL', error)
         }
     }
 
-    async RENEGOTIATION_OFFER({
+    RENEGOTIATION_OFFER = async ({
         from_user_id,
         to_user_id,
         caller_id,
@@ -101,7 +123,7 @@ class SocketCallService {
         caller_id: number
         callee_id: number
         offer: RTCSessionDescriptionInit
-    }) {
+    }) => {
         try {
             console.log(`Renegotiation offer from ${from_user_id} to ${to_user_id}`)
 
@@ -126,7 +148,7 @@ class SocketCallService {
         }
     }
 
-    async RENEGOTIATION_ANSWER({
+    RENEGOTIATION_ANSWER = async ({
         from_user_id,
         to_user_id,
         caller_id,
@@ -138,7 +160,7 @@ class SocketCallService {
         caller_id: number
         callee_id: number
         answer: RTCSessionDescriptionInit
-    }) {
+    }) => {
         try {
             console.log(`Renegotiation answer from ${from_user_id} to ${to_user_id}`)
 
@@ -163,7 +185,7 @@ class SocketCallService {
         }
     }
 
-    async REJECT_CALL({ caller_id }: { caller_id: number }) {
+    REJECT_CALL = async ({ caller_id }: { caller_id: number }) => {
         try {
             const callerSocketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${caller_id}`, 0, -1)
 
