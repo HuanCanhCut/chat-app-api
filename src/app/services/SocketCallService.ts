@@ -8,10 +8,10 @@ import { SocketEvent } from '~/enum/socketEvent'
 import logger from '~/logger/logger'
 
 class SocketCallService {
-    private socket?: Socket
+    private socket: Socket
     private currentUserId?: number
 
-    constructor(socket?: Socket, currentUserId?: number) {
+    constructor(socket: Socket, currentUserId?: number) {
         this.socket = socket
         this.currentUserId = currentUserId || socket?.data.decoded.sub
     }
@@ -26,6 +26,14 @@ class SocketCallService {
         type: 'video' | 'voice'
     }) => {
         try {
+            const isCalling = await redisClient.get(`${RedisKey.IS_CALLING}${callee_id}`)
+
+            if (isCalling) {
+                ioInstance.to(this.socket.id).emit(SocketEvent.CALL_BUSY)
+
+                return
+            }
+
             const caller = await UserService.getUserById(caller_id)
 
             const calleeSocketIds = await redisClient
@@ -80,6 +88,8 @@ class SocketCallService {
                     peer_id,
                 })
             }
+
+            await redisClient.set(`${RedisKey.IS_CALLING}${caller_id}`, 'true')
         } catch (error) {
             logger.error('ACCEPTED_CALL', error)
         }
@@ -106,6 +116,8 @@ class SocketCallService {
                     callee_id,
                 })
             }
+
+            await redisClient.del(`${RedisKey.IS_CALLING}${caller_id}`)
         } catch (error) {
             logger.error('END_CALL', error)
         }
