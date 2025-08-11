@@ -162,6 +162,20 @@ class SocketCallService {
             logger.error('Error in RENEGOTIATION_ANSWER:', error)
         }
     }
+
+    async REJECT_CALL({ caller_id }: { caller_id: number }) {
+        try {
+            const callerSocketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${caller_id}`, 0, -1)
+
+            if (callerSocketIds && callerSocketIds.length > 0) {
+                ioInstance.to(callerSocketIds).emit(SocketEvent.REJECT_CALL, {
+                    caller_id,
+                })
+            }
+        } catch (error) {
+            logger.error('Error in REJECT_CALL:', error)
+        }
+    }
 }
 
 export default SocketCallService
