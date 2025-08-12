@@ -1,7 +1,6 @@
 import jwt from 'jsonwebtoken'
 import { Server, Socket } from 'socket.io'
 
-import CallSocketService from '../services/SocketCallService'
 import callListener from './call'
 import conversationListener from './conversation'
 import userStatusListener from './userStatus'

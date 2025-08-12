@@ -1,5 +1,6 @@
 import { Socket } from 'socket.io'
 
+import SocketMessageService from './SocketMessageService'
 import UserService from './UserService'
 import { redisClient } from '~/config/redis'
 import { ioInstance } from '~/config/socket'
@@ -20,10 +21,12 @@ class SocketCallService {
         callee_id,
         caller_id,
         type,
+        uuid,
     }: {
         callee_id: number
         caller_id: number
         type: 'video' | 'voice'
+        uuid: string
     }) => {
         try {
             const isCalling = await redisClient.get(`${RedisKey.IS_CALLING}${callee_id}`)
@@ -46,6 +49,7 @@ class SocketCallService {
                 ioInstance.to(calleeSocketIds).emit(SocketEvent.INITIATE_CALL, {
                     caller,
                     type,
+                    uuid,
                 })
             }
         } catch (error) {
@@ -57,10 +61,12 @@ class SocketCallService {
         caller_id,
         peer_id,
         callee_id,
+        uuid,
     }: {
         caller_id: number
         peer_id: string
         callee_id: number
+        uuid: string
     }) => {
         try {
             const callerSocketIds = await redisClient
@@ -89,13 +95,21 @@ class SocketCallService {
                 })
             }
 
-            await redisClient.set(`${RedisKey.IS_CALLING}${caller_id}`, 'true')
+            if (caller_id) {
+                await redisClient.set(`${RedisKey.IS_CALLING}${caller_id}`, 'true')
+            }
+
+            if (callee_id) {
+                await redisClient.set(`${RedisKey.IS_CALLING}${callee_id}`, 'true')
+            }
+
+            await redisClient.set(`${RedisKey.CALL_UUID_STARTED_TIME}${uuid}`, Date.now().toString())
         } catch (error) {
             logger.error('ACCEPTED_CALL', error)
         }
     }
 
-    END_CALL = async ({ caller_id, callee_id }: { caller_id: number; callee_id: number }) => {
+    END_CALL = async ({ caller_id, callee_id, uuid }: { caller_id: number; callee_id: number; uuid: string }) => {
         try {
             // Lấy socket IDs của cả người gọi và người nhận
             const calleeSocketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${callee_id}`, 0, -1)
@@ -117,7 +131,28 @@ class SocketCallService {
                 })
             }
 
-            await redisClient.del(`${RedisKey.IS_CALLING}${caller_id}`)
+            await Promise.all([
+                redisClient.del(`${RedisKey.IS_CALLING}${caller_id}`),
+                redisClient.del(`${RedisKey.IS_CALLING}${callee_id}`),
+            ])
+
+            const startedTime = await redisClient.get(`${RedisKey.CALL_UUID_STARTED_TIME}${uuid}`)
+
+            if (startedTime) {
+                const durationMs = Date.now() - parseInt(startedTime)
+                const durationSeconds = Math.floor(durationMs / 1000)
+                const minutes = Math.floor(durationSeconds / 60)
+                const seconds = durationSeconds % 60
+                const duration = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+
+                const service = new SocketMessageService(this.socket)
+
+                service.NEW_MESSAGE({
+                    conversation_uuid: uuid,
+                    message: `Cuộc gọi kết thúc sau ${duration}`,
+                    type: 'text',
+                })
+            }
         } catch (error) {
             logger.error('END_CALL', error)
         }

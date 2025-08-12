@@ -5,4 +5,5 @@ export enum RedisKey {
     FRIENDS_IDS_OF_USER = 'friends_ids_of_user_',
     TEMP_CONVERSATION = 'temp_conversation_',
     IS_CALLING = 'is_calling_',
+    CALL_UUID_STARTED_TIME = 'call_uuid_started_time_',
 }

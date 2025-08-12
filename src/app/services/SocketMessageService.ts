@@ -327,47 +327,32 @@ class SocketMessageService {
 
                     // user online but not in the room
                     if (!isUserInRoom && user.is_online) {
-                        const conversationCache = await redisClient.get(
-                            `${RedisKey.CONVERSATION_UUID}${conversation_uuid}`,
-                        )
+                        try {
+                            const conversation = await ConversationService.getConversationByUuid({
+                                currentUserId: this.currentUserId,
+                                uuid: conversation_uuid,
+                            })
 
-                        if (conversationCache) {
-                            const conversation = {
-                                ...JSON.parse(conversationCache),
-                                last_message: newMessage,
-                            }
+                            if (conversation) {
+                                await redisClient.set(
+                                    `${RedisKey.CONVERSATION_UUID}${conversation_uuid}`,
+                                    JSON.stringify(conversation),
+                                    {
+                                        EX: 60 * 60, // 1 hour
+                                    },
+                                )
 
-                            ioInstance.to(socketIds).emit(SocketEvent.NEW_MESSAGE, { conversation })
-                        } else {
-                            try {
-                                const conversation = await ConversationService.getConversationByUuid({
-                                    currentUserId: this.currentUserId,
-                                    uuid: conversation_uuid,
-                                })
-
-                                if (conversation) {
-                                    await redisClient.set(
-                                        `${RedisKey.CONVERSATION_UUID}${conversation_uuid}`,
-                                        JSON.stringify(conversation),
-                                        {
-                                            EX: 60 * 60, // 1 hour
-                                        },
-                                    )
-
-                                    const conversationData = {
-                                        ...conversation.dataValues,
-                                        last_message: newMessage,
-                                    }
-
-                                    for (const socketId of socketIds) {
-                                        ioInstance.to(socketId).emit(SocketEvent.NEW_MESSAGE, {
-                                            conversation: conversationData,
-                                        })
-                                    }
+                                const conversationData = {
+                                    ...conversation.dataValues,
+                                    last_message: newMessage,
                                 }
-                            } catch (error) {
-                                console.log(error)
+
+                                ioInstance.to(socketId).emit(SocketEvent.NEW_MESSAGE, {
+                                    conversation: conversationData,
+                                })
                             }
+                        } catch (error) {
+                            logger.error('NEW_MESSAGE', error)
                         }
                     }
                 }
