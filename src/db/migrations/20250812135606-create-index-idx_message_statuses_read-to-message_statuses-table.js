@@ -1,0 +1,26 @@
+'use strict'
+
+/** @type {import('sequelize-cli').Migration} */
+module.exports = {
+    async up(queryInterface, Sequelize) {
+        /**
+         * Add altering commands here.
+         *
+         * Example:
+         * await queryInterface.createTable('users', { id: Sequelize.INTEGER });
+         */
+        await queryInterface.addIndex('message_statuses', ['receiver_id', 'message_id', 'is_revoked', 'revoke_type'], {
+            name: 'idx_message_statuses_read',
+        })
+    },
+
+    async down(queryInterface, Sequelize) {
+        /**
+         * Add reverting commands here.
+         *
+         * Example:
+         * await queryInterface.dropTable('users');
+         */
+        await queryInterface.removeIndex('message_statuses', 'idx_message_statuses_read')
+    },
+}
