@@ -1,5 +1,7 @@
 import { Socket } from 'socket.io'
 
+import { ConversationMember } from '../models'
+import ConversationService from './ConversationService'
 import SocketMessageService from './SocketMessageService'
 import UserService from './UserService'
 import { redisClient } from '~/config/redis'
@@ -35,6 +37,23 @@ class SocketCallService {
                 ioInstance.to(this.socket.id).emit(SocketEvent.CALL_BUSY)
 
                 return
+            }
+
+            const conversation = await ConversationService.getConversationByUuid({
+                currentUserId: caller_id,
+                uuid,
+            })
+
+            const conversationMemberIds = conversation
+                .get('members')
+                .map((member: ConversationMember) => member.user_id)
+
+            if (!conversationMemberIds.includes(callee_id) || !conversationMemberIds.includes(caller_id)) {
+                this.END_CALL({
+                    caller_id,
+                    callee_id,
+                    uuid,
+                })
             }
 
             const caller = await UserService.getUserById(caller_id)
