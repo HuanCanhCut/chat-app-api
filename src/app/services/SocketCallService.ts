@@ -103,7 +103,9 @@ class SocketCallService {
                 await redisClient.set(`${RedisKey.IS_CALLING}${callee_id}`, 'true')
             }
 
-            await redisClient.set(`${RedisKey.CALL_UUID_STARTED_TIME}${uuid}`, Date.now().toString())
+            await redisClient.set(`${RedisKey.CALL_UUID_STARTED_TIME}${uuid}`, Date.now().toString(), {
+                EX: 60 * 60 * 24, // 1 day
+            })
         } catch (error) {
             logger.error('ACCEPTED_CALL', error)
         }
@@ -137,22 +139,33 @@ class SocketCallService {
             ])
 
             const startedTime = await redisClient.get(`${RedisKey.CALL_UUID_STARTED_TIME}${uuid}`)
+            let duration = ''
 
             if (startedTime) {
                 const durationMs = Date.now() - parseInt(startedTime)
                 const durationSeconds = Math.floor(durationMs / 1000)
-                const minutes = Math.floor(durationSeconds / 60)
+                const hours = Math.floor(durationSeconds / 3600)
+                const minutes = Math.floor((durationSeconds % 3600) / 60)
                 const seconds = durationSeconds % 60
-                const duration = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
 
-                const service = new SocketMessageService(this.socket)
-
-                service.NEW_MESSAGE({
-                    conversation_uuid: uuid,
-                    message: `Cuộc gọi kết thúc sau ${duration}`,
-                    type: 'text',
-                })
+                if (hours > 0) {
+                    duration = `${hours} giờ ${minutes} phút ${seconds} giây`
+                } else if (minutes > 0) {
+                    duration = `${minutes} phút ${seconds} giây`
+                } else {
+                    duration = `${seconds} giây`
+                }
             }
+
+            redisClient.del(`${RedisKey.CALL_UUID_STARTED_TIME}${uuid}`)
+
+            const service = new SocketMessageService(this.socket, caller_id)
+
+            service.NEW_MESSAGE({
+                conversation_uuid: uuid,
+                message: duration,
+                type: startedTime ? 'call_ended' : 'call_timeout',
+            })
         } catch (error) {
             logger.error('END_CALL', error)
         }
