@@ -15,6 +15,7 @@ import { RefreshToken, User } from '../models'
 import { addMailJob } from '../queue/mail'
 import createToken from '../utils/createToken'
 import hashValue from '../utils/hashValue'
+import ConversationService from './ConversationService'
 import { sequelize } from '~/config/database'
 import { redisClient } from '~/config/redis'
 
@@ -57,6 +58,13 @@ class AuthServices {
             if (!created) {
                 throw new ConflictError({ message: 'User already exists' })
             }
+
+            // add user to global conversation
+            await ConversationService.addUserToConversation({
+                currentUserId: Number(process.env.ADMIN_ID),
+                conversationUuid: '8fdb644a-c4b2-4ba6-9ba6-42ee1e6c1284', // global conversation uuid
+                userIds: [user.id as number],
+            })
 
             const payload = {
                 sub: user.id as number,
@@ -156,7 +164,7 @@ class AuthServices {
             const firstName = splitName.slice(0, middle).join(' ')
             const lastName = splitName.slice(middle).join(' ')
 
-            const [user] = await User.findOrCreate<any>({
+            const [user, created] = await User.findOrCreate<any>({
                 where: {
                     email,
                 },
@@ -173,6 +181,15 @@ class AuthServices {
 
             if (!user) {
                 throw new UnauthorizedError({ message: 'Invalid token' })
+            }
+
+            if (created) {
+                // add user to global conversation
+                await ConversationService.addUserToConversation({
+                    currentUserId: Number(process.env.ADMIN_ID),
+                    conversationUuid: '8fdb644a-c4b2-4ba6-9ba6-42ee1e6c1284', // global conversation uuid
+                    userIds: [user.id as number],
+                })
             }
 
             const { token: accessToken, refreshToken } = this.generateToken({
