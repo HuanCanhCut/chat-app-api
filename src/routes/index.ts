@@ -7,20 +7,16 @@ import messageRoute from './message'
 import notificationRoute from './notification'
 import themeRoute from './theme'
 import userRoute from './user'
-import setUserContextMiddleware from '~/app/middlewares/userContext'
 import verifyToken from '~/app/middlewares/verifyToken'
 
 const route = (app: Express) => {
     app.use('/api/auth', authRoute)
-
-    app.use(verifyToken, setUserContextMiddleware)
-
-    app.use('/api/users', userRoute)
-    app.use('/api/me', meRoute)
-    app.use('/api/notifications', notificationRoute)
-    app.use('/api/conversations', conversationRoute)
-    app.use('/api/messages', messageRoute)
-    app.use('/api/themes', themeRoute)
+    app.use('/api/users', verifyToken, userRoute)
+    app.use('/api/me', verifyToken, meRoute)
+    app.use('/api/notifications', verifyToken, notificationRoute)
+    app.use('/api/conversations', verifyToken, conversationRoute)
+    app.use('/api/messages', verifyToken, messageRoute)
+    app.use('/api/themes', verifyToken, themeRoute)
 }
 
 export default route

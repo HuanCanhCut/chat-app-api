@@ -1,6 +1,3 @@
-import './config/env'
-import setupGlobalErrorHandling from './app/errors/globalError'
-setupGlobalErrorHandling()
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import express, { Request, Response } from 'express'
@@ -9,9 +6,14 @@ import http from 'http'
 import { PeerServer } from 'peer'
 import { Server } from 'socket.io'
 
+import './config/env'
+import setupGlobalErrorHandling from './app/errors/globalError'
+setupGlobalErrorHandling()
+
 import 'express-async-errors'
 import './app/queue'
 import errorHandler from './app/errors/errorHandler'
+import setUserContextMiddleware from './app/middlewares/userContext'
 import * as database from './config/database/index'
 import serviceAccount from './config/firebase/serviceAccount'
 import { redisClient } from './config/redis'
@@ -35,7 +37,7 @@ const corsOptions: cors.CorsOptions = {
         if (allowedOrigins.indexOf(origin) !== -1) {
             callback(null, true)
         } else {
-            callback(new Error('CORS blocked!'))
+            callback(null, false)
         }
     },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -81,6 +83,8 @@ app.use(
 
 app.use(express.json())
 app.use(cookieParser())
+
+app.use(setUserContextMiddleware)
 
 route(app)
 socketIO(io)
