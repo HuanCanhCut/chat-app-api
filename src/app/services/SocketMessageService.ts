@@ -658,7 +658,7 @@ class SocketMessageService {
                         {
                             model: User,
                             as: 'user_reaction',
-                            attributes: [[sequelize.col('full_name'), 'user_reaction_name']],
+                            attributes: ['full_name'],
                         },
                     ],
                     attributes: ['react'],
