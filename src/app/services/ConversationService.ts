@@ -1362,7 +1362,7 @@ class ConversationService {
             }
 
             // @ts-expect-error - id is not required because it is auto-increment
-            const conversation = Conversation.build({
+            const conversation: Conversation & { theme: any } = Conversation.build({
                 uuid: uuidv4(),
                 is_group: false,
             })
@@ -1386,6 +1386,11 @@ class ConversationService {
             }
 
             conversation.setDataValue('members', members)
+            const theme = await ConversationTheme.findByPk(conversation.get('theme_id'))
+
+            if (theme) {
+                conversation.setDataValue('theme', theme)
+            }
             conversation.setDataValue('is_temp', true)
 
             await redisClient.set(`${RedisKey.TEMP_CONVERSATION}${conversation.uuid}`, JSON.stringify(conversation), {

@@ -2,6 +2,7 @@ import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequ
 
 import { sequelize } from '../../config/database'
 import ConversationMember from './ConversationMemberModel'
+import ConversationTheme from './ConversationThemeModel'
 import Message from './MessageModel'
 
 class Conversation extends Model<InferAttributes<Conversation>, InferCreationAttributes<Conversation>> {
@@ -13,6 +14,7 @@ class Conversation extends Model<InferAttributes<Conversation>, InferCreationAtt
     declare uuid: string
     declare last_message?: Message
     declare emoji?: string
+    declare theme?: ConversationTheme
     declare members?: ConversationMember[]
     declare created_at?: Date
     declare updated_at?: Date
