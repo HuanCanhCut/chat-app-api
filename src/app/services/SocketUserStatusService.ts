@@ -40,6 +40,20 @@ class SocketUserStatusService {
         })
     }
 
+    private areAllSocketsDead = async (userId: number) => {
+        const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${userId}`, 0, -1)
+
+        for (const socketId of socketIds) {
+            const isExists = ioInstance.sockets.sockets.has(socketId)
+
+            if (isExists) {
+                return false
+            }
+        }
+
+        return true
+    }
+
     CONNECT = async () => {
         try {
             // Check if user is online in Redis
@@ -71,6 +85,24 @@ class SocketUserStatusService {
 
             // Extend online status periodically
             this.userOnlineInterval = setInterval(async () => {
+                const areAllSocketsDead = await this.areAllSocketsDead(this.currentUserId)
+
+                if (areAllSocketsDead) {
+                    await redisClient.set(
+                        `${RedisKey.USER_ONLINE}${this.currentUserId}`,
+                        JSON.stringify({
+                            is_online: false,
+                            last_online_at: new Date(Date.now() - FOUR_MINUTES * 1000).toISOString(),
+                        }),
+                    )
+
+                    clearInterval(this.userOnlineInterval)
+
+                    this.userOnlineInterval = undefined
+
+                    return
+                }
+
                 await redisClient.set(
                     `${RedisKey.USER_ONLINE}${this.currentUserId}`,
                     JSON.stringify({
