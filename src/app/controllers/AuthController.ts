@@ -29,8 +29,8 @@ class AuthController {
 
         res.status(status)
             .setHeader('Set-Cookie', [
-                `access_token=${token}; max-age=${60820005}; httpOnly; path=/; sameSite=None; secure; Partitioned; domain=${req?.headers.origin?.split('://')[1].split(':')[0]}`,
-                `refresh_token=${refreshToken}; max-age=${Number(process.env.EXPIRED_REFRESH_TOKEN)}; httpOnly; path=/; sameSite=None; secure; Partitioned; domain=${req?.headers.origin?.split('://')[1].split(':')[0]}`,
+                `access_token=${token}; max-age=${60820005}; httpOnly; path=/; sameSite=Lax; secure; Partitioned; domain=${req?.headers.origin?.split('://')[1].split(':')[0]}`,
+                `refresh_token=${refreshToken}; max-age=${Number(process.env.EXPIRED_REFRESH_TOKEN)}; httpOnly; path=/; sameSite=Lax; secure; Partitioned; domain=${req?.headers.origin?.split('://')[1].split(':')[0]}`,
             ])
             .json({
                 data: user,
@@ -114,8 +114,8 @@ class AuthController {
             const { newAccessToken, newRefreshToken } = await AuthService.refreshToken({ refresh_token })
 
             res.setHeader('Set-Cookie', [
-                `access_token=${newAccessToken}; max-age=${60820005}; path=/; sameSite=None; secure; Partitioned; domain=${req?.headers.origin?.split('://')[1].split(':')[0]}`,
-                `refresh_token=${newRefreshToken}; max-age=${Number(process.env.EXPIRED_REFRESH_TOKEN)}; path=/; sameSite=None; secure; Partitioned; domain=${req?.headers.origin?.split('://')[1].split(':')[0]}`,
+                `access_token=${newAccessToken}; max-age=${60820005}; path=/; sameSite=Lax; secure; Partitioned; domain=${req?.headers.origin?.split('://')[1].split(':')[0]}`,
+                `refresh_token=${newRefreshToken}; max-age=${Number(process.env.EXPIRED_REFRESH_TOKEN)}; path=/; sameSite=Lax; secure; Partitioned; domain=${req?.headers.origin?.split('://')[1].split(':')[0]}`,
             ])
                 .status(200)
                 .json({
