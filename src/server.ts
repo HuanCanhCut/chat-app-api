@@ -27,7 +27,7 @@ PeerServer({
     path: '/peerjs',
 })
 
-const allowedOrigins: string[] = ['https://huancanhcut.click', 'https://chatapp.local']
+const allowedOrigins: string[] = ['https://huancanhcut.click', 'https://chatapp.local', 'https://huanpenguin.click']
 
 const corsOptions: cors.CorsOptions = {
     origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
