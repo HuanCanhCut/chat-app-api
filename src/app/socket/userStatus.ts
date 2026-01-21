@@ -1,7 +1,7 @@
 import { Socket } from 'socket.io'
 
 import SocketUserStatusService from '../services/SocketUserStatusService'
-import { ClientToServerEvents, InterServerEvents, ServerToClientEvents } from './type'
+import { ClientToServerEvents, InterServerEvents, ServerToClientEvents } from './types/type'
 
 class userStatusListener {
     constructor(socket: Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents>) {

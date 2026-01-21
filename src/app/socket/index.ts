@@ -3,7 +3,7 @@ import { Server, Socket } from 'socket.io'
 
 import callListener from './call'
 import conversationListener from './conversation'
-import { ClientToServerEvents, InterServerEvents, ServerToClientEvents } from './type'
+import { ClientToServerEvents, InterServerEvents, ServerToClientEvents } from './types'
 import userStatusListener from './userStatus'
 import messageListener from '~/app/socket/message'
 import { redisClient } from '~/config/redis'

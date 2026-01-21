@@ -1,7 +1,7 @@
 import { Server, Socket } from 'socket.io'
 
 import onConnection from '~/app/socket'
-import { ClientToServerEvents, InterServerEvents, ServerToClientEvents } from '~/app/socket/type'
+import { ClientToServerEvents, InterServerEvents, ServerToClientEvents } from '~/app/socket/types'
 
 let ioInstance: Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents>
 

@@ -2,28 +2,93 @@ import express from 'express'
 const router = express.Router()
 import ConversationController from '../app/controllers/ConversationController'
 import upload from '~/app/middlewares/multer'
+import { validate } from '~/app/middlewares/validate'
+import { paginationSchema, querySchema, uuidSchema } from '~/app/validator/api/common'
+import {
+    addUserToConversationSchema,
+    changeConversationEmojiSchema,
+    changeConversationMemberNicknameSchema,
+    changeConversationThemeSchema,
+    createConversationSchema,
+    createTempConversationSchema,
+    designateLeaderSchema,
+    removeLeaderSchema,
+    removeUserFromConversationSchema,
+    renameConversationSchema,
+} from '~/app/validator/api/conversationSchema'
 
-router.get('/', ConversationController.getConversations.bind(ConversationController))
-router.post('/temp', ConversationController.createTempConversation.bind(ConversationController))
-router.post('/', upload.single('avatar'), ConversationController.createConversation.bind(ConversationController))
-router.get('/search', ConversationController.searchConversation.bind(ConversationController))
-router.get('/:uuid', ConversationController.getConversationByUuid.bind(ConversationController))
-router.delete('/:uuid', ConversationController.deleteConversation.bind(ConversationController))
-router.patch('/:uuid/rename', ConversationController.renameConversation.bind(ConversationController))
+router.get('/', validate(paginationSchema), ConversationController.getConversations.bind(ConversationController))
+router.post(
+    '/temp',
+    validate(createTempConversationSchema),
+    ConversationController.createTempConversation.bind(ConversationController),
+)
+router.post(
+    '/',
+    validate(createConversationSchema),
+    upload.single('avatar'),
+    ConversationController.createConversation.bind(ConversationController),
+)
+router.get('/search', validate(querySchema), ConversationController.searchConversation.bind(ConversationController))
+router.get('/:uuid', validate(uuidSchema), ConversationController.getConversationByUuid.bind(ConversationController))
+router.delete('/:uuid', validate(uuidSchema), ConversationController.deleteConversation.bind(ConversationController))
+router.patch(
+    '/:uuid/rename',
+    validate(renameConversationSchema),
+    ConversationController.renameConversation.bind(ConversationController),
+)
 router.patch(
     '/:uuid/avatar',
+    validate(uuidSchema),
     upload.single('avatar'),
     ConversationController.changeConversationAvatar.bind(ConversationController),
 )
-router.patch('/:uuid/theme', ConversationController.changeConversationTheme.bind(ConversationController))
-router.patch('/:uuid/emoji', ConversationController.changeConversationEmoji.bind(ConversationController))
-router.patch('/:uuid/nickname', ConversationController.changeConversationMemberNickname.bind(ConversationController))
-router.post('/:uuid/user', upload.none(), ConversationController.addUserToConversation.bind(ConversationController))
-router.patch('/:uuid/designate-leader', ConversationController.designateLeader.bind(ConversationController))
-router.patch('/:uuid/remove-leader', ConversationController.removeLeader.bind(ConversationController))
-router.delete('/:uuid/user/:member_id', ConversationController.removeUserFromConversation.bind(ConversationController))
-router.delete('/:uuid/leave', ConversationController.leaveConversation.bind(ConversationController))
-router.post('/:uuid/block', ConversationController.blockConversation.bind(ConversationController))
-router.delete('/:uuid/block', ConversationController.unblockConversation.bind(ConversationController))
+router.patch(
+    '/:uuid/theme',
+    validate(changeConversationThemeSchema),
+    ConversationController.changeConversationTheme.bind(ConversationController),
+)
+router.patch(
+    '/:uuid/emoji',
+    validate(changeConversationEmojiSchema),
+    ConversationController.changeConversationEmoji.bind(ConversationController),
+)
+router.patch(
+    '/:uuid/nickname',
+    validate(changeConversationMemberNicknameSchema),
+    ConversationController.changeConversationMemberNickname.bind(ConversationController),
+)
+router.post(
+    '/:uuid/user',
+    validate(addUserToConversationSchema),
+    upload.none(),
+    ConversationController.addUserToConversation.bind(ConversationController),
+)
+router.patch(
+    '/:uuid/designate-leader',
+    validate(designateLeaderSchema),
+    ConversationController.designateLeader.bind(ConversationController),
+)
+router.patch(
+    '/:uuid/remove-leader',
+    validate(removeLeaderSchema),
+    ConversationController.removeLeader.bind(ConversationController),
+)
+router.delete(
+    '/:uuid/user/:member_id',
+    validate(removeUserFromConversationSchema),
+    ConversationController.removeUserFromConversation.bind(ConversationController),
+)
+router.delete(
+    '/:uuid/leave',
+    validate(uuidSchema),
+    ConversationController.leaveConversation.bind(ConversationController),
+)
+router.post('/:uuid/block', validate(uuidSchema), ConversationController.blockConversation.bind(ConversationController))
+router.delete(
+    '/:uuid/block',
+    validate(uuidSchema),
+    ConversationController.unblockConversation.bind(ConversationController),
+)
 
 export default router

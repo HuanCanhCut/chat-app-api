@@ -4,6 +4,13 @@ import { NotFoundError, UnauthorizedError, UnprocessableEntityError } from '../e
 import { RefreshToken } from '../models'
 import AuthService from '../services/AuthService'
 import clearCookie from '../utils/clearCookies'
+import {
+    LoginRequest,
+    LoginWithTokenRequest,
+    RegisterRequest,
+    ResetPasswordRequest,
+    SendVerifyCodeRequest,
+} from '../validator/api/authSchema'
 import { User } from '~/app/models'
 
 class AuthController {
@@ -38,13 +45,9 @@ class AuthController {
     }
 
     // [POST] /auth/register
-    async register(req: Request, res: Response, next: NextFunction) {
+    async register(req: RegisterRequest, res: Response, next: NextFunction) {
         const { email, password } = req.body
         try {
-            if (!email || !password) {
-                return next(new UnprocessableEntityError({ message: 'Email and password are required' }))
-            }
-
             const { token, refreshToken, user } = await AuthService.register({ email, password })
 
             this.sendToClient({ res, user, token, refreshToken, status: 201, req })
@@ -54,13 +57,9 @@ class AuthController {
     }
 
     // [POST] /auth/login
-    async login(req: Request, res: Response, next: NextFunction) {
+    async login(req: LoginRequest, res: Response, next: NextFunction) {
         try {
             const { email, password } = req.body
-
-            if (!email || !password) {
-                return next(new UnprocessableEntityError({ message: 'Email and password are required' }))
-            }
 
             const { token, refreshToken, user } = await AuthService.login({ email, password })
 
@@ -86,13 +85,9 @@ class AuthController {
     }
 
     // [POST] /auth/loginwithtoken
-    async loginWithToken(req: Request, res: Response, next: NextFunction) {
+    async loginWithToken(req: LoginWithTokenRequest, res: Response, next: NextFunction) {
         try {
             const { token } = req.body
-
-            if (!token) {
-                return next(new UnauthorizedError({ message: 'Authorization token is required' }))
-            }
 
             const { token: accessToken, refreshToken, user } = await AuthService.loginWithToken({ token })
 
@@ -132,13 +127,9 @@ class AuthController {
     }
 
     // [GET] /auth/verify
-    async sendVerifyCode(req: Request, res: Response, next: NextFunction) {
+    async sendVerifyCode(req: SendVerifyCodeRequest, res: Response, next: NextFunction) {
         try {
             const { email } = req.body
-
-            if (!email) {
-                return next(new UnprocessableEntityError({ message: 'Email is required' }))
-            }
 
             if (!/^\w+([\\.-]?\w+)*@\w+([\\.-]?\w+)*(\.\w{2,3})+$/.test(email)) {
                 return next(new UnprocessableEntityError({ message: 'Email is invalid' }))
@@ -157,13 +148,9 @@ class AuthController {
     }
 
     // // [POST] /auth/reset-password
-    async resetPassword(req: Request, res: Response, next: NextFunction) {
+    async resetPassword(req: ResetPasswordRequest, res: Response, next: NextFunction) {
         try {
             const { email, code, password } = req.body
-
-            if (!email || !code || !password) {
-                return next(new UnprocessableEntityError({ message: 'Email, code and password are required' }))
-            }
 
             await AuthService.resetPassword({ email, code, password })
 
