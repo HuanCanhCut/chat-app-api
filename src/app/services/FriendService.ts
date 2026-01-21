@@ -9,7 +9,6 @@ import { sequelize } from '~/config/database'
 import { redisClient } from '~/config/redis'
 import { ioInstance } from '~/config/socket'
 import { RedisKey } from '~/enum/redis'
-import { SocketEvent } from '~/enum/socketEvent'
 
 interface SendMakeFriendRequestProps {
     userId: number
@@ -101,7 +100,7 @@ class FriendService {
             const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${Number(friendId)}`, 0, -1)
 
             if (socketIds && socketIds.length > 0) {
-                ioInstance?.to(socketIds).emit(SocketEvent.NEW_NOTIFICATION, notificationData)
+                ioInstance?.to(socketIds).emit('NEW_NOTIFICATION', notificationData)
             }
         } catch (error: any) {
             if (error instanceof AppError) {
@@ -423,7 +422,7 @@ class FriendService {
             const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${Number(userId)}`, 0, -1)
 
             if (socketIds && socketIds.length > 0) {
-                ioInstance.to(socketIds).emit(SocketEvent.NEW_NOTIFICATION, notificationData)
+                ioInstance.to(socketIds).emit('NEW_NOTIFICATION', notificationData)
             }
 
             await redisClient.del(`${RedisKey.FRIENDS_IDS_OF_USER}${currentUserId}`)
@@ -467,7 +466,7 @@ class FriendService {
             const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${Number(currentUserId)}`, 0, -1)
 
             if (socketIds && socketIds.length > 0) {
-                ioInstance.to(socketIds).emit(SocketEvent.REMOVE_NOTIFICATION, { notification_id: notification?.id })
+                ioInstance.to(socketIds).emit('REMOVE_NOTIFICATION', { notification_id: notification?.id })
             }
         } catch (error: any) {
             if (error instanceof AppError) {
@@ -528,7 +527,7 @@ class FriendService {
             })
 
             if (socketIds && socketIds.length > 0) {
-                ioInstance.to(socketIds).emit(SocketEvent.REMOVE_NOTIFICATION, { notification_id: notification?.id })
+                ioInstance.to(socketIds).emit('REMOVE_NOTIFICATION', { notification_id: notification?.id ?? 0 })
             }
 
             if (notification) {

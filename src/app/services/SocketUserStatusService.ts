@@ -4,7 +4,6 @@ import FriendService from '~/app/services/FriendService'
 import { redisClient } from '~/config/redis'
 import { ioInstance } from '~/config/socket'
 import { RedisKey } from '~/enum/redis'
-import { SocketEvent } from '~/enum/socketEvent'
 
 const FIVE_MINUTES = 60 * 5
 const FOUR_MINUTES = 60 * 4
@@ -30,7 +29,7 @@ class SocketUserStatusService {
                 const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${friend.user.id}`, 0, -1)
 
                 if (socketIds && socketIds.length > 0) {
-                    ioInstance.to(socketIds).emit(SocketEvent.USER_STATUS, {
+                    ioInstance.to(socketIds).emit('USER_STATUS', {
                         user_id: this.currentUserId,
                         is_online: isOnline,
                         last_online_at: lastOnlineAt,

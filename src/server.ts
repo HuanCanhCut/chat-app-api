@@ -14,6 +14,7 @@ import 'express-async-errors'
 import './app/queue'
 import errorHandler from './app/errors/errorHandler'
 import setUserContextMiddleware from './app/middlewares/userContext'
+import { ClientToServerEvents, InterServerEvents, ServerToClientEvents } from './app/socket/type'
 import * as database from './config/database/index'
 import serviceAccount from './config/firebase/serviceAccount'
 import { redisClient } from './config/redis'
@@ -49,7 +50,7 @@ const corsOptions: cors.CorsOptions = {
 
 app.use(cors(corsOptions))
 
-const io = new Server(server, {
+const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents>(server, {
     cors: {
         origin: function (origin, callback) {
             if (!origin) return callback(null, true)

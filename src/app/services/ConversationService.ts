@@ -11,7 +11,6 @@ import { sequelize } from '~/config/database'
 import { redisClient } from '~/config/redis'
 import { ioInstance } from '~/config/socket'
 import { RedisKey } from '~/enum/redis'
-import { SocketEvent } from '~/enum/socketEvent'
 
 class ConversationService {
     async userAllowedToConversation({
@@ -328,7 +327,7 @@ class ConversationService {
                 throw new InternalServerError({ message: 'Failed to rename conversation' })
             }
 
-            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_RENAMED, {
+            ioInstance.to(conversationUuid).emit('CONVERSATION_RENAMED', {
                 conversation_uuid: conversationUuid,
                 key: 'name',
                 value: conversationName,
@@ -395,7 +394,7 @@ class ConversationService {
                 throw new InternalServerError({ message: 'Failed to change conversation avatar' })
             }
 
-            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_AVATAR_CHANGED, {
+            ioInstance.to(conversationUuid).emit('CONVERSATION_AVATAR_CHANGED', {
                 conversation_uuid: conversationUuid,
                 key: 'avatar',
                 value: result?.secure_url,
@@ -456,13 +455,13 @@ class ConversationService {
                 throw new InternalServerError({ message: 'Failed to change conversation theme' })
             }
 
-            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_THEME_CHANGED, {
+            ioInstance.to(conversationUuid).emit('CONVERSATION_THEME_CHANGED', {
                 conversation_uuid: conversationUuid,
                 key: 'theme',
                 value: theme,
             })
 
-            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_EMOJI_CHANGED, {
+            ioInstance.to(conversationUuid).emit('CONVERSATION_EMOJI_CHANGED', {
                 conversation_uuid: conversationUuid,
                 key: 'emoji',
                 value: theme.emoji,
@@ -522,7 +521,7 @@ class ConversationService {
                 throw new InternalServerError({ message: 'Failed to change conversation emoji' })
             }
 
-            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_EMOJI_CHANGED, {
+            ioInstance.to(conversationUuid).emit('CONVERSATION_EMOJI_CHANGED', {
                 conversation_uuid: conversationUuid,
                 key: 'emoji',
                 value: unifiedEmoji,
@@ -601,7 +600,7 @@ class ConversationService {
                 throw new InternalServerError({ message: 'Failed to change conversation member nickname' })
             }
 
-            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_MEMBER_NICKNAME_CHANGED, {
+            ioInstance.to(conversationUuid).emit('CONVERSATION_MEMBER_NICKNAME_CHANGED', {
                 conversation_uuid: conversationUuid,
                 user_id: userId,
                 key: 'nickname',
@@ -752,7 +751,7 @@ class ConversationService {
                 }),
             )
 
-            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_MEMBER_ADDED, {
+            ioInstance.to(conversationUuid).emit('CONVERSATION_MEMBER_ADDED', {
                 conversation_uuid: conversationUuid,
                 members,
             })
@@ -767,7 +766,7 @@ class ConversationService {
                     )
 
                     if (socketIds && socketIds.length > 0) {
-                        ioInstance.to(socketIds).emit(SocketEvent.CONVERSATION_MEMBER_JOINED)
+                        ioInstance.to(socketIds).emit('CONVERSATION_MEMBER_JOINED')
                     }
                 }
             }
@@ -883,7 +882,7 @@ class ConversationService {
                 throw new InternalServerError({ message: 'Failed to change leader role in conversation' })
             }
 
-            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_LEADER_CHANGED, {
+            ioInstance.to(conversationUuid).emit('CONVERSATION_LEADER_CHANGED', {
                 conversation_uuid: conversationUuid,
                 key: 'role',
                 value: role,
@@ -997,7 +996,7 @@ class ConversationService {
 
             await member.destroy()
 
-            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_MEMBER_REMOVED, {
+            ioInstance.to(conversationUuid).emit('CONVERSATION_MEMBER_REMOVED', {
                 conversation_uuid: conversationUuid,
                 member_id: memberId,
             })
@@ -1098,7 +1097,7 @@ class ConversationService {
                 currentUserId,
             })
 
-            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_MEMBER_LEAVED, {
+            ioInstance.to(conversationUuid).emit('CONVERSATION_MEMBER_LEAVED', {
                 conversation_uuid: conversationUuid,
                 member_id: userMemberId,
             })
@@ -1142,7 +1141,7 @@ class ConversationService {
                 ],
             })
 
-            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_BLOCKED, {
+            ioInstance.to(conversationUuid).emit('CONVERSATION_BLOCKED', {
                 conversation_uuid: conversationUuid,
                 key: 'block_conversation',
                 value: userBlock,
@@ -1191,7 +1190,7 @@ class ConversationService {
 
             await block.destroy()
 
-            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_UNBLOCKED, {
+            ioInstance.to(conversationUuid).emit('CONVERSATION_UNBLOCKED', {
                 conversation_uuid: conversationUuid,
                 key: 'block_conversation',
                 value: null,
@@ -1329,7 +1328,7 @@ class ConversationService {
                         const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${userId}`, 0, -1)
 
                         if (socketIds && socketIds.length > 0) {
-                            ioInstance?.to(socketIds).emit(SocketEvent.NEW_CONVERSATION, conversation)
+                            ioInstance?.to(socketIds).emit('NEW_CONVERSATION', conversation)
                         }
                     }
                 }

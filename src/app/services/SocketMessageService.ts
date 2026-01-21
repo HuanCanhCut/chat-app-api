@@ -1,11 +1,8 @@
-import { QueryTypes } from 'sequelize'
-import { Op } from 'sequelize'
+import { Op, QueryTypes } from 'sequelize'
 import { Socket } from 'socket.io'
 
 import { InternalServerError } from '../errors/errors'
-import { Block, Conversation, Message, MessageStatus } from '../models'
-import { ConversationMember } from '../models'
-import { User } from '../models'
+import { Block, Conversation, ConversationMember, Message, MessageStatus, User } from '../models'
 import MessageReaction from '../models/MessageReactionModel'
 import MessageService from '../services/MessageService'
 import ConversationService from './ConversationService'
@@ -13,7 +10,6 @@ import { sequelize } from '~/config/database'
 import { redisClient } from '~/config/redis'
 import { ioInstance } from '~/config/socket'
 import { RedisKey } from '~/enum/redis'
-import { SocketEvent } from '~/enum/socketEvent'
 import logger from '~/logger/logger'
 import { TempConversationModel } from '~/type'
 
@@ -289,7 +285,7 @@ class SocketMessageService {
                     last_message: newMessage,
                 }
 
-                ioInstance.to(conversation_uuid).emit(SocketEvent.NEW_MESSAGE, { conversation })
+                ioInstance.to(conversation_uuid).emit('NEW_MESSAGE', { conversation })
             } else {
                 // get conversation from database
                 const conversation = await ConversationService.getConversationByUuid({
@@ -315,7 +311,7 @@ class SocketMessageService {
                         last_message: newMessage,
                     }
 
-                    ioInstance.to(conversation_uuid).emit(SocketEvent.NEW_MESSAGE, { conversation: conversationData })
+                    ioInstance.to(conversation_uuid).emit('NEW_MESSAGE', { conversation: conversationData })
                 }
             }
 
@@ -347,7 +343,7 @@ class SocketMessageService {
                                     last_message: newMessage,
                                 }
 
-                                ioInstance.to(socketId).emit(SocketEvent.NEW_MESSAGE, {
+                                ioInstance.to(socketId).emit('NEW_MESSAGE', {
                                     conversation: conversationData,
                                 })
                             }
@@ -472,7 +468,7 @@ class SocketMessageService {
 
             ioInstance
                 .to(conversation_uuid)
-                .emit(SocketEvent.UPDATE_READ_MESSAGE, { message, user_read_id: this.currentUserId, conversation_uuid })
+                .emit('UPDATE_READ_MESSAGE', { message, user_read_id: this.currentUserId, conversation_uuid })
 
             const userIds = await this.getUsersOnlineStatus(conversation_uuid)
 
@@ -485,7 +481,7 @@ class SocketMessageService {
                     const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${user.id}`, 0, -1)
 
                     if (socketIds && socketIds.length > 0) {
-                        ioInstance.to(socketIds).emit(SocketEvent.UPDATE_READ_MESSAGE, {
+                        ioInstance.to(socketIds).emit('UPDATE_READ_MESSAGE', {
                             message,
                             user_read_id: this.currentUserId,
                         })
@@ -595,9 +591,7 @@ class SocketMessageService {
                 }),
             ])
 
-            ioInstance
-                .to(conversation_uuid)
-                .emit(SocketEvent.REACT_MESSAGE, { reaction, top_reactions, total_reactions })
+            ioInstance.to(conversation_uuid).emit('REACT_MESSAGE', { reaction, top_reactions, total_reactions })
         } catch (error) {
             logger.error('REACT_MESSAGE', error)
         }
@@ -674,7 +668,7 @@ class SocketMessageService {
                 }),
             ])
 
-            ioInstance.to(conversation_uuid).emit(SocketEvent.REMOVE_REACTION, {
+            ioInstance.to(conversation_uuid).emit('REMOVE_REACTION', {
                 message_id,
                 react,
                 top_reactions,
@@ -695,7 +689,7 @@ class SocketMessageService {
         is_typing: boolean
     }) => {
         try {
-            this.socket?.broadcast.to(conversation_uuid).emit(SocketEvent.MESSAGE_TYPING, {
+            this.socket?.broadcast.to(conversation_uuid).emit('MESSAGE_TYPING', {
                 user_id,
                 is_typing,
                 conversation_uuid,

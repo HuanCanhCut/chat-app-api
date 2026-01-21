@@ -32,7 +32,6 @@ import { sequelize } from '~/config/database'
 import { redisClient } from '~/config/redis'
 import { ioInstance } from '~/config/socket'
 import { RedisKey } from '~/enum/redis'
-import { SocketEvent } from '~/enum/socketEvent'
 
 class MessageService {
     async createSystemMessage({
@@ -796,7 +795,7 @@ class MessageService {
             }
 
             if (revokeType === 'for-other') {
-                ioInstance.to(conversationUuid).emit(SocketEvent.MESSAGE_REVOKE, {
+                ioInstance.to(conversationUuid).emit('MESSAGE_REVOKE', {
                     message_id: messageId,
                     conversation_uuid: conversationUuid,
                 })
