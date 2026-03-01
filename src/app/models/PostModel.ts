@@ -1,35 +1,24 @@
 import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
 
 import { sequelize } from '../../config/database'
-import { UserModel } from '~/type'
 
-class MessageReaction extends Model<InferAttributes<MessageReaction>, InferCreationAttributes<MessageReaction>> {
-    declare id?: number
-    declare message_id: number
+class Post extends Model<InferAttributes<Post>, InferCreationAttributes<Post>> {
+    declare id: number
     declare user_id: number
-    declare react: string
+    declare caption?: string
+    declare media_url?: string
+    declare media_type?: 'image' | 'video'
+    declare is_public?: boolean
+    declare deleted_at?: Date
     declare created_at?: Date
     declare updated_at?: Date
-
-    declare user_reaction?: UserModel
 }
-
-MessageReaction.init(
+Post.init(
     {
         id: {
             type: DataTypes.INTEGER,
             primaryKey: true,
             autoIncrement: true,
-        },
-        message_id: {
-            type: DataTypes.INTEGER,
-            allowNull: false,
-            references: {
-                model: 'messages',
-                key: 'id',
-            },
-            onDelete: 'CASCADE',
-            onUpdate: 'CASCADE',
         },
         user_id: {
             type: DataTypes.INTEGER,
@@ -41,15 +30,29 @@ MessageReaction.init(
             onDelete: 'CASCADE',
             onUpdate: 'CASCADE',
         },
-        react: {
+        caption: {
+            type: DataTypes.TEXT,
+            allowNull: true,
+        },
+        media_url: {
             type: DataTypes.STRING,
+            allowNull: true,
+        },
+        media_type: {
+            type: DataTypes.ENUM('image', 'video'),
+            allowNull: true,
+        },
+        is_public: {
+            type: DataTypes.BOOLEAN,
             allowNull: false,
+            defaultValue: true,
         },
     },
     {
-        tableName: 'message_reactions',
+        tableName: 'posts',
         sequelize,
+        paranoid: true,
     },
 )
 
-export default MessageReaction
+export default Post

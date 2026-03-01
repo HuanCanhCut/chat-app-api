@@ -3,7 +3,7 @@ import { Socket } from 'socket.io'
 
 import { InternalServerError } from '../errors/errors'
 import { Block, Conversation, ConversationMember, Message, MessageStatus, User } from '../models'
-import MessageReaction from '../models/MessageReactionModel'
+import Reaction from '../models/ReactionModel'
 import MessageService from '../services/MessageService'
 import ConversationService from './ConversationService'
 import { sequelize } from '~/config/database'
@@ -532,10 +532,11 @@ class SocketMessageService {
                 return
             }
 
-            const hasReaction = await MessageReaction.findOne({
+            const hasReaction = await Reaction.findOne({
                 where: {
-                    message_id: message_id,
+                    reactionable_id: message_id,
                     user_id: user_react_id,
+                    reactionable_type: 'Message',
                 },
             })
 
@@ -545,15 +546,16 @@ class SocketMessageService {
                 hasReaction.react = react
                 messageReaction = await hasReaction.save()
             } else {
-                messageReaction = await MessageReaction.create({
-                    message_id: message_id,
+                messageReaction = await Reaction.create({
+                    reactionable_id: message_id,
                     react,
                     user_id: user_react_id,
+                    reactionable_type: 'Message',
                 })
             }
 
             const [reaction, top_reactions, total_reactions] = await Promise.all([
-                MessageReaction.findByPk(messageReaction.id, {
+                Reaction.findByPk(messageReaction.id, {
                     include: [
                         {
                             model: User,
@@ -565,9 +567,10 @@ class SocketMessageService {
                     ],
                 }),
 
-                MessageReaction.findAll({
+                Reaction.findAll({
                     where: {
-                        message_id: message_id,
+                        reactionable_id: message_id,
+                        reactionable_type: 'Message',
                     },
                     include: [
                         {
@@ -584,9 +587,10 @@ class SocketMessageService {
                     limit: 2,
                 }),
 
-                MessageReaction.count({
+                Reaction.count({
                     where: {
-                        message_id: message_id,
+                        reactionable_id: message_id,
+                        reactionable_type: 'Message',
                     },
                 }),
             ])
@@ -637,16 +641,18 @@ class SocketMessageService {
             }
 
             const [, top_reactions, total_reactions] = await Promise.all([
-                await MessageReaction.destroy({
+                await Reaction.destroy({
                     where: {
-                        message_id: message_id,
+                        reactionable_id: message_id,
+                        reactionable_type: 'Message',
                         user_id: user_reaction_id,
                     },
                 }),
 
-                MessageReaction.findAll({
+                Reaction.findAll({
                     where: {
-                        message_id: message_id,
+                        reactionable_id: message_id,
+                        reactionable_type: 'Message',
                     },
                     include: [
                         {
@@ -661,9 +667,10 @@ class SocketMessageService {
                     limit: 2,
                 }),
 
-                MessageReaction.count({
+                Reaction.count({
                     where: {
-                        message_id: message_id,
+                        reactionable_id: message_id,
+                        reactionable_type: 'Message',
                     },
                 }),
             ])

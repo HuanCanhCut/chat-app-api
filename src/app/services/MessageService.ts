@@ -25,7 +25,7 @@ import {
 } from '../errors/errors'
 import { Conversation, Message, MessageStatus, User } from '../models'
 import DeletedConversation from '../models/DeletedConversation'
-import MessageReaction from '../models/MessageReactionModel'
+import Reaction from '../models/ReactionModel'
 import ConversationService from './ConversationService'
 import SocketMessageService from './SocketMessageService'
 import { sequelize } from '~/config/database'
@@ -372,9 +372,10 @@ class MessageService {
 
             const promises = messages.map(async (message) => {
                 const [top_reactions, total_reactions] = await Promise.all([
-                    MessageReaction.findAll({
+                    Reaction.findAll({
                         where: {
-                            message_id: message.id,
+                            reactionable_id: message.id,
+                            reactionable_type: 'Message',
                         },
                         include: [
                             {
@@ -391,9 +392,10 @@ class MessageService {
                         limit: 2,
                     }),
 
-                    MessageReaction.count({
+                    Reaction.count({
                         where: {
-                            message_id: message.id,
+                            reactionable_id: message.id,
+                            reactionable_type: 'Message',
                         },
                     }),
 
@@ -656,10 +658,11 @@ class MessageService {
         page: number
     }) {
         try {
-            const { rows: reactions, count } = await MessageReaction.findAndCountAll({
+            const { rows: reactions, count } = await Reaction.findAndCountAll({
                 distinct: true,
                 where: {
-                    message_id: messageId,
+                    reactionable_id: messageId,
+                    reactionable_type: 'Message',
                     ...(type !== 'all' && {
                         react: type as string,
                     }),
@@ -694,9 +697,10 @@ class MessageService {
 
     async getReactionsTypes({ messageId }: { messageId: number }) {
         try {
-            const types = await MessageReaction.findAll({
+            const types = await Reaction.findAll({
                 where: {
-                    message_id: messageId,
+                    reactionable_id: messageId,
+                    reactionable_type: 'Message',
                 },
                 attributes: ['react', [sequelize.fn('COUNT', sequelize.col('react')), 'count']],
                 group: ['react'],

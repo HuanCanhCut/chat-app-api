@@ -1,13 +1,15 @@
 import Block from './BlockModel'
+import Comment from './CommentModel'
 import ConversationMember from './ConversationMemberModel'
 import Conversation from './ConversationModel'
 import ConversationTheme from './ConversationThemeModel'
 import DeletedConversation from './DeletedConversation'
 import Friendships from './FriendshipsModel'
 import Message from './MessageModel'
-import MessageReaction from './MessageReactionModel'
 import MessageStatus from './MessageStatusModel'
 import Notification from './NotificationModel'
+import Post from './PostModel'
+import Reaction from './ReactionModel'
 import RefreshToken from './RefreshTokenModel'
 import SearchHistory from './SearchHistoryModel'
 import User from './UserModel'
@@ -82,14 +84,56 @@ const associations = () => {
     User.hasMany(MessageStatus, { foreignKey: 'receiver_id', as: 'message_status' })
 
     /**
-     * Message react model
+     * Reaction model
      */
-    User.hasMany(MessageReaction, { foreignKey: 'user_id', as: 'reactions' })
-    MessageReaction.belongsTo(User, { foreignKey: 'user_id', as: 'user_reaction' })
+    User.hasMany(Reaction, { foreignKey: 'user_id', as: 'reactions' })
+    Reaction.belongsTo(User, { foreignKey: 'user_id', as: 'user_reaction' })
 
-    Message.hasMany(MessageReaction, { foreignKey: 'message_id', as: 'reactions' })
-    MessageReaction.belongsTo(Message, { foreignKey: 'message_id', as: 'message' })
+    Message.hasMany(Reaction, {
+        foreignKey: 'reactionable_id',
+        as: 'message_reactions',
+        constraints: false,
+        scope: { reactionable_type: 'Message' },
+    })
 
+    Reaction.belongsTo(Message, {
+        foreignKey: 'reactionable_id',
+        as: 'message_reactionable',
+        constraints: false,
+        scope: { reactionable_type: 'Message' },
+    })
+
+    Post.hasMany(Reaction, {
+        foreignKey: 'reactionable_id',
+        as: 'post_reactions',
+        constraints: false,
+        scope: { reactionable_type: 'Post' },
+    })
+
+    Reaction.belongsTo(Post, {
+        foreignKey: 'reactionable_id',
+        as: 'post_reactionable',
+        constraints: false,
+        scope: { reactionable_type: 'Post' },
+    })
+
+    Comment.hasMany(Reaction, {
+        foreignKey: 'reactionable_id',
+        as: 'comment_reactions',
+        constraints: false,
+        scope: { reactionable_type: 'Comment' },
+    })
+
+    Reaction.belongsTo(Comment, {
+        foreignKey: 'reactionable_id',
+        as: 'comment_reactionable',
+        constraints: false,
+        scope: { reactionable_type: 'Comment' },
+    })
+
+    /**
+     * Message parent model
+     */
     Message.hasMany(Message, { foreignKey: 'parent_id', as: 'children' })
     Message.belongsTo(Message, { foreignKey: 'parent_id', as: 'parent' })
 
