@@ -17,7 +17,6 @@ export const validate = (schema: z.ZodSchema) => {
             next()
         } catch (error) {
             if (error instanceof ZodError) {
-                // Format errors cho frontend dễ đọc
                 const errors = error.issues.map((issue) => ({
                     field: issue.path.join('.'),
                     message: issue.message,

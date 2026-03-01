@@ -11,9 +11,7 @@ export const registerSchema = z.object({
 })
 
 export const loginSchema = z.object({
-    body: {
-        ...registerSchema.shape.body,
-    },
+    body: registerSchema.extend({}).shape.body,
 })
 
 export const loginWithTokenSchema = z.object({
