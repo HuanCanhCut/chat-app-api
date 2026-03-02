@@ -1,6 +1,7 @@
 import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
 
 import { sequelize } from '../../config/database'
+import Reaction from './ReactionModel'
 
 class Post extends Model<InferAttributes<Post>, InferCreationAttributes<Post>> {
     declare id?: number
@@ -12,6 +13,12 @@ class Post extends Model<InferAttributes<Post>, InferCreationAttributes<Post>> {
     declare deleted_at?: Date
     declare created_at?: Date
     declare updated_at?: Date
+
+    /**
+     * Virtual fields
+     */
+    declare top_reactions?: Reaction[]
+    declare total_reactions?: number
 }
 Post.init(
     {

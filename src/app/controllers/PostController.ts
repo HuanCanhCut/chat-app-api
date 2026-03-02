@@ -1,6 +1,8 @@
 import { NextFunction, Response } from 'express'
 
+import { responsePagination } from '../response/responsePagination'
 import PostService from '../services/PostService'
+import { PaginationRequest } from '../validator/api/common'
 import { CreatePostRequest } from '../validator/api/postSchema'
 
 class PostController {
@@ -21,6 +23,27 @@ class PostController {
             res.status(201).json({
                 data: post,
             })
+        } catch (error) {
+            return next(error)
+        }
+    }
+
+    getPosts = async (req: PaginationRequest, res: Response, next: NextFunction) => {
+        try {
+            const { page, per_page } = req.query
+
+            const { posts, total } = await PostService.getPost({ page: Number(page), per_page: Number(per_page) })
+
+            res.json(
+                responsePagination({
+                    req,
+                    data: posts,
+                    total,
+                    count: posts.length,
+                    current_page: Number(page),
+                    per_page: Number(per_page),
+                }),
+            )
         } catch (error) {
             return next(error)
         }
