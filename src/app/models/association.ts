@@ -139,6 +139,13 @@ const associations = () => {
     Post.belongsTo(User, { foreignKey: 'user_id', as: 'user' })
 
     /**
+     * User comment post model
+     */
+
+    User.hasMany(Comment, { foreignKey: 'user_id', as: 'comments' })
+    Comment.belongsTo(User, { foreignKey: 'user_id', as: 'user' })
+
+    /**
      * Message parent model
      */
     Message.hasMany(Message, { foreignKey: 'parent_id', as: 'children' })

@@ -35,8 +35,6 @@ class AuthController {
             refresh_token: refreshToken,
         })
 
-        console.log(token)
-
         setCookie({
             res,
             cookies: [

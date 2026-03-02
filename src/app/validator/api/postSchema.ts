@@ -24,9 +24,21 @@ export const getPostReactionsSchema = z.object({
     }),
 })
 
+export const getPostCommentSchema = z.object({
+    params: idSchema.shape.params,
+    query: paginationSchema.shape.query.extend({
+        parent_id: z.string().optional(),
+    }),
+})
+
 export type CreatePostRequest = TypedRequest<z.infer<typeof createPostSchema>['body']>
 export type GetPostReactionsRequest = TypedRequest<
     any,
     z.infer<typeof getPostReactionsSchema>['params'],
     z.infer<typeof getPostReactionsSchema>['query']
+>
+export type GetPostCommentsRequest = TypedRequest<
+    any,
+    z.infer<typeof getPostCommentSchema>['params'],
+    z.infer<typeof getPostCommentSchema>['query']
 >

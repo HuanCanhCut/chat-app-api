@@ -4,7 +4,7 @@ import { responsePagination } from '../response/responsePagination'
 import PostService from '../services/PostService'
 import ReactionService from '../services/ReactionService'
 import { PaginationRequest } from '../validator/api/common'
-import { CreatePostRequest, GetPostReactionsRequest } from '../validator/api/postSchema'
+import { CreatePostRequest, GetPostCommentsRequest, GetPostReactionsRequest } from '../validator/api/postSchema'
 
 class PostController {
     createPost = async (req: CreatePostRequest, res: Response, next: NextFunction) => {
@@ -69,6 +69,33 @@ class PostController {
                     data: reactions,
                     total,
                     count: reactions.length,
+                    current_page: Number(page),
+                    per_page: Number(per_page),
+                }),
+            )
+        } catch (error) {
+            return next(error)
+        }
+    }
+
+    getPostComments = async (req: GetPostCommentsRequest, res: Response, next: NextFunction) => {
+        try {
+            const { id } = req.params
+            const { page, per_page, parent_id } = req.query
+
+            const { comments, total } = await PostService.getPostComment({
+                post_id: Number(id),
+                page: Number(page),
+                per_page: Number(per_page),
+                parent_id: Number(parent_id) || null,
+            })
+
+            res.json(
+                responsePagination({
+                    req,
+                    data: comments,
+                    total,
+                    count: comments.length,
                     current_page: Number(page),
                     per_page: Number(per_page),
                 }),

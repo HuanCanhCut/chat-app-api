@@ -7,6 +7,7 @@ class Comment extends Model<InferAttributes<Comment>, InferCreationAttributes<Co
     declare post_id: number
     declare user_id: number
     declare content: string
+    declare parent_id?: number | null
     declare deleted_at?: Date
     declare created_at?: Date
     declare updated_at?: Date
@@ -33,9 +34,19 @@ Comment.init(
             type: DataTypes.TEXT,
             allowNull: false,
         },
+        parent_id: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            references: {
+                model: 'comments',
+                key: 'id',
+            },
+            onDelete: 'CASCADE',
+            onUpdate: 'CASCADE',
+        },
     },
     {
-        tableName: 'Comments',
+        tableName: 'comments',
         sequelize,
         paranoid: true,
     },

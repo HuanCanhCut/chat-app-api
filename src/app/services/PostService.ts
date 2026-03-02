@@ -1,5 +1,8 @@
+import { Op } from 'sequelize'
+
 import { AppError, InternalServerError } from '../errors/errors'
 import { User } from '../models'
+import Comment from '../models/CommentModel'
 import Post from '../models/PostModel'
 import Reaction from '../models/ReactionModel'
 import { sequelize } from '~/config/database'
@@ -63,6 +66,19 @@ class PostService {
                                 )`),
                             'comments_count',
                         ],
+                        [
+                            sequelize.literal(`
+                                (
+                                    SELECT 
+                                        COUNT(1) 
+                                    FROM 
+                                        reactions 
+                                    WHERE 
+                                        reactions.reactionable_id = Post.id AND
+                                        reactions.reactionable_type = 'Post'
+                                )`),
+                            'reactions_count',
+                        ],
                     ],
                 },
                 order: [['created_at', 'DESC']],
@@ -70,47 +86,120 @@ class PostService {
                 offset: (page - 1) * per_page,
             })
 
-            const promises = posts.map(async (post) => {
-                const [top_reactions, total_reactions] = await Promise.all([
-                    Reaction.findAll({
-                        where: {
-                            reactionable_id: post.id,
-                            reactionable_type: 'Post',
-                        },
-                        include: [
-                            {
-                                model: User,
-                                as: 'user_reaction',
-                                attributes: {
-                                    exclude: ['password', 'email'],
-                                },
-                            },
-                        ],
-                        group: ['react'],
-                        order: [[sequelize.fn('COUNT', sequelize.col('react')), 'DESC']],
-                        limit: 2,
-                    }),
+            const postIds = posts.map((post) => post.id)
 
-                    Reaction.count({
-                        where: {
-                            reactionable_id: post.id,
-                            reactionable_type: 'Post',
-                        },
-                    }),
-                ])
+            const topReactions = await Reaction.findAll({
+                where: {
+                    reactionable_id: {
+                        [Op.in]: postIds as number[],
+                    },
+                    reactionable_type: 'Post',
+                },
+                attributes: ['react', 'reactionable_id'],
+                group: ['react', 'reactionable_id'],
+                order: [[sequelize.fn('COUNT', sequelize.col('react')), 'DESC']],
+            })
 
-                if (top_reactions.length > 0) {
-                    post.dataValues.top_reactions = top_reactions.slice(0, 2)
+            const topReactionsMap = topReactions.reduce((acc: Record<string, Reaction[]>, curr) => {
+                if (!acc[curr.reactionable_id]) {
+                    acc[curr.reactionable_id] = []
                 }
 
-                post.dataValues.total_reactions = total_reactions
+                if (acc[curr.reactionable_id].length <= 2) {
+                    acc[curr.reactionable_id].push(curr)
+                }
+
+                return acc
+            }, {})
+
+            posts.forEach((post) => {
+                post.setDataValue('top_reactions', topReactionsMap[post.id as number])
 
                 return post
             })
 
-            const postData = await Promise.all(promises)
+            // const promises = posts.map(async (post) => {
+            //     const [top_reactions, total_reactions] = await Promise.all([
+            //         Reaction.findAll({
+            //             where: {
+            //                 reactionable_id: post.id,
+            //                 reactionable_type: 'Post',
+            //             },
+            //             include: [
+            //                 {
+            //                     model: User,
+            //                     as: 'user_reaction',
+            //                     attributes: {
+            //                         exclude: ['password', 'email'],
+            //                     },
+            //                 },
+            //             ],
+            //             group: ['react'],
+            //             order: [[sequelize.fn('COUNT', sequelize.col('react')), 'DESC']],
+            //             limit: 2,
+            //         }),
 
-            return { posts: postData, total }
+            //         Reaction.count({
+            //             where: {
+            //                 reactionable_id: post.id,
+            //                 reactionable_type: 'Post',
+            //             },
+            //         }),
+            //     ])
+
+            //     if (top_reactions.length > 0) {
+            //         post.dataValues.top_reactions = top_reactions.slice(0, 2)
+            //     }
+
+            //     post.dataValues.total_reactions = total_reactions
+
+            //     return post
+            // })
+
+            // const postData = await Promise.all(promises)
+
+            return { posts, total }
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            }
+
+            throw new InternalServerError({ message: error.message + ' ' + error.stack })
+        }
+    }
+
+    getPostComment = async ({
+        post_id,
+        page,
+        per_page,
+        parent_id,
+    }: {
+        post_id: number
+        page: number
+        per_page: number
+        parent_id?: number | null
+    }) => {
+        try {
+            const { rows: comments, count: total } = await Comment.findAndCountAll({
+                distinct: true,
+                include: {
+                    model: User,
+                    as: 'user',
+                    attributes: {
+                        exclude: ['password', 'email'],
+                    },
+                },
+                where: {
+                    post_id,
+                    parent_id: parent_id ? parent_id : { [Op.is]: null },
+                },
+                limit: per_page,
+                offset: (page - 1) * per_page,
+                order: [['id', 'DESC']],
+                logging: console.log,
+            })
+
+            return { comments, total }
         } catch (error: any) {
             if (error instanceof AppError) {
                 throw error
