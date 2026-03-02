@@ -1,11 +1,12 @@
 import { Op } from 'sequelize'
 
-import { AppError, InternalServerError } from '../errors/errors'
+import { AppError, InternalServerError, NotFoundError } from '../errors/errors'
 import { User } from '../models'
 import Comment from '../models/CommentModel'
 import Post from '../models/PostModel'
 import Reaction from '../models/ReactionModel'
 import { sequelize } from '~/config/database'
+import { PostReactionUnified } from '~/types/reactionType'
 
 class PostService {
     createPost = async ({
@@ -118,46 +119,6 @@ class PostService {
                 return post
             })
 
-            // const promises = posts.map(async (post) => {
-            //     const [top_reactions, total_reactions] = await Promise.all([
-            //         Reaction.findAll({
-            //             where: {
-            //                 reactionable_id: post.id,
-            //                 reactionable_type: 'Post',
-            //             },
-            //             include: [
-            //                 {
-            //                     model: User,
-            //                     as: 'user_reaction',
-            //                     attributes: {
-            //                         exclude: ['password', 'email'],
-            //                     },
-            //                 },
-            //             ],
-            //             group: ['react'],
-            //             order: [[sequelize.fn('COUNT', sequelize.col('react')), 'DESC']],
-            //             limit: 2,
-            //         }),
-
-            //         Reaction.count({
-            //             where: {
-            //                 reactionable_id: post.id,
-            //                 reactionable_type: 'Post',
-            //             },
-            //         }),
-            //     ])
-
-            //     if (top_reactions.length > 0) {
-            //         post.dataValues.top_reactions = top_reactions.slice(0, 2)
-            //     }
-
-            //     post.dataValues.total_reactions = total_reactions
-
-            //     return post
-            // })
-
-            // const postData = await Promise.all(promises)
-
             return { posts, total }
         } catch (error: any) {
             if (error instanceof AppError) {
@@ -200,6 +161,78 @@ class PostService {
             })
 
             return { comments, total }
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            }
+
+            throw new InternalServerError({ message: error.message + ' ' + error.stack })
+        }
+    }
+
+    reactPost = async ({
+        post_id,
+        unified,
+        user_id,
+    }: {
+        post_id: number
+        unified: PostReactionUnified
+        user_id: number
+    }) => {
+        try {
+            const hasPost = await Post.findByPk(post_id)
+
+            if (!hasPost) {
+                throw new NotFoundError({ message: 'Bài viết không tồn tại' })
+            }
+
+            const [reaction, created] = await Reaction.findOrCreate({
+                where: {
+                    reactionable_id: post_id,
+                    reactionable_type: 'Post',
+                    user_id,
+                },
+                defaults: {
+                    react: unified,
+                    user_id,
+                    reactionable_id: post_id,
+                    reactionable_type: 'Post',
+                },
+            })
+
+            // if reaction already exists
+            if (!created) {
+                reaction.react = unified
+                await reaction.save()
+            }
+
+            return reaction
+        } catch (error: any) {
+            if (error instanceof AppError) {
+                throw error
+            }
+
+            throw new InternalServerError({ message: error.message + ' ' + error.stack })
+        }
+    }
+
+    unreactPost = async ({ post_id, user_id }: { post_id: number; user_id: number }) => {
+        try {
+            const hasPost = await Post.findByPk(post_id)
+
+            if (!hasPost) {
+                throw new NotFoundError({ message: 'Bài viết không tồn tại' })
+            }
+
+            await Reaction.destroy({
+                where: {
+                    reactionable_id: post_id,
+                    reactionable_type: 'Post',
+                    user_id,
+                },
+            })
+
+            return
         } catch (error: any) {
             if (error instanceof AppError) {
                 throw error

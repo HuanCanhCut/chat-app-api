@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { TypedRequest } from '../types/request'
 import { idSchema, paginationSchema } from './common'
+import { POST_REACTIONS } from '~/types/reactionType'
 
 export const createPostSchema = z.object({
     body: z
@@ -31,6 +32,13 @@ export const getPostCommentSchema = z.object({
     }),
 })
 
+export const reactPostSchema = z.object({
+    body: z.object({
+        unified: z.enum(POST_REACTIONS),
+    }),
+    params: idSchema.shape.params,
+})
+
 export type CreatePostRequest = TypedRequest<z.infer<typeof createPostSchema>['body']>
 export type GetPostReactionsRequest = TypedRequest<
     any,
@@ -41,4 +49,8 @@ export type GetPostCommentsRequest = TypedRequest<
     any,
     z.infer<typeof getPostCommentSchema>['params'],
     z.infer<typeof getPostCommentSchema>['query']
+>
+export type ReactPostRequest = TypedRequest<
+    z.infer<typeof reactPostSchema>['body'],
+    z.infer<typeof reactPostSchema>['params']
 >

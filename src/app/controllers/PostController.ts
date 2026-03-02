@@ -3,8 +3,13 @@ import { NextFunction, Response } from 'express'
 import { responsePagination } from '../response/responsePagination'
 import PostService from '../services/PostService'
 import ReactionService from '../services/ReactionService'
-import { PaginationRequest } from '../validator/api/common'
-import { CreatePostRequest, GetPostCommentsRequest, GetPostReactionsRequest } from '../validator/api/postSchema'
+import { IdRequest, PaginationRequest } from '../validator/api/common'
+import {
+    CreatePostRequest,
+    GetPostCommentsRequest,
+    GetPostReactionsRequest,
+    ReactPostRequest,
+} from '../validator/api/postSchema'
 
 class PostController {
     createPost = async (req: CreatePostRequest, res: Response, next: NextFunction) => {
@@ -100,6 +105,44 @@ class PostController {
                     per_page: Number(per_page),
                 }),
             )
+        } catch (error) {
+            return next(error)
+        }
+    }
+
+    reactPost = async (req: ReactPostRequest, res: Response, next: NextFunction) => {
+        try {
+            const { id } = req.params
+            const { unified } = req.body
+
+            const decoded = req.decoded
+
+            const reaction = await PostService.reactPost({
+                post_id: Number(id),
+                user_id: decoded.sub,
+                unified,
+            })
+
+            res.json({
+                data: reaction,
+            })
+        } catch (error) {
+            return next(error)
+        }
+    }
+
+    unreactPost = async (req: IdRequest, res: Response, next: NextFunction) => {
+        try {
+            const { id } = req.params
+
+            const decoded = req.decoded
+
+            await PostService.unreactPost({
+                post_id: Number(id),
+                user_id: decoded.sub,
+            })
+
+            res.status(204).send()
         } catch (error) {
             return next(error)
         }
