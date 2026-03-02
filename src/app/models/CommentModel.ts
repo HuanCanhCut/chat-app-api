@@ -3,7 +3,7 @@ import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequ
 import { sequelize } from '../../config/database'
 
 class Comment extends Model<InferAttributes<Comment>, InferCreationAttributes<Comment>> {
-    declare id: number
+    declare id?: number
     declare post_id: number
     declare user_id: number
     declare content: string

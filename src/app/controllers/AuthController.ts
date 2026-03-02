@@ -4,6 +4,7 @@ import { NotFoundError, UnauthorizedError, UnprocessableEntityError } from '../e
 import { RefreshToken } from '../models'
 import AuthService from '../services/AuthService'
 import clearCookie from '../utils/clearCookies'
+import { setCookie } from '../utils/cookiesManager'
 import {
     LoginRequest,
     LoginWithTokenRequest,
@@ -34,14 +35,20 @@ class AuthController {
             refresh_token: refreshToken,
         })
 
-        res.status(status)
-            .setHeader('Set-Cookie', [
-                `access_token=${token}; max-age=${60820005}; httpOnly; path=/; sameSite=Lax; secure; Partitioned; domain=${req?.headers.origin?.split('://')[1].split(':')[0]}`,
-                `refresh_token=${refreshToken}; max-age=${Number(process.env.EXPIRED_REFRESH_TOKEN)}; httpOnly; path=/; sameSite=Lax; secure; Partitioned; domain=${req?.headers.origin?.split('://')[1].split(':')[0]}`,
-            ])
-            .json({
-                data: user,
-            })
+        console.log(token)
+
+        setCookie({
+            res,
+            cookies: [
+                { name: 'access_token', value: token },
+                { name: 'refresh_token', value: refreshToken },
+            ],
+            req,
+        })
+
+        res.status(status).json({
+            data: user,
+        })
     }
 
     // [POST] /auth/register
@@ -108,15 +115,19 @@ class AuthController {
 
             const { newAccessToken, newRefreshToken } = await AuthService.refreshToken({ refresh_token })
 
-            res.setHeader('Set-Cookie', [
-                `access_token=${newAccessToken}; max-age=${60820005}; path=/; sameSite=Lax; secure; Partitioned; domain=${req?.headers.origin?.split('://')[1].split(':')[0]}`,
-                `refresh_token=${newRefreshToken}; max-age=${Number(process.env.EXPIRED_REFRESH_TOKEN)}; path=/; sameSite=Lax; secure; Partitioned; domain=${req?.headers.origin?.split('://')[1].split(':')[0]}`,
-            ])
-                .status(200)
-                .json({
-                    // access token expire
-                    exp: Math.floor(Date.now() / 1000) + Number(process.env.EXPIRED_TOKEN),
-                })
+            setCookie({
+                res,
+                cookies: [
+                    { name: 'access_token', value: newAccessToken },
+                    { name: 'refresh_token', value: newRefreshToken },
+                ],
+                req,
+            })
+
+            res.status(200).json({
+                // access token expire
+                exp: Math.floor(Date.now() / 1000) + Number(process.env.EXPIRED_TOKEN),
+            })
         } catch (error: any) {
             if (error instanceof UnauthorizedError) {
                 clearCookie({ res, cookies: ['access_token', 'refresh_token'], req })

@@ -3,7 +3,7 @@ import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequ
 import { sequelize } from '../../config/database'
 
 class Post extends Model<InferAttributes<Post>, InferCreationAttributes<Post>> {
-    declare id: number
+    declare id?: number
     declare user_id: number
     declare caption?: string
     declare media_url?: string
@@ -54,5 +54,15 @@ Post.init(
         paranoid: true,
     },
 )
+
+Post.prototype.toJSON = function () {
+    const values = { ...this.get() }
+
+    if ('media_url' in values) {
+        values.media_url = JSON.parse(values.media_url || '')
+    }
+
+    return values
+}
 
 export default Post
