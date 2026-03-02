@@ -2,8 +2,9 @@ import { NextFunction, Response } from 'express'
 
 import { UnprocessableEntityError } from '../errors/errors'
 import MessageService from '../services/MessageService'
+import ReactionService from '../services/ReactionService'
 import { responseModel } from '../utils/responseModel'
-import { IRequest } from '~/type'
+import { IRequest } from '~/types/type'
 
 class MessageController {
     // [GET] /api/messages/:conversationUuid
@@ -136,8 +137,9 @@ class MessageController {
                 return next(new UnprocessableEntityError({ message: 'Page and per_page are required' }))
             }
 
-            const { reactions, count } = await MessageService.getReactions({
-                messageId: Number(messageId),
+            const { reactions, count } = await ReactionService.getReactionsByReactableId({
+                reactionable_id: Number(messageId),
+                reactionable_type: 'Message',
                 type: type as string,
                 per_page: Number(per_page),
                 page: Number(page),

@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken'
 
 import clearCookie from '../utils/clearCookies'
 import redisClient from '~/config/redis/redisClient'
-import { IRequest } from '~/type'
+import { IRequest } from '~/types/type'
 
 const verifyToken = async (req: IRequest, res: any, next: NextFunction) => {
     try {

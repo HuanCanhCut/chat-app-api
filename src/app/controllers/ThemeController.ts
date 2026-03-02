@@ -3,7 +3,7 @@ import { NextFunction, Response } from 'express'
 import { UnprocessableEntityError } from '../errors/errors'
 import ThemeService from '../services/ThemeService'
 import { responseModel } from '../utils/responseModel'
-import { IRequest } from '~/type'
+import { IRequest } from '~/types/type'
 
 class ThemeController {
     async getTheme(req: IRequest, res: Response, next: NextFunction) {

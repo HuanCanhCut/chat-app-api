@@ -11,7 +11,7 @@ import { redisClient } from '~/config/redis'
 import { ioInstance } from '~/config/socket'
 import { RedisKey } from '~/enum/redis'
 import logger from '~/logger/logger'
-import { TempConversationModel } from '~/type'
+import { TempConversationModel } from '~/types/type'
 
 class SocketMessageService {
     private socket?: Socket

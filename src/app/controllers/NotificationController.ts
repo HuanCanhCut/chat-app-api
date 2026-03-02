@@ -4,7 +4,7 @@ import { UnprocessableEntityError } from '../errors/errors'
 import Notification from '../models/NotificationModel'
 import NotificationService from '../services/NotificationService'
 import { responseModel } from '~/app/utils/responseModel'
-import { IRequest } from '~/type'
+import { IRequest } from '~/types/type'
 
 class NotificationController {
     // [GET] /notifications?page=&per_page=&type=

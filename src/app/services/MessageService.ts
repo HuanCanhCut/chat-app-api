@@ -646,55 +646,6 @@ class MessageService {
         }
     }
 
-    async getReactions({
-        messageId,
-        type,
-        per_page,
-        page,
-    }: {
-        messageId: number
-        type: string
-        per_page: number
-        page: number
-    }) {
-        try {
-            const { rows: reactions, count } = await Reaction.findAndCountAll({
-                distinct: true,
-                where: {
-                    reactionable_id: messageId,
-                    reactionable_type: 'Message',
-                    ...(type !== 'all' && {
-                        react: type as string,
-                    }),
-                },
-                include: [
-                    {
-                        model: User,
-                        as: 'user_reaction',
-                        required: true,
-                        attributes: {
-                            exclude: ['password', 'email'],
-                        },
-                    },
-                ],
-                limit: Number(per_page),
-                offset: (Number(page) - 1) * Number(per_page),
-                order: [['id', 'DESC']],
-            })
-
-            return {
-                reactions,
-                count,
-            }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
-        }
-    }
-
     async getReactionsTypes({ messageId }: { messageId: number }) {
         try {
             const types = await Reaction.findAll({

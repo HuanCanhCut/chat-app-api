@@ -9,7 +9,7 @@ import ConversationService from './ConversationService'
 import FriendService from './FriendService'
 import SocketUserStatusService from './SocketUserStatusService'
 import cloudinary from '~/config/cloudinary'
-import { MulterRequest } from '~/type'
+import { MulterRequest } from '~/types/type'
 
 class UserService {
     async getUserById(id: number) {

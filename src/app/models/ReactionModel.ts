@@ -1,7 +1,7 @@
 import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
 
 import { sequelize } from '../../config/database'
-import { UserModel } from '~/type'
+import { UserModel } from '~/types/type'
 
 class Reaction extends Model<InferAttributes<Reaction>, InferCreationAttributes<Reaction>> {
     declare id?: number

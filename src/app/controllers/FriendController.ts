@@ -5,7 +5,7 @@ import { User } from '../models'
 import ConversationService from '../services/ConversationService'
 import { responseModel } from '../utils/responseModel'
 import FriendService from '~/app/services/FriendService'
-import { IRequest } from '~/type'
+import { IRequest } from '~/types/type'
 
 class FriendController {
     // [POST] /users/:id/add

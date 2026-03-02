@@ -16,7 +16,7 @@ import {
     RemoveUserFromConversationRequest,
     RenameConversationRequest,
 } from '../validator/api/conversationSchema'
-import { IRequest } from '~/type'
+import { IRequest } from '~/types/type'
 
 class ConversationController {
     // [GET] /api/conversations
