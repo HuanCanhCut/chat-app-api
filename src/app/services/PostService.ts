@@ -3,6 +3,7 @@ import { Op } from 'sequelize'
 import { AppError, InternalServerError, NotFoundError } from '../errors/errors'
 import { User } from '../models'
 import Comment from '../models/CommentModel'
+import PostMedia from '../models/PostMedia'
 import Post from '../models/PostModel'
 import Reaction from '../models/ReactionModel'
 import { sequelize } from '~/config/database'
@@ -11,27 +12,47 @@ import { PostReactionUnified } from '~/types/reactionType'
 class PostService {
     createPost = async ({
         user_id,
-        media_type,
-        media_url,
+        media,
         caption,
         is_public,
     }: {
         user_id: number
-        media_type?: 'image' | 'video'
-        media_url?: string
+        media?: Array<{ media_url: string; media_type: 'image' | 'video' }>
         caption?: string
         is_public: boolean
     }) => {
         try {
             const post = await Post.create({
                 user_id,
-                media_type,
-                media_url,
                 caption,
                 is_public,
             })
 
-            return post
+            if (media && media.length > 0 && post.id) {
+                await PostMedia.bulkCreate(
+                    media.map((m) => ({
+                        post_id: post.id!,
+                        media_url: m.media_url,
+                        media_type: m.media_type,
+                    })),
+                )
+            }
+
+            return await Post.findByPk(post.id, {
+                include: [
+                    {
+                        model: User,
+                        as: 'user',
+                        attributes: {
+                            exclude: ['password', 'email'],
+                        },
+                    },
+                    {
+                        model: PostMedia,
+                        as: 'post_media',
+                    },
+                ],
+            })
         } catch (error: any) {
             if (error instanceof AppError) {
                 throw error
@@ -46,13 +67,19 @@ class PostService {
             const { rows: posts, count: total } = await Post.findAndCountAll({
                 distinct: true,
                 subQuery: false,
-                include: {
-                    model: User,
-                    as: 'user',
-                    attributes: {
-                        exclude: ['password', 'email'],
+                include: [
+                    {
+                        model: User,
+                        as: 'user',
+                        attributes: {
+                            exclude: ['password', 'email'],
+                        },
                     },
-                },
+                    {
+                        model: PostMedia,
+                        as: 'post_media',
+                    },
+                ],
                 attributes: {
                     include: [
                         [
@@ -85,6 +112,7 @@ class PostService {
                 order: [['created_at', 'DESC']],
                 limit: per_page,
                 offset: (page - 1) * per_page,
+                logging: console.log,
             })
 
             const postIds = posts.map((post) => post.id)

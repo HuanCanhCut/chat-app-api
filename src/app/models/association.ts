@@ -8,6 +8,7 @@ import Friendships from './FriendshipsModel'
 import Message from './MessageModel'
 import MessageStatus from './MessageStatusModel'
 import Notification from './NotificationModel'
+import PostMedia from './PostMedia'
 import Post from './PostModel'
 import Reaction from './ReactionModel'
 import RefreshToken from './RefreshTokenModel'
@@ -130,6 +131,13 @@ const associations = () => {
         constraints: false,
         scope: { reactionable_type: 'Comment' },
     })
+
+    /**
+     * Post and PostMedia model
+     */
+
+    Post.hasMany(PostMedia, { foreignKey: 'post_id', as: 'post_media' })
+    PostMedia.belongsTo(Post, { foreignKey: 'post_id', as: 'post' })
 
     /**
      *  User and Post model

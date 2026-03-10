@@ -14,15 +14,14 @@ import {
 class PostController {
     createPost = async (req: CreatePostRequest, res: Response, next: NextFunction) => {
         try {
-            const { caption, is_public, media_type, media_url } = req.body
+            const { caption, is_public, media } = req.body
 
             const decoded = req.decoded
 
             const post = await PostService.createPost({
                 user_id: decoded.sub,
                 caption,
-                media_type,
-                media_url,
+                media,
                 is_public: is_public === 'true' ? true : false,
             })
 
