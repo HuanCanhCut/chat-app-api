@@ -47,13 +47,6 @@ export const changeConversationMemberNicknameSchema = z.object({
     params: uuidSchema.shape.params,
 })
 
-export const addUserToConversationSchema = z.object({
-    body: z.object({
-        user_id: z.array(z.coerce.number().int().positive()),
-    }),
-    params: uuidSchema.shape.params,
-})
-
 export const designateLeaderSchema = z.object({
     body: z.object({
         user_id: z.coerce.number().int().positive(),
@@ -92,10 +85,7 @@ export type ChangeConversationMemberNicknameRequest = TypedRequest<
     z.infer<typeof changeConversationMemberNicknameSchema>['body'],
     z.infer<typeof changeConversationMemberNicknameSchema>['params']
 >
-export type AddUserToConversationRequest = TypedRequest<
-    z.infer<typeof addUserToConversationSchema>['body'],
-    z.infer<typeof addUserToConversationSchema>['params']
->
+
 export type DesignateLeaderRequest = TypedRequest<
     z.infer<typeof designateLeaderSchema>['body'],
     z.infer<typeof designateLeaderSchema>['params']

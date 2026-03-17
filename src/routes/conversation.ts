@@ -1,11 +1,10 @@
 import express from 'express'
-const router = express.Router()
+
 import ConversationController from '../app/controllers/ConversationController'
 import upload from '~/app/middlewares/multer'
 import { validate } from '~/app/middlewares/validate'
 import { paginationSchema, querySchema, uuidSchema } from '~/app/validator/api/common'
 import {
-    addUserToConversationSchema,
     changeConversationEmojiSchema,
     changeConversationMemberNicknameSchema,
     changeConversationThemeSchema,
@@ -16,6 +15,7 @@ import {
     removeUserFromConversationSchema,
     renameConversationSchema,
 } from '~/app/validator/api/conversationSchema'
+const router = express.Router()
 
 router.get('/', validate(paginationSchema), ConversationController.getConversations.bind(ConversationController))
 router.post(
@@ -58,12 +58,7 @@ router.patch(
     validate(changeConversationMemberNicknameSchema),
     ConversationController.changeConversationMemberNickname.bind(ConversationController),
 )
-router.post(
-    '/:uuid/user',
-    validate(addUserToConversationSchema),
-    upload.none(),
-    ConversationController.addUserToConversation.bind(ConversationController),
-)
+router.post('/:uuid/user', upload.none(), ConversationController.addUserToConversation.bind(ConversationController))
 router.patch(
     '/:uuid/designate-leader',
     validate(designateLeaderSchema),

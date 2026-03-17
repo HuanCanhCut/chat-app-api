@@ -5,7 +5,6 @@ import ConversationService from '../services/ConversationService'
 import { responseModel } from '../utils/responseModel'
 import { PaginationRequest, QueryRequest, UuidRequest } from '../validator/api/common'
 import {
-    AddUserToConversationRequest,
     ChangeConversationEmojiRequest,
     ChangeConversationMemberNicknameRequest,
     ChangeConversationThemeRequest,
@@ -192,12 +191,14 @@ class ConversationController {
     }
 
     // [POST] /api/conversations/:uuid/user
-    async addUserToConversation(req: AddUserToConversationRequest, res: Response, next: NextFunction) {
+    async addUserToConversation(req: IRequest, res: Response, next: NextFunction) {
         try {
             const { uuid } = req.params
             const { user_id } = req.body
 
             const decoded = req.decoded
+
+            console.log(user_id)
 
             const addedMembers = await ConversationService.addUserToConversation({
                 currentUserId: decoded.sub,
