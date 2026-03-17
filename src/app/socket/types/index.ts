@@ -5,13 +5,15 @@ import { UserClientToServerEvents } from './clientToServer/user'
 import { CallServerToClientEvents } from './serverToClient/call'
 import { ConversationServerToClientEvents } from './serverToClient/conversation'
 import { MessageServerToClientEvents } from './serverToClient/message'
+import { NotificationServerToClientEvents } from './serverToClient/notification'
 import { UserServerToClientEvents } from './serverToClient/user'
 
 interface ServerToClientEvents
     extends CallServerToClientEvents,
         ConversationServerToClientEvents,
         MessageServerToClientEvents,
-        UserServerToClientEvents {}
+        UserServerToClientEvents,
+        NotificationServerToClientEvents {}
 
 interface ClientToServerEvents
     extends UserClientToServerEvents,

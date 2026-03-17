@@ -38,9 +38,6 @@ class FriendService {
                     as: 'user',
                     required: true,
                     on: this.friendShipJoinLiteral(userId),
-                    attributes: {
-                        exclude: ['password', 'email'],
-                    },
                 },
             })
         } catch (error: any) {
@@ -119,9 +116,6 @@ class FriendService {
                         model: User,
                         as: 'user',
                         required: true,
-                        attributes: {
-                            exclude: ['password', 'email'],
-                        },
                     },
                 ],
                 where: {
@@ -220,9 +214,6 @@ class FriendService {
     }) {
         try {
             interface UserInclude {
-                attributes: {
-                    exclude: string[]
-                }
                 model: typeof User
                 as: string
                 required: boolean
@@ -233,9 +224,6 @@ class FriendService {
 
             // Build the include for User, adding search if q is present
             const userInclude: UserInclude = {
-                attributes: {
-                    exclude: ['password', 'email'],
-                },
                 model: User,
                 as: 'user',
                 required: true,
@@ -273,9 +261,6 @@ class FriendService {
                     attributes: ['id'],
                     include: [
                         {
-                            attributes: {
-                                exclude: ['password', 'email'],
-                            },
                             model: User,
                             as: 'user',
                             required: true,
@@ -569,9 +554,7 @@ class FriendService {
                     where: {
                         id: Sequelize.col('Friendships.user_id'),
                     },
-                    attributes: {
-                        exclude: ['password', 'email'],
-                    },
+
                     runHooks: true,
                 },
                 limit: Number(per_page),

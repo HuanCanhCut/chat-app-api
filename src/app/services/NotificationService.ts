@@ -87,9 +87,6 @@ class NotificationService {
                         model: User,
                         as: 'sender_user',
                         required: true,
-                        attributes: {
-                            exclude: ['password', 'email'],
-                        },
                     },
                 ],
                 order: [['created_at', 'DESC']],

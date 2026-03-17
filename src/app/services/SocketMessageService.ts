@@ -82,7 +82,6 @@ class SocketMessageService {
                         required: true,
                         attributes: {
                             include: [[MessageService.isReadLiteral(senderId), 'is_read']],
-                            exclude: ['password', 'email'],
                         },
                     },
                     {
@@ -99,7 +98,6 @@ class SocketMessageService {
                                             'last_read_message_id',
                                         ],
                                     ],
-                                    exclude: ['password', 'email'],
                                 },
                             },
                         ],
@@ -418,7 +416,6 @@ class SocketMessageService {
                                             'last_read_message_id',
                                         ],
                                     ],
-                                    exclude: ['password', 'email'],
                                 },
                             },
                         ],
@@ -427,9 +424,6 @@ class SocketMessageService {
                         model: User,
                         as: 'sender',
                         required: true,
-                        attributes: {
-                            exclude: ['password', 'email'],
-                        },
                     },
                     {
                         model: Message,
@@ -455,7 +449,6 @@ class SocketMessageService {
                             {
                                 model: User,
                                 as: 'sender',
-                                attributes: { exclude: ['password', 'email'] },
                             },
                         ],
                     },
@@ -560,9 +553,6 @@ class SocketMessageService {
                         {
                             model: User,
                             as: 'user_reaction',
-                            attributes: {
-                                exclude: ['password', 'email'],
-                            },
                         },
                     ],
                 }),
@@ -576,9 +566,6 @@ class SocketMessageService {
                         {
                             model: User,
                             as: 'user_reaction',
-                            attributes: {
-                                exclude: ['password', 'email'],
-                            },
                         },
                     ],
                     attributes: ['react'],

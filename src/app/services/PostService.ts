@@ -43,9 +43,6 @@ class PostService {
                     {
                         model: User,
                         as: 'user',
-                        attributes: {
-                            exclude: ['password', 'email'],
-                        },
                     },
                     {
                         model: PostMedia,
@@ -71,9 +68,6 @@ class PostService {
                     {
                         model: User,
                         as: 'user',
-                        attributes: {
-                            exclude: ['password', 'email'],
-                        },
                     },
                     {
                         model: PostMedia,
@@ -174,9 +168,6 @@ class PostService {
                 include: {
                     model: User,
                     as: 'user',
-                    attributes: {
-                        exclude: ['password', 'email'],
-                    },
                 },
                 where: {
                     post_id,

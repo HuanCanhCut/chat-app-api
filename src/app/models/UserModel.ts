@@ -1,7 +1,6 @@
 import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
 
 import { sequelize } from '../../config/database'
-import excludeBeforeFind from './hooks/excludeBeforeFind'
 import { redisClient } from '~/config/redis'
 import { RedisKey } from '~/enum/redis'
 
@@ -88,12 +87,25 @@ User.init(
     {
         tableName: 'users',
         sequelize,
+        defaultScope: {
+            attributes: {
+                exclude: ['password', 'email'],
+            },
+        },
+        scopes: {
+            withPassword: {
+                attributes: {
+                    exclude: ['email'],
+                },
+            },
+            withEmail: {
+                attributes: {
+                    exclude: ['password'],
+                },
+            },
+        },
     },
 )
-
-User.beforeFind((options) => {
-    excludeBeforeFind(options, ['password', 'email'])
-})
 
 User.afterFind(async (users: any) => {
     if (users) {

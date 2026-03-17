@@ -107,9 +107,7 @@ class ConversationService {
                                 model: User,
                                 as: 'user',
                                 required: true,
-                                attributes: {
-                                    exclude: ['password', 'email'],
-                                },
+
                                 runHooks: true,
                             },
                         ],
@@ -193,17 +191,13 @@ class ConversationService {
                             {
                                 model: User,
                                 as: 'user',
-                                attributes: {
-                                    exclude: ['password', 'email'],
-                                },
+
                                 runHooks: true,
                             },
                             {
                                 model: User,
                                 as: 'added_by',
-                                attributes: {
-                                    exclude: ['password', 'email'],
-                                },
+
                                 runHooks: true,
                             },
                         ],
@@ -219,9 +213,6 @@ class ConversationService {
                             {
                                 model: User,
                                 as: 'blocker',
-                                attributes: {
-                                    exclude: ['password', 'email'],
-                                },
                             },
                         ],
                     },
@@ -250,9 +241,6 @@ class ConversationService {
                                 model: User,
                                 as: 'user',
                                 required: true,
-                                attributes: {
-                                    exclude: ['password', 'email'],
-                                },
                             },
                         ],
                     },
@@ -672,9 +660,6 @@ class ConversationService {
                                 {
                                     model: User,
                                     as: 'user',
-                                    attributes: {
-                                        exclude: ['password', 'email'],
-                                    },
                                 },
                             ],
                             paranoid: false,
@@ -735,16 +720,10 @@ class ConversationService {
                             {
                                 model: User,
                                 as: 'user',
-                                attributes: {
-                                    exclude: ['password', 'email'],
-                                },
                             },
                             {
                                 model: User,
                                 as: 'added_by',
-                                attributes: {
-                                    exclude: ['password', 'email'],
-                                },
                             },
                         ],
                     })
@@ -1134,9 +1113,6 @@ class ConversationService {
                     {
                         model: User,
                         as: 'blocker',
-                        attributes: {
-                            exclude: ['password', 'email'],
-                        },
                     },
                 ],
             })

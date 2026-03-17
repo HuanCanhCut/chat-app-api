@@ -184,9 +184,6 @@ class MessageService {
                         model: User,
                         as: 'sender',
                         required: true,
-                        attributes: {
-                            exclude: ['password', 'email'],
-                        },
                     },
                     {
                         model: MessageStatus,
@@ -196,9 +193,6 @@ class MessageService {
                             {
                                 model: User,
                                 as: 'receiver',
-                                attributes: {
-                                    exclude: ['password', 'email'],
-                                },
                             },
                         ],
                     },
@@ -296,7 +290,6 @@ class MessageService {
                                             'last_read_message_id',
                                         ],
                                     ],
-                                    exclude: ['password', 'email'],
                                 },
                             },
                         ],
@@ -305,9 +298,6 @@ class MessageService {
                         model: User,
                         as: 'sender',
                         required: true,
-                        attributes: {
-                            exclude: ['password', 'email'],
-                        },
                     },
                     {
                         model: Message,
@@ -333,7 +323,6 @@ class MessageService {
                             {
                                 model: User,
                                 as: 'sender',
-                                attributes: { exclude: ['password', 'email'] },
                             },
                         ],
                     },
@@ -381,9 +370,6 @@ class MessageService {
                             {
                                 model: User,
                                 as: 'user_reaction',
-                                attributes: {
-                                    exclude: ['password', 'email'],
-                                },
                             },
                         ],
                         attributes: ['react'],
@@ -806,9 +792,6 @@ class MessageService {
                         model: User,
                         as: 'sender',
                         required: true,
-                        attributes: {
-                            exclude: ['password', 'email'],
-                        },
                     },
                 ],
                 where: {

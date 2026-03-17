@@ -257,9 +257,7 @@ class UserService {
                     model: User,
                     as: 'user_search',
                     required: true,
-                    attributes: {
-                        exclude: ['password', 'email'],
-                    },
+
                     runHooks: true,
                 },
                 limit: 8,

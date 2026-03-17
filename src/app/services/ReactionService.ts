@@ -32,9 +32,6 @@ class ReactionService {
                         model: User,
                         as: 'user_reaction',
                         required: true,
-                        attributes: {
-                            exclude: ['password', 'email'],
-                        },
                     },
                 ],
                 limit: Number(per_page),
