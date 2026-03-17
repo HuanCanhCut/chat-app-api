@@ -22,7 +22,7 @@ class PostController {
                 user_id: decoded.sub,
                 caption,
                 media,
-                is_public: is_public === 'true' ? true : false,
+                is_public,
             })
 
             res.status(201).json({

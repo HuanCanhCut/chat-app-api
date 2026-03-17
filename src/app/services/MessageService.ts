@@ -520,7 +520,6 @@ class MessageService {
             const beforeCount = Math.min(halfPerPage, targetMessageIndex)
             const afterCount = Number(limit) - beforeCount - 1 // -1 cho tin nhắn hiện tại
 
-            // Lấy tin nhắn trước, hiện tại và sau cùng lúc bằng Promise.all
             const [beforeMessages, currentMessageData, afterMessages] = await Promise.all([
                 targetMessageIndex > 0
                     ? this.handleGetMessages({

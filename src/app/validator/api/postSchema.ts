@@ -8,15 +8,17 @@ export const createPostSchema = z.object({
     body: z
         .object({
             caption: z.string().optional(),
-            media: z.array(
-                z.object({
-                    media_url: z.string(),
-                    media_type: z.enum(['video', 'image']),
-                }),
-            ),
-            is_public: z.enum(['true', 'false']),
+            media: z
+                .array(
+                    z.object({
+                        media_url: z.string(),
+                        media_type: z.enum(['video', 'image']),
+                    }),
+                )
+                .optional(),
+            is_public: z.boolean(),
         })
-        .refine((data) => data.caption || data.media.length > 0, {
+        .refine((data) => data.caption || (data.media && data.media.length > 0), {
             message: 'Phải có ít nhất caption hoặc media_url',
             path: [],
         }),
