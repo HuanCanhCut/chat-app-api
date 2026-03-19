@@ -198,8 +198,6 @@ class ConversationController {
 
             const decoded = req.decoded
 
-            console.log(user_id)
-
             const addedMembers = await ConversationService.addUserToConversation({
                 currentUserId: decoded.sub,
                 conversationUuid: uuid,

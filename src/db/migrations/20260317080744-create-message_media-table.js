@@ -25,7 +25,7 @@ module.exports = {
             },
             media_url: {
                 type: Sequelize.STRING,
-                allowNull: false,
+                allowNull: true,
             },
             media_type: {
                 type: Sequelize.ENUM('image', 'video'),
