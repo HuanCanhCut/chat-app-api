@@ -23,7 +23,7 @@ import {
     NotFoundError,
     UnprocessableEntityError,
 } from '../errors/errors'
-import { Conversation, Message, MessageStatus, User } from '../models'
+import { Conversation, Message, MessageMedia, MessageStatus, User } from '../models'
 import DeletedConversation from '../models/DeletedConversation'
 import Reaction from '../models/ReactionModel'
 import ConversationService from './ConversationService'
@@ -290,6 +290,7 @@ class MessageService {
                                             'last_read_message_id',
                                         ],
                                     ],
+                                    exclude: ['email', 'password'],
                                 },
                             },
                         ],
@@ -324,9 +325,18 @@ class MessageService {
                                 model: User,
                                 as: 'sender',
                             },
+                            {
+                                model: MessageMedia,
+                                as: 'media',
+                            },
                         ],
                     },
+                    {
+                        model: MessageMedia,
+                        as: 'media',
+                    },
                 ],
+
                 where: {
                     conversation_id: conversation.id,
                     // Get all messages except messages that have been revoked for-me by the current user
@@ -584,24 +594,36 @@ class MessageService {
                 },
             })
 
-            const { rows: messageImages, count } = await Message.findAndCountAll({
+            const { rows: messageImages, count } = await MessageMedia.findAndCountAll({
                 distinct: true,
-                where: {
-                    type: 'image',
-                    conversation_id: conversation.id,
-                    [Op.not]: {
-                        id: {
-                            [Op.in]: sequelize.literal(`
-                                (
-                                    SELECT message_id 
-                                    FROM message_statuses 
-                                    WHERE message_statuses.message_id = Message.id 
-                                    AND message_statuses.is_revoked = 1
-                                    AND message_statuses.receiver_id = ${sequelize.escape(currentUserId)}
-                                )
+                include: [
+                    {
+                        required: true,
+                        model: Message,
+                        as: 'message',
+                        where: {
+                            conversation_id: conversation.id,
+                            [Op.not]: {
+                                id: {
+                                    [Op.in]: sequelize.literal(`
+                                        (
+                                            SELECT message_id
+                                            FROM message_statuses
+                                            WHERE message_statuses.message_id = message.id
+                                            AND message_statuses.is_revoked = 1
+                                            AND message_statuses.receiver_id = ${sequelize.escape(currentUserId)}
+                                        )
                             `),
+                                },
+                            },
                         },
+                        attributes: [],
                     },
+                ],
+                limit: Number(per_page),
+                offset: (Number(page) - 1) * Number(per_page),
+                order: [['id', 'DESC']],
+                where: {
                     created_at: {
                         [Op.and]: [
                             {
@@ -613,9 +635,6 @@ class MessageService {
                         ],
                     },
                 },
-                limit: Number(per_page),
-                offset: (Number(page) - 1) * Number(per_page),
-                order: [['id', 'DESC']],
             })
 
             return {

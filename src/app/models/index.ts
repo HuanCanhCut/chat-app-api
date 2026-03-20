@@ -6,6 +6,7 @@ import ConversationMember from './ConversationMemberModel'
 import Conversation from './ConversationModel'
 import ConversationTheme from './ConversationThemeModel'
 import Friendships from './FriendshipsModel'
+import MessageMedia from './MessageMedia'
 import Message from './MessageModel'
 import MessageStatus from './MessageStatusModel'
 import Notification from './NotificationModel'
@@ -34,6 +35,7 @@ export {
     ConversationTheme,
     Friendships,
     Message,
+    MessageMedia,
     MessageReaction,
     MessageStatus,
     Notification,

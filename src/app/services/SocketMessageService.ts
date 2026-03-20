@@ -82,6 +82,7 @@ class SocketMessageService {
                         required: true,
                         attributes: {
                             include: [[MessageService.isReadLiteral(senderId), 'is_read']],
+                            exclude: ['email', 'password'],
                         },
                     },
                     {
@@ -98,6 +99,7 @@ class SocketMessageService {
                                             'last_read_message_id',
                                         ],
                                     ],
+                                    exclude: ['email', 'password'],
                                 },
                             },
                         ],
@@ -416,6 +418,7 @@ class SocketMessageService {
                                             'last_read_message_id',
                                         ],
                                     ],
+                                    exclude: ['email', 'password'],
                                 },
                             },
                         ],

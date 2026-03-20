@@ -5,6 +5,7 @@ import Conversation from './ConversationModel'
 import ConversationTheme from './ConversationThemeModel'
 import DeletedConversation from './DeletedConversation'
 import Friendships from './FriendshipsModel'
+import MessageMedia from './MessageMedia'
 import Message from './MessageModel'
 import MessageStatus from './MessageStatusModel'
 import Notification from './NotificationModel'
@@ -83,6 +84,13 @@ const associations = () => {
      */
     MessageStatus.belongsTo(User, { foreignKey: 'receiver_id', as: 'receiver' })
     User.hasMany(MessageStatus, { foreignKey: 'receiver_id', as: 'message_status' })
+
+    /**
+     * Message - MessageMedia model
+     */
+
+    Message.hasMany(MessageMedia, { foreignKey: 'message_id', as: 'media' })
+    MessageMedia.belongsTo(Message, { foreignKey: 'message_id', as: 'message' })
 
     /**
      * Reaction model

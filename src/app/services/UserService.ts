@@ -257,7 +257,6 @@ class UserService {
                     model: User,
                     as: 'user_search',
                     required: true,
-
                     runHooks: true,
                 },
                 limit: 8,

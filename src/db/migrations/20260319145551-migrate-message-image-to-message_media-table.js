@@ -11,7 +11,7 @@ module.exports = {
          */
         return queryInterface.sequelize.transaction(async (t) => {
             const [messageContent] = await queryInterface.sequelize.query(
-                "SELECT id, content FROM messages WHERE type = 'image'",
+                "SELECT id, content, created_at, updated_at FROM messages WHERE type = 'image'",
                 {
                     transaction: t,
                 },
@@ -27,6 +27,8 @@ module.exports = {
                         message_id: messageContent[i].id,
                         media_url: content[j],
                         media_type: 'image',
+                        created_at: messageContent[i].created_at,
+                        updated_at: messageContent[i].updated_at,
                     })
                 }
             }

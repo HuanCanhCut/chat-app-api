@@ -107,7 +107,6 @@ class ConversationService {
                                 model: User,
                                 as: 'user',
                                 required: true,
-
                                 runHooks: true,
                             },
                         ],
