@@ -4,11 +4,16 @@ export interface MessageClientToServerEvents {
         message,
         type,
         parent_id,
+        media,
     }: {
         conversation_uuid: string
         message: string
         type: string
         parent_id?: number | null
+        media?: Array<{
+            media_url: string
+            media_type: 'image' | 'video'
+        }>
     }) => void
 
     READ_MESSAGE: ({ conversation_uuid, message_id }: { conversation_uuid: string; message_id: number }) => void

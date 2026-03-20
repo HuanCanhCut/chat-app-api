@@ -22,6 +22,8 @@ module.exports = {
                     model: 'messages',
                     key: 'id',
                 },
+                onUpdate: 'CASCADE',
+                onDelete: 'CASCADE',
             },
             media_url: {
                 type: Sequelize.STRING,

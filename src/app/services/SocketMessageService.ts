@@ -2,7 +2,7 @@ import { Op, QueryTypes } from 'sequelize'
 import { Socket } from 'socket.io'
 
 import { InternalServerError } from '../errors/errors'
-import { Block, Conversation, ConversationMember, Message, MessageStatus, User } from '../models'
+import { Block, Conversation, ConversationMember, Message, MessageMedia, MessageStatus, User } from '../models'
 import Reaction from '../models/ReactionModel'
 import MessageService from '../services/MessageService'
 import ConversationService from './ConversationService'
@@ -29,6 +29,7 @@ class SocketMessageService {
         message,
         type = 'text',
         parent_id = null,
+        media,
     }: {
         conversationId: number
         senderId: number
@@ -36,6 +37,10 @@ class SocketMessageService {
         message: string
         type: string
         parent_id: number | null
+        media?: Array<{
+            media_url: string
+            media_type: 'image' | 'video'
+        }>
     }) => {
         const transaction = await sequelize.transaction()
 
@@ -57,15 +62,27 @@ class SocketMessageService {
             )
 
             if (newMessage.id) {
-                for (const userId of userIds) {
-                    await MessageStatus.create(
-                        {
-                            message_id: newMessage.id,
-                            receiver_id: userId.id,
-                            status: userId.is_online ? 'delivered' : 'sent',
-                        },
-                        { transaction },
-                    )
+                type MessageStatusType = 'delivered' | 'sent' | 'read'
+
+                const bulkStatusData = userIds.map((userId) => ({
+                    message_id: newMessage.id!,
+                    receiver_id: userId.id,
+                    status: userId.is_online ? ('delivered' as MessageStatusType) : ('sent' as MessageStatusType),
+                }))
+
+                if (media) {
+                    const bulkMediaData = media.map((m) => ({
+                        message_id: newMessage.id!,
+                        media_url: m.media_url,
+                        media_type: m.media_type,
+                    }))
+
+                    await Promise.all([
+                        MessageStatus.bulkCreate(bulkStatusData, { transaction }),
+                        MessageMedia.bulkCreate(bulkMediaData, { transaction }),
+                    ])
+                } else {
+                    await MessageStatus.bulkCreate(bulkStatusData, { transaction })
                 }
             }
 
@@ -103,6 +120,10 @@ class SocketMessageService {
                                 },
                             },
                         ],
+                    },
+                    {
+                        model: MessageMedia,
+                        as: 'media',
                     },
                     {
                         model: Message,
@@ -199,11 +220,16 @@ class SocketMessageService {
         message,
         type = 'text',
         parent_id = null,
+        media,
     }: {
         conversation_uuid: string
         message: string
         type: string
         parent_id?: number | null
+        media?: Array<{
+            media_url: string
+            media_type: 'image' | 'video'
+        }>
     }) => {
         try {
             const tempConversationCache = await redisClient.get(`${RedisKey.TEMP_CONVERSATION}${conversation_uuid}`)
@@ -269,6 +295,7 @@ class SocketMessageService {
                 message,
                 type,
                 parent_id,
+                media,
             })
 
             if (!newMessage) {
@@ -429,6 +456,10 @@ class SocketMessageService {
                         required: true,
                     },
                     {
+                        model: MessageMedia,
+                        as: 'media',
+                    },
+                    {
                         model: Message,
                         as: 'parent',
                         required: false,
@@ -452,6 +483,10 @@ class SocketMessageService {
                             {
                                 model: User,
                                 as: 'sender',
+                            },
+                            {
+                                model: MessageMedia,
+                                as: 'media',
                             },
                         ],
                     },
