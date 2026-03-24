@@ -13,6 +13,7 @@ class CloudinaryController {
             const paramsToSign: Record<string, any> = {
                 timestamp: timestamp,
                 folder: folder,
+                transformation: 'f_webp,q_auto,c_limit,w_1500',
             }
 
             // Config Cloudinary
@@ -33,6 +34,7 @@ class CloudinaryController {
                     folder: paramsToSign.folder,
                     public_id: paramsToSign.public_id,
                     tags: paramsToSign.tags,
+                    transformation: paramsToSign.transformation,
                 },
             })
         } catch (error) {
