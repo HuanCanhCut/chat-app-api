@@ -14,7 +14,9 @@ import Post from './PostModel'
 import Reaction from './ReactionModel'
 import RefreshToken from './RefreshTokenModel'
 import SearchHistory from './SearchHistoryModel'
+import Story from './StoryModel'
 import User from './UserModel'
+import UserViewedStory from './UserViewedStoryModel'
 
 const associations = () => {
     // define relations
@@ -198,6 +200,44 @@ const associations = () => {
 
     User.hasMany(DeletedConversation, { foreignKey: 'user_id', as: 'deleted_conversations' })
     DeletedConversation.belongsTo(User, { foreignKey: 'user_id', as: 'user' })
+
+    /**
+     * User - Story Model
+     */
+
+    User.hasMany(Story, { foreignKey: 'user_id', as: 'stories' })
+    Story.belongsTo(User, { foreignKey: 'user_id', as: 'user' })
+
+    /**
+     * User - UserViewedStory Model
+     */
+
+    User.hasMany(UserViewedStory, { foreignKey: 'user_id', as: 'user_viewed_stories' })
+    UserViewedStory.belongsTo(User, { foreignKey: 'user_id', as: 'user' })
+
+    Story.hasMany(UserViewedStory, { foreignKey: 'story_id', as: 'user_viewed_stories' })
+    UserViewedStory.belongsTo(Story, { foreignKey: 'story_id', as: 'story' })
+
+    /**
+     * Story - Reaction Model
+     */
+    Story.hasMany(Reaction, {
+        foreignKey: 'reactable_id',
+        as: 'reactions',
+        constraints: false,
+        scope: {
+            reactionable_type: 'Story',
+        },
+    })
+
+    Reaction.belongsTo(Story, {
+        foreignKey: 'reactable_id',
+        as: 'story_reaction',
+        constraints: false,
+        scope: {
+            reactionable_type: 'Story',
+        },
+    })
 }
 
 export default associations
