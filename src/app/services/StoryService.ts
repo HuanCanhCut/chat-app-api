@@ -1,5 +1,6 @@
-import { AppError, InternalServerError } from '../errors/errors'
 import Story from '../models/StoryModel'
+import { handleServiceError } from '../utils/handleServiceError'
+import { sequelize } from '~/config/database'
 
 class StoryService {
     createStory = async ({
@@ -19,11 +20,57 @@ class StoryService {
             })
             return story
         } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
+            return handleServiceError(error)
+        }
+    }
 
-            throw new InternalServerError({ message: error.message + ' ' + error.stack })
+    getStories = async ({
+        page,
+        per_page,
+        currentUserId,
+    }: {
+        page: number
+        per_page: number
+        currentUserId: number
+    }) => {
+        try {
+            const { rows: stories, count: total } = await Story.findAndCountAll({
+                attributes: {
+                    include: [
+                        [
+                            sequelize.literal(`(
+                                CASE 
+                                    WHEN EXISTS (
+                                        SELECT 
+                                            (1) 
+                                        FROM 
+                                            user_viewed_stories 
+                                        WHERE 
+                                            user_id = ${sequelize.escape(currentUserId)}
+                                                AND
+                                            story_id = Story.id
+                                    ) THEN TRUE 
+                                ELSE FALSE 
+                                END
+                            )`),
+                            'is_viewed',
+                        ],
+                    ],
+                },
+                limit: per_page,
+                offset: (page - 1) * per_page,
+                order: [
+                    ['is_viewed', 'DESC'],
+                    ['id', 'DESC'],
+                ],
+            })
+
+            return {
+                stories,
+                total,
+            }
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 }

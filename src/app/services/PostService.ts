@@ -106,7 +106,6 @@ class PostService {
                 order: [['created_at', 'DESC']],
                 limit: per_page,
                 offset: (page - 1) * per_page,
-                logging: console.log,
             })
 
             const postIds = posts.map((post) => post.id)
