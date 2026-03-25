@@ -1,6 +1,6 @@
 import { Socket } from 'socket.io'
 
-import SocketCallService from '../services/SocketCallService'
+import SocketCallService from '../services/socket/SocketCallService'
 import { ClientToServerEvents, InterServerEvents, ServerToClientEvents } from './types/type'
 
 class callListener {

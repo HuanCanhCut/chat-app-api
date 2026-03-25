@@ -1,13 +1,13 @@
 import { Op, Sequelize } from 'sequelize'
 
-import { AppError, NotFoundError } from '../errors/errors'
-import { InternalServerError, UnprocessableEntityError } from '../errors/errors'
+import { InternalServerError, NotFoundError, UnprocessableEntityError } from '../errors/errors'
 import uploadSingleFile from '../helper/uploadToCloudinary'
 import { Conversation, User } from '../models'
 import SearchHistory from '../models/SearchHistoryModel'
+import { handleServiceError } from '../utils/handleServiceError'
 import ConversationService from './ConversationService'
 import FriendService from './FriendService'
-import SocketUserStatusService from './SocketUserStatusService'
+import SocketUserStatusService from './socket/SocketUserStatusService'
 import cloudinary from '~/config/cloudinary'
 import { MulterRequest } from '~/types/type'
 
@@ -21,12 +21,8 @@ class UserService {
             }
 
             return user
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -130,12 +126,8 @@ class UserService {
             await User.update(updateData, { where: { id: currentUserId } })
 
             return updateData
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -193,12 +185,8 @@ class UserService {
             }
 
             return user
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -213,12 +201,8 @@ class UserService {
             })
 
             return users
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -240,12 +224,8 @@ class UserService {
                     user_search_id: userSearchId,
                 })
             }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -263,12 +243,8 @@ class UserService {
             })
 
             return searchHistory
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 

@@ -1,6 +1,6 @@
-import { AppError, InternalServerError } from '../errors/errors'
 import { User } from '../models'
 import Reaction from '../models/ReactionModel'
+import { handleServiceError } from '../utils/handleServiceError'
 import { ReactionableType } from '~/types/reactionType'
 
 class ReactionService {
@@ -43,12 +43,8 @@ class ReactionService {
                 reactions,
                 count,
             }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message + ' ' + error.stack })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 }

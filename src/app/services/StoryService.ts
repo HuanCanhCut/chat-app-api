@@ -19,7 +19,7 @@ class StoryService {
                 type,
             })
             return story
-        } catch (error: any) {
+        } catch (error) {
             return handleServiceError(error)
         }
     }
@@ -60,7 +60,7 @@ class StoryService {
                 limit: per_page,
                 offset: (page - 1) * per_page,
                 order: [
-                    ['is_viewed', 'DESC'],
+                    ['is_viewed', 'ASC'],
                     ['id', 'DESC'],
                 ],
             })

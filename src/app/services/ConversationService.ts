@@ -1,11 +1,12 @@
 import { Op, QueryTypes } from 'sequelize'
 import { v4 as uuidv4 } from 'uuid'
 
-import { AppError, ConflictError, ForBiddenError, InternalServerError, NotFoundError } from '../errors/errors'
+import { ConflictError, ForBiddenError, InternalServerError, NotFoundError } from '../errors/errors'
 import uploadSingleFile from '../helper/uploadToCloudinary'
 import { Block, Conversation, ConversationMember, ConversationTheme, User } from '../models'
 import DeletedConversation from '../models/DeletedConversation'
 import MessageService from '../services/MessageService'
+import { handleServiceError } from '../utils/handleServiceError'
 import UserService from './UserService'
 import { sequelize } from '~/config/database'
 import { redisClient } from '~/config/redis'
@@ -77,12 +78,8 @@ class ConversationService {
             )
 
             return conversation
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -157,12 +154,8 @@ class ConversationService {
             await Promise.all(promises)
 
             return { conversations, count }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -219,12 +212,8 @@ class ConversationService {
             })
 
             return conversation
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -279,12 +268,8 @@ class ConversationService {
             })
 
             return conversations
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -333,12 +318,8 @@ class ConversationService {
             delete savedConversation.dataValues.members
 
             return savedConversation
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -400,12 +381,8 @@ class ConversationService {
             delete conversation.dataValues.members
 
             return conversation
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -474,12 +451,8 @@ class ConversationService {
             delete savedConversation.dataValues.members
 
             return savedConversation
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -527,12 +500,8 @@ class ConversationService {
             delete savedConversation.dataValues.members
 
             return savedConversation
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -608,12 +577,8 @@ class ConversationService {
             })
 
             return savedMember
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -773,12 +738,8 @@ class ConversationService {
             }
 
             return members
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -813,12 +774,8 @@ class ConversationService {
             }
 
             return member
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -896,12 +853,8 @@ class ConversationService {
             })
 
             return savedUserMember
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -991,12 +944,8 @@ class ConversationService {
                 type: 'system_remove_user',
                 currentUserId,
             })
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -1079,12 +1028,8 @@ class ConversationService {
                 conversation_uuid: conversationUuid,
                 member_id: userMemberId,
             })
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -1123,12 +1068,8 @@ class ConversationService {
             })
 
             return userBlock
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -1170,12 +1111,8 @@ class ConversationService {
                 key: 'block_conversation',
                 value: null,
             })
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -1212,12 +1149,8 @@ class ConversationService {
                     deleted_at: new Date(),
                 })
             }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -1310,12 +1243,8 @@ class ConversationService {
             }
 
             return conversation
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -1372,12 +1301,8 @@ class ConversationService {
             })
 
             return conversation
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 }

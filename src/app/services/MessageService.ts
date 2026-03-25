@@ -26,8 +26,9 @@ import {
 import { Conversation, Message, MessageMedia, MessageStatus, User } from '../models'
 import DeletedConversation from '../models/DeletedConversation'
 import Reaction from '../models/ReactionModel'
+import { handleServiceError } from '../utils/handleServiceError'
 import ConversationService from './ConversationService'
-import SocketMessageService from './SocketMessageService'
+import SocketMessageService from './socket/SocketMessageService'
 import { sequelize } from '~/config/database'
 import { redisClient } from '~/config/redis'
 import { ioInstance } from '~/config/socket'
@@ -141,12 +142,8 @@ class MessageService {
                     await this.replaceContentAndIsRead(parentMessage, currentUserId)
                 }
             }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -208,12 +205,8 @@ class MessageService {
             }
 
             return lastMessage
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -430,12 +423,8 @@ class MessageService {
                 messages,
                 count,
             }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -463,12 +452,8 @@ class MessageService {
             }
 
             return messagesData
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -556,12 +541,8 @@ class MessageService {
                 beforeCount,
                 targetMessageIndex,
             }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -641,12 +622,8 @@ class MessageService {
                 messageImages,
                 count,
             }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -662,12 +639,8 @@ class MessageService {
             })
 
             return types
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -759,12 +732,8 @@ class MessageService {
                     conversation_uuid: conversationUuid,
                 })
             }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -853,12 +822,8 @@ class MessageService {
                 messages,
                 count,
             }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -1100,12 +1065,8 @@ class MessageService {
                 linkPreviews,
                 count,
             }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -1127,12 +1088,8 @@ class MessageService {
             })
 
             return unreadConversationCount.length
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 }

@@ -1,11 +1,12 @@
 import { Op } from 'sequelize'
 
-import { AppError, InternalServerError, NotFoundError } from '../errors/errors'
+import { NotFoundError } from '../errors/errors'
 import { User } from '../models'
 import Comment from '../models/CommentModel'
 import PostMedia from '../models/PostMedia'
 import Post from '../models/PostModel'
 import Reaction from '../models/ReactionModel'
+import { handleServiceError } from '../utils/handleServiceError'
 import { sequelize } from '~/config/database'
 import { PostReactionUnified } from '~/types/reactionType'
 
@@ -50,12 +51,8 @@ class PostService {
                     },
                 ],
             })
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message + ' ' + error.stack })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -141,12 +138,8 @@ class PostService {
             })
 
             return { posts, total }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message + ' ' + error.stack })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -179,12 +172,8 @@ class PostService {
             })
 
             return { comments, total }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message + ' ' + error.stack })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -225,12 +214,8 @@ class PostService {
             }
 
             return reaction
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message + ' ' + error.stack })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -251,12 +236,8 @@ class PostService {
             })
 
             return
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message + ' ' + error.stack })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 }

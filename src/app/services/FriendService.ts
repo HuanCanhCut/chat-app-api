@@ -2,8 +2,9 @@ import { literal, Op, QueryTypes, Sequelize } from 'sequelize'
 import { Literal } from 'sequelize/types/utils'
 import { v4 as uuidv4 } from 'uuid'
 
-import { AppError, ConflictError, InternalServerError, NotFoundError, UnprocessableEntityError } from '../errors/errors'
+import { ConflictError, InternalServerError, NotFoundError, UnprocessableEntityError } from '../errors/errors'
 import { Conversation, ConversationMember, Friendships, Notification, User } from '../models'
+import { handleServiceError } from '../utils/handleServiceError'
 import NotificationService from './NotificationService'
 import { sequelize } from '~/config/database'
 import { redisClient } from '~/config/redis'
@@ -40,12 +41,8 @@ class FriendService {
                     on: this.friendShipJoinLiteral(userId),
                 },
             })
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -99,12 +96,8 @@ class FriendService {
             if (socketIds && socketIds.length > 0) {
                 ioInstance?.to(socketIds).emit('NEW_NOTIFICATION', notificationData)
             }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -136,12 +129,8 @@ class FriendService {
             })
 
             return !!isFriend
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -155,12 +144,8 @@ class FriendService {
             })
 
             return friendCount
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -190,12 +175,8 @@ class FriendService {
             })
 
             return mutualFriendCount[0].mutual_friends_count
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -308,12 +289,8 @@ class FriendService {
             await Promise.all(promises)
 
             return { friends, count }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -411,12 +388,8 @@ class FriendService {
             }
 
             await redisClient.del(`${RedisKey.FRIENDS_IDS_OF_USER}${currentUserId}`)
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -453,12 +426,8 @@ class FriendService {
             if (socketIds && socketIds.length > 0) {
                 ioInstance.to(socketIds).emit('REMOVE_NOTIFICATION', { notification_id: notification?.id })
             }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -480,12 +449,8 @@ class FriendService {
             })
 
             await redisClient.del(`${RedisKey.FRIENDS_IDS_OF_USER}${currentUserId}`)
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -523,12 +488,8 @@ class FriendService {
             } else {
                 await isMakeFriendRequest.destroy()
             }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -562,12 +523,8 @@ class FriendService {
             })
 
             return { friendInvitations, count }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -590,12 +547,8 @@ class FriendService {
                 per_page,
                 q: query,
             })
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -646,12 +599,8 @@ class FriendService {
             })
 
             return friends
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 }

@@ -1,5 +1,6 @@
-import { AppError, InternalServerError, NotFoundError } from '../errors/errors'
+import { NotFoundError } from '../errors/errors'
 import { Notification, User } from '../models'
+import { handleServiceError } from '../utils/handleServiceError'
 
 interface ICreateNotification {
     recipientId: number
@@ -37,12 +38,8 @@ class NotificationService {
             }
 
             return notificationData
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -95,48 +92,32 @@ class NotificationService {
             })
 
             return { notifications, total }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
     async markAsRead({ notificationId }: { notificationId: number }) {
         try {
             await Notification.update({ is_read: true }, { where: { id: notificationId } })
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
     async markAsUnread({ notificationId }: { notificationId: number }) {
         try {
             await Notification.update({ is_read: false }, { where: { id: notificationId } })
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
     async markAsSeen({ currentUserId }: { currentUserId: number }) {
         try {
             await Notification.update({ is_seen: true }, { where: { recipient_id: currentUserId } })
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 }

@@ -1,6 +1,6 @@
 import { Socket } from 'socket.io'
 
-import ConversationService from './ConversationService'
+import ConversationService from '../ConversationService'
 import { redisClient } from '~/config/redis'
 import { ioInstance } from '~/config/socket'
 import { RedisKey } from '~/enum/redis'

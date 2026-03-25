@@ -4,16 +4,11 @@ import jwt, { JwtPayload } from 'jsonwebtoken'
 import { QueryTypes } from 'sequelize'
 import { v4 as uuidv4 } from 'uuid'
 
-import {
-    AppError,
-    ConflictError,
-    InternalServerError,
-    UnauthorizedError,
-    UnprocessableEntityError,
-} from '../errors/errors'
+import { ConflictError, UnauthorizedError, UnprocessableEntityError } from '../errors/errors'
 import { RefreshToken, User } from '../models'
 import { addMailJob } from '../queue/mail'
 import createToken from '../utils/createToken'
+import { handleServiceError } from '../utils/handleServiceError'
 import hashValue from '../utils/hashValue'
 import ConversationService from './ConversationService'
 import { sequelize } from '~/config/database'
@@ -26,12 +21,8 @@ class AuthServices {
             const refreshToken = createToken({ payload }).refreshToken
 
             return { token, refreshToken }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -73,12 +64,8 @@ class AuthServices {
             const { token, refreshToken } = this.generateToken(payload)
 
             return { token, refreshToken, user }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -121,12 +108,8 @@ class AuthServices {
             const { token, refreshToken } = this.generateToken(payload)
 
             return { token, refreshToken, user }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -139,12 +122,8 @@ class AuthServices {
                     RefreshToken.destroy({ where: { refresh_token } }),
                 ])
             }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -197,12 +176,8 @@ class AuthServices {
             })
 
             return { token: accessToken, refreshToken, user }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -259,12 +234,8 @@ class AuthServices {
             )
 
             return { newAccessToken, newRefreshToken }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -285,12 +256,8 @@ class AuthServices {
                 redisClient.set(`resetCode-${email}`, resetCode, { EX: codeTtl }),
                 addMailJob({ email, code: resetCode }),
             ])
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -306,12 +273,8 @@ class AuthServices {
             const passwordHashed = await hashValue(password)
 
             await User.update({ password: passwordHashed }, { where: { email } })
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 }

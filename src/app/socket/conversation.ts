@@ -1,6 +1,6 @@
 import { Socket } from 'socket.io'
 
-import SocketConversationService from '../services/SocketConversationService'
+import SocketConversationService from '../services/socket/SocketConversationService'
 import { ClientToServerEvents, InterServerEvents, ServerToClientEvents } from './types/type'
 
 class conversationListener {
