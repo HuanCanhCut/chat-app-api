@@ -1,3 +1,4 @@
+import { User } from '../models'
 import Story from '../models/StoryModel'
 import { handleServiceError } from '../utils/handleServiceError'
 import { sequelize } from '~/config/database'
@@ -35,6 +36,7 @@ class StoryService {
     }) => {
         try {
             const { rows: stories, count: total } = await Story.findAndCountAll({
+                distinct: true,
                 attributes: {
                     include: [
                         [
@@ -57,17 +59,36 @@ class StoryService {
                         ],
                     ],
                 },
+                include: {
+                    model: User,
+                    as: 'user',
+                    attributes: ['avatar', 'full_name'],
+                },
                 limit: per_page,
                 offset: (page - 1) * per_page,
                 order: [
+                    [
+                        sequelize.literal(
+                            `CASE 
+                                WHEN 
+                                    Story.user_id = ${sequelize.escape(currentUserId)} 
+                                THEN 0 
+                                ELSE 1 
+                            END`,
+                        ),
+                        'ASC',
+                    ],
                     ['is_viewed', 'ASC'],
                     ['id', 'DESC'],
                 ],
+                group: ['Story.user_id'],
             })
 
             return {
                 stories,
-                total,
+                total: total.reduce((acc: number, curr: { count: number }) => {
+                    return acc + curr.count
+                }, 0),
             }
         } catch (error) {
             return handleServiceError(error)
