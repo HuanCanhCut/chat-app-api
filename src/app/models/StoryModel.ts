@@ -6,7 +6,8 @@ class Story extends Model<InferAttributes<Story>, InferCreationAttributes<Story>
     declare id?: number
     declare user_id: number
     declare url: string
-    declare type: 'image' | 'video'
+    declare type: 'image' | 'video' | 'text'
+    declare background_url?: string
     declare created_at?: Date
     declare updated_at?: Date
 }
@@ -33,8 +34,12 @@ Story.init(
             allowNull: false,
         },
         type: {
-            type: DataTypes.ENUM('image', 'video'),
+            type: DataTypes.ENUM('image', 'video', 'text'),
             allowNull: false,
+        },
+        background_url: {
+            type: DataTypes.STRING,
+            allowNull: true,
         },
     },
     {

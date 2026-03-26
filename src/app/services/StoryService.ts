@@ -8,16 +8,19 @@ class StoryService {
         currentUserId,
         url,
         type,
+        background_url,
     }: {
         currentUserId: number
         url: string
-        type: 'image' | 'video'
+        type: 'image' | 'video' | 'text'
+        background_url?: string
     }) => {
         try {
             const story = await Story.create({
                 user_id: currentUserId,
                 url,
                 type,
+                background_url,
             })
             return story
         } catch (error) {
