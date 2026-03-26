@@ -2,7 +2,7 @@ import { NextFunction, Response } from 'express'
 
 import { responsePagination } from '../response/responsePagination'
 import StoryService from '../services/StoryService'
-import { PaginationRequest } from '../validator/api/common'
+import { IdRequest, PaginationRequest } from '../validator/api/common'
 import { CreateStoryRequest } from '../validator/api/storySchema'
 
 class StoryController {
@@ -40,6 +40,19 @@ class StoryController {
                     per_page: Number(per_page),
                 }),
             )
+        } catch (error) {
+            next(error)
+        }
+    }
+
+    deleteStory = async (req: IdRequest, res: Response, next: NextFunction) => {
+        try {
+            const { id } = req.params
+            const decoded = req.decoded
+
+            await StoryService.deleteStory({ currentUserId: decoded!.sub, storyId: Number(id) })
+
+            res.sendStatus(204)
         } catch (error) {
             next(error)
         }

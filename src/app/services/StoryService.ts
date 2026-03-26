@@ -1,3 +1,4 @@
+import { ForBiddenError, NotFoundError } from '../errors/errors'
 import { User } from '../models'
 import Story from '../models/StoryModel'
 import { handleServiceError } from '../utils/handleServiceError'
@@ -93,6 +94,24 @@ class StoryService {
                     return acc + curr.count
                 }, 0),
             }
+        } catch (error) {
+            return handleServiceError(error)
+        }
+    }
+
+    deleteStory = async ({ currentUserId, storyId }: { currentUserId: number; storyId: number }) => {
+        try {
+            const story = await Story.findByPk(storyId)
+
+            if (!story) {
+                throw new NotFoundError({ message: 'Story not found' })
+            }
+
+            if (story.user_id !== currentUserId) {
+                throw new ForBiddenError({ message: 'You are not permitted to delete this story' })
+            }
+
+            await story.destroy()
         } catch (error) {
             return handleServiceError(error)
         }
