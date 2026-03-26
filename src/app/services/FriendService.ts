@@ -262,7 +262,7 @@ class FriendService {
                 await redisClient.set(
                     `${RedisKey.FRIENDS_IDS_OF_USER}${currentUserId}`,
                     JSON.stringify(currentFriendsIds),
-                    { EX: 60 * 60 }, // 1 hour
+                    { EX: 60 * 5 }, // 5 minutes
                 )
             }
 
@@ -561,10 +561,8 @@ class FriendService {
                 return [] // No one is online
             }
 
-            // Extract user IDs from Redis keys
             const onlineUserIds = onlineUserKeys
                 .map((key) => {
-                    // Extract user ID from the Redis key format (socket_id:123)
                     const keyPrefix = `${RedisKey.SOCKET_ID}`
                     if (key.startsWith(keyPrefix)) {
                         const idStr = key.substring(keyPrefix.length)

@@ -1,8 +1,12 @@
+import { Op } from 'sequelize'
+
 import { ForBiddenError, NotFoundError } from '../errors/errors'
-import { User } from '../models'
+import { Friendships, User } from '../models'
 import Story from '../models/StoryModel'
 import { handleServiceError } from '../utils/handleServiceError'
 import { sequelize } from '~/config/database'
+import { redisClient } from '~/config/redis'
+import { RedisKey } from '~/enum/redis'
 
 class StoryService {
     createStory = async ({
@@ -39,6 +43,30 @@ class StoryService {
         currentUserId: number
     }) => {
         try {
+            let friendIds: number[] = []
+
+            const friendIdsCache = await redisClient.get(`${RedisKey.FRIENDS_IDS_OF_USER}${currentUserId}`)
+
+            if (friendIdsCache) {
+                friendIds = JSON.parse(friendIdsCache)
+            } else {
+                const friends = await Friendships.findAll({
+                    where: {
+                        status: 'accepted',
+                        [Op.or]: [{ user_id: currentUserId }, { friend_id: currentUserId }],
+                    },
+                    attributes: ['friend_id', 'user_id'],
+                })
+
+                friendIds = friends.map((friend) =>
+                    friend.user_id === currentUserId ? friend.friend_id : friend.user_id,
+                )
+
+                await redisClient.set(`${RedisKey.FRIENDS_IDS_OF_USER}${currentUserId}`, JSON.stringify(friendIds), {
+                    EX: 60 * 5, // 5 minutes
+                })
+            }
+
             const { rows: stories, count: total } = await Story.findAndCountAll({
                 distinct: true,
                 attributes: {
@@ -66,7 +94,12 @@ class StoryService {
                 include: {
                     model: User,
                     as: 'user',
-                    attributes: ['avatar', 'full_name'],
+                    attributes: ['id', 'avatar', 'full_name'],
+                },
+                where: {
+                    user_id: {
+                        [Op.in]: [currentUserId, ...friendIds],
+                    },
                 },
                 limit: per_page,
                 offset: (page - 1) * per_page,
