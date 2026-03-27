@@ -5,8 +5,10 @@ import { Friendships, User } from '../models'
 import Reaction from '../models/ReactionModel'
 import Story from '../models/StoryModel'
 import { handleServiceError } from '../utils/handleServiceError'
+import NotificationService from './NotificationService'
 import { sequelize } from '~/config/database'
 import { redisClient } from '~/config/redis'
+import { ioInstance } from '~/config/socket'
 import { RedisKey } from '~/enum/redis'
 import { BaseReactionUnified } from '~/types/reactionType'
 
@@ -183,6 +185,28 @@ class StoryService {
                     reactionable_id: story.get('id')!,
                     react: unified,
                 })
+
+                const currentUser = await User.findByPk(currentUserId)
+
+                const notification = await NotificationService.create({
+                    recipientId: story.user_id,
+                    type: 'reaction',
+                    currentUserId,
+                    message: `${currentUser?.full_name} đã bày tỏ cảm xúc với story của bạn`,
+                    target_type: 'Story',
+                    target_id: story.get('id')!,
+                    metadata: JSON.stringify({
+                        reaction: unified,
+                    }),
+                })
+
+                if (notification) {
+                    const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${Number(story.user_id)}`, 0, -1)
+
+                    ioInstance.to(socketIds).emit('NEW_NOTIFICATION', {
+                        notification,
+                    })
+                }
             } else {
                 const MAX_REACTION_COUNT = 5
 

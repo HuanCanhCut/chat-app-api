@@ -11,7 +11,7 @@ class Notification extends Model<InferAttributes<Notification>, InferCreationAtt
     declare is_read?: boolean
     declare is_seen?: boolean
     declare actor_id: number
-    declare metadata?: JSON
+    declare metadata?: string
     declare target_type: string
     declare target_id: number
     declare created_at?: Date

@@ -10,10 +10,11 @@ interface ICreateNotification {
     message: string
     target_type: string
     target_id: number
+    metadata?: string
 }
 
 class NotificationService {
-    async create({ recipientId, type, currentUserId, message, target_type, target_id }: ICreateNotification) {
+    async create({ recipientId, type, currentUserId, message, target_type, target_id, metadata }: ICreateNotification) {
         try {
             const currentUser = await User.findOne({
                 where: {
@@ -32,6 +33,7 @@ class NotificationService {
                 message: `${message}`,
                 target_type,
                 target_id,
+                metadata,
             })
 
             return await Notification.findByPk(notification.id, {
