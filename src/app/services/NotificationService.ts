@@ -1,16 +1,19 @@
 import { NotFoundError } from '../errors/errors'
 import { Notification, User } from '../models'
 import { handleServiceError } from '../utils/handleServiceError'
+import { NotificationType } from '~/types/notificationTypes'
 
 interface ICreateNotification {
     recipientId: number
-    type: 'friend_request' | 'accept_friend_request' | 'message'
+    type: NotificationType
     currentUserId: number
-    message: 'vừa gửi cho bạn một lời mời kết bạn' | 'đã chấp nhận lời mời kết bạn'
+    message: string
+    target_type: string
+    target_id: number
 }
 
 class NotificationService {
-    async create({ recipientId, type, currentUserId, message }: ICreateNotification) {
+    async create({ recipientId, type, currentUserId, message, target_type, target_id }: ICreateNotification) {
         try {
             const currentUser = await User.findOne({
                 where: {
@@ -25,19 +28,21 @@ class NotificationService {
             const notification = await Notification.create({
                 recipient_id: Number(recipientId),
                 type,
-                sender_id: currentUserId,
-                message: `${currentUser.full_name} ${message}`,
+                actor_id: currentUserId,
+                message: `${message}`,
+                target_type,
+                target_id,
             })
 
-            const notificationData = {
-                notification: {
-                    ...notification?.dataValues,
-                    sender_id: currentUserId,
-                    sender_user: currentUser,
-                },
-            }
-
-            return notificationData
+            return await Notification.findByPk(notification.id, {
+                include: [
+                    {
+                        model: User,
+                        as: 'actor',
+                        required: true,
+                    },
+                ],
+            })
         } catch (error) {
             return handleServiceError(error)
         }
@@ -55,7 +60,7 @@ class NotificationService {
         await Notification.destroy({
             where: {
                 recipient_id: recipientId,
-                sender_id: senderId,
+                actor_id: senderId,
                 type,
             },
         })
@@ -82,7 +87,7 @@ class NotificationService {
                 include: [
                     {
                         model: User,
-                        as: 'sender_user',
+                        as: 'actor',
                         required: true,
                     },
                 ],

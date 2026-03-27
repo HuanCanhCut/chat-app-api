@@ -35,8 +35,8 @@ const associations = () => {
     /**
      * Notification model
      */
-    Notification.belongsTo(User, { foreignKey: 'sender_id', as: 'sender_user' })
-    User.hasMany(Notification, { foreignKey: 'sender_id', as: 'notifications' })
+    Notification.belongsTo(User, { foreignKey: 'actor_id', as: 'actor' })
+    User.hasMany(Notification, { foreignKey: 'actor_id', as: 'notifications' })
 
     /**
      * Search history model

@@ -83,18 +83,24 @@ class FriendService {
                 throw new InternalServerError({ message: 'Failed to add friend' })
             }
 
-            const notificationData = await NotificationService.create({
+            const currentUser = await User.findByPk(currentUserId)
+
+            const notification = await NotificationService.create({
                 recipientId: Number(friendId),
                 type: 'friend_request',
                 currentUserId: currentUserId,
-                message: 'vừa gửi cho bạn một lời mời kết bạn',
+                message: `${currentUser?.full_name} vừa gửi cho bạn một lời mời kết bạn`,
+                target_type: 'user',
+                target_id: currentUserId,
             })
 
             // Send notification to user
             const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${Number(friendId)}`, 0, -1)
 
             if (socketIds && socketIds.length > 0) {
-                ioInstance?.to(socketIds).emit('NEW_NOTIFICATION', notificationData)
+                if (notification) {
+                    ioInstance?.to(socketIds).emit('NEW_NOTIFICATION', { notification })
+                }
             }
         } catch (error) {
             return handleServiceError(error)
@@ -165,6 +171,10 @@ class FriendService {
                 ) AS mutual_friends_count
             `
 
+            if (friendIds.length === 0) {
+                return 0
+            }
+
             interface MutualFriendCount {
                 mutual_friends_count: number
             }
@@ -172,6 +182,7 @@ class FriendService {
             const mutualFriendCount = await sequelize.query<MutualFriendCount>(mutualFriendCountQuery, {
                 replacements: { userId, friendIds },
                 type: QueryTypes.SELECT,
+                // logging: console.log,
             })
 
             return mutualFriendCount[0].mutual_friends_count
@@ -322,11 +333,19 @@ class FriendService {
                 type: 'friend_request',
             })
 
-            const notificationData = await NotificationService.create({
+            const currentUser = await User.findOne({
+                where: {
+                    id: currentUserId,
+                },
+            })
+
+            const notification = await NotificationService.create({
                 recipientId: Number(userId),
                 type: 'accept_friend_request',
                 currentUserId: currentUserId,
-                message: 'đã chấp nhận lời mời kết bạn',
+                message: `${currentUser?.full_name} đã chấp nhận lời mời kết bạn`,
+                target_type: 'user',
+                target_id: currentUserId,
             })
 
             const hasConversation = await Conversation.findOne({
@@ -384,7 +403,9 @@ class FriendService {
             const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${Number(userId)}`, 0, -1)
 
             if (socketIds && socketIds.length > 0) {
-                ioInstance.to(socketIds).emit('NEW_NOTIFICATION', notificationData)
+                if (notification) {
+                    ioInstance.to(socketIds).emit('NEW_NOTIFICATION', { notification })
+                }
             }
 
             await redisClient.del(`${RedisKey.FRIENDS_IDS_OF_USER}${currentUserId}`)
@@ -407,7 +428,7 @@ class FriendService {
             }
 
             const notification = await Notification.findOne({
-                where: { recipient_id: currentUserId, sender_id: Number(senderId), type: 'friend_request' },
+                where: { recipient_id: currentUserId, actor_id: Number(senderId), type: 'friend_request' },
                 attributes: ['id'],
             })
 
@@ -470,7 +491,7 @@ class FriendService {
             const notification = await Notification.findOne({
                 where: {
                     recipient_id: Number(userId),
-                    sender_id: currentUserId,
+                    actor_id: currentUserId,
                     type: 'friend_request',
                 },
                 attributes: ['id'],
