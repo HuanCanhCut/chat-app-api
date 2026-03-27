@@ -3,7 +3,7 @@ import { NextFunction, Response } from 'express'
 import { responsePagination } from '../response/responsePagination'
 import StoryService from '../services/StoryService'
 import { IdRequest, PaginationRequest } from '../validator/api/common'
-import { CreateStoryRequest } from '../validator/api/storySchema'
+import { CreateStoryRequest, ReactToStoryRequest } from '../validator/api/storySchema'
 
 class StoryController {
     createCategory = async (req: CreateStoryRequest, res: Response, next: NextFunction) => {
@@ -53,6 +53,26 @@ class StoryController {
             await StoryService.deleteStory({ currentUserId: decoded!.sub, storyId: Number(id) })
 
             res.sendStatus(204)
+        } catch (error) {
+            next(error)
+        }
+    }
+
+    reactToStory = async (req: ReactToStoryRequest, res: Response, next: NextFunction) => {
+        try {
+            const { id } = req.params
+            const { unified } = req.body
+            const decoded = req.decoded
+
+            const story = await StoryService.reactToStory({
+                currentUserId: decoded!.sub,
+                storyId: Number(id),
+                unified,
+            })
+
+            res.json({
+                data: story,
+            })
         } catch (error) {
             next(error)
         }

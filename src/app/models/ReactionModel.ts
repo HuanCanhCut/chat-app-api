@@ -6,7 +6,7 @@ import { UserModel } from '~/types/type'
 class Reaction extends Model<InferAttributes<Reaction>, InferCreationAttributes<Reaction>> {
     declare id?: number
     declare reactionable_id: number
-    declare reactionable_type: 'Message' | 'Post' | 'Comment'
+    declare reactionable_type: 'Message' | 'Post' | 'Comment' | 'Story'
     declare user_id: number
     declare react: string
     declare created_at?: Date

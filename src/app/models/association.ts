@@ -222,7 +222,7 @@ const associations = () => {
      * Story - Reaction Model
      */
     Story.hasMany(Reaction, {
-        foreignKey: 'reactable_id',
+        foreignKey: 'reactionable_id',
         as: 'reactions',
         constraints: false,
         scope: {
@@ -231,7 +231,7 @@ const associations = () => {
     })
 
     Reaction.belongsTo(Story, {
-        foreignKey: 'reactable_id',
+        foreignKey: 'reactionable_id',
         as: 'story_reaction',
         constraints: false,
         scope: {

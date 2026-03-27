@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 import { TypedRequest } from '../types/request'
 import { idSchema, paginationSchema } from './common'
-import { POST_REACTIONS } from '~/types/reactionType'
+import { BASE_REACTION } from '~/types/reactionType'
 
 export const createPostSchema = z.object({
     body: z
@@ -40,7 +40,7 @@ export const getPostCommentSchema = z.object({
 
 export const reactPostSchema = z.object({
     body: z.object({
-        unified: z.enum(POST_REACTIONS),
+        unified: z.enum(BASE_REACTION),
     }),
     params: idSchema.shape.params,
 })

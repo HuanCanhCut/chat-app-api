@@ -8,7 +8,7 @@ import Post from '../models/PostModel'
 import Reaction from '../models/ReactionModel'
 import { handleServiceError } from '../utils/handleServiceError'
 import { sequelize } from '~/config/database'
-import { PostReactionUnified } from '~/types/reactionType'
+import { BaseReactionUnified } from '~/types/reactionType'
 
 class PostService {
     createPost = async ({
@@ -183,7 +183,7 @@ class PostService {
         user_id,
     }: {
         post_id: number
-        unified: PostReactionUnified
+        unified: BaseReactionUnified
         user_id: number
     }) => {
         try {

@@ -2,11 +2,13 @@ import { Op } from 'sequelize'
 
 import { ForBiddenError, NotFoundError } from '../errors/errors'
 import { Friendships, User } from '../models'
+import Reaction from '../models/ReactionModel'
 import Story from '../models/StoryModel'
 import { handleServiceError } from '../utils/handleServiceError'
 import { sequelize } from '~/config/database'
 import { redisClient } from '~/config/redis'
 import { RedisKey } from '~/enum/redis'
+import { BaseReactionUnified } from '~/types/reactionType'
 
 class StoryService {
     createStory = async ({
@@ -145,6 +147,72 @@ class StoryService {
             }
 
             await story.destroy()
+        } catch (error) {
+            return handleServiceError(error)
+        }
+    }
+
+    reactToStory = async ({
+        currentUserId,
+        storyId,
+        unified,
+    }: {
+        currentUserId: number
+        storyId: number
+        unified: BaseReactionUnified
+    }) => {
+        try {
+            const story = await Story.findByPk(storyId)
+
+            if (!story) {
+                throw new NotFoundError({ message: 'Story not found' })
+            }
+
+            const storyReactions = await Reaction.findAll({
+                where: {
+                    reactionable_type: 'Story',
+                    reactionable_id: story.get('id'),
+                },
+            })
+
+            if (storyReactions.length === 0) {
+                // First reaction, create it
+                await Reaction.create({
+                    user_id: currentUserId,
+                    reactionable_type: 'Story',
+                    reactionable_id: story.get('id')!,
+                    react: unified,
+                })
+            } else {
+                const MAX_REACTION_COUNT = 5
+
+                if (storyReactions.length < MAX_REACTION_COUNT) {
+                    // Add new reaction
+                    await Reaction.create({
+                        user_id: currentUserId,
+                        reactionable_type: 'Story',
+                        reactionable_id: story.get('id')!,
+                        react: unified,
+                    })
+                } else {
+                    // remove first reaction and insert new one
+                    await Promise.all([
+                        Reaction.destroy({
+                            where: {
+                                id: storyReactions[0].get('id'),
+                            },
+                        }),
+                        Reaction.create({
+                            user_id: currentUserId,
+                            reactionable_type: 'Story',
+                            reactionable_id: story.get('id')!,
+                            react: unified,
+                        }),
+                    ])
+                }
+            }
+
+            return story
         } catch (error) {
             return handleServiceError(error)
         }
