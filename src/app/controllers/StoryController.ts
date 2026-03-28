@@ -77,6 +77,22 @@ class StoryController {
             next(error)
         }
     }
+
+    removeStoryReacts = async (req: IdRequest, res: Response, next: NextFunction) => {
+        try {
+            const { id } = req.params
+            const decoded = req.decoded
+
+            await StoryService.removeStoryReacts({
+                currentUserId: decoded!.sub,
+                storyId: Number(id),
+            })
+
+            res.sendStatus(204)
+        } catch (error) {
+            next(error)
+        }
+    }
 }
 
 export default new StoryController()

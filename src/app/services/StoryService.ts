@@ -200,7 +200,7 @@ class StoryService {
                     }),
                 })
 
-                if (notification) {
+                if (notification && story.user_id !== currentUserId) {
                     const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${Number(story.user_id)}`, 0, -1)
 
                     ioInstance.to(socketIds).emit('NEW_NOTIFICATION', {
@@ -235,6 +235,27 @@ class StoryService {
                     ])
                 }
             }
+
+            return story
+        } catch (error) {
+            return handleServiceError(error)
+        }
+    }
+
+    removeStoryReacts = async ({ currentUserId, storyId }: { currentUserId: number; storyId: number }) => {
+        try {
+            const story = await Story.findByPk(storyId)
+            if (!story) {
+                throw new NotFoundError({ message: 'Story not found' })
+            }
+
+            await Reaction.destroy({
+                where: {
+                    user_id: currentUserId,
+                    reactionable_type: 'Story',
+                    reactionable_id: storyId,
+                },
+            })
 
             return story
         } catch (error) {
