@@ -186,18 +186,16 @@ class StoryService {
                     react: unified,
                 })
 
-                const currentUser = await User.findByPk(currentUserId)
-
                 const notification = await NotificationService.create({
                     recipientId: story.user_id,
                     type: 'reaction',
                     currentUserId,
-                    message: `${currentUser?.full_name} đã bày tỏ cảm xúc với story của bạn`,
                     target_type: 'Story',
                     target_id: story.get('id')!,
                     metadata: JSON.stringify({
                         reaction: unified,
                     }),
+                    message: '{actor} đã thả cảm xúc story của bạn',
                 })
 
                 if (notification && story.user_id !== currentUserId) {

@@ -7,14 +7,22 @@ interface ICreateNotification {
     recipientId: number
     type: NotificationType
     currentUserId: number
-    message: string
     target_type: string
     target_id: number
     metadata?: string
+    message?: string
 }
 
 class NotificationService {
-    async create({ recipientId, type, currentUserId, message, target_type, target_id, metadata }: ICreateNotification) {
+    async create({
+        recipientId,
+        type,
+        currentUserId,
+        target_type,
+        target_id,
+        metadata,
+        message = '',
+    }: ICreateNotification) {
         try {
             const currentUser = await User.findOne({
                 where: {
@@ -26,11 +34,28 @@ class NotificationService {
                 throw new NotFoundError({ message: 'User not found' })
             }
 
+            if (!message) {
+                switch (type) {
+                    case 'friend_request':
+                        message = '{actor} đã gửi cho bạn lời mời kết bạn'
+                        break
+                    case 'accept_friend_request':
+                        message = '{actor} đã chấp nhận lời mời kết bạn của bạn'
+                        break
+                    case 'message':
+                        message = '{actor} đã gửi cho bạn một tin nhắn'
+                        break
+                    case 'reaction':
+                        message = '{actor} đã reaction hành động của bạn'
+                        break
+                }
+            }
+
             const notification = await Notification.create({
                 recipient_id: Number(recipientId),
                 type,
                 actor_id: currentUserId,
-                message: `${message}`,
+                message,
                 target_type,
                 target_id,
                 metadata,

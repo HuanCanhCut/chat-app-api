@@ -83,13 +83,10 @@ class FriendService {
                 throw new InternalServerError({ message: 'Failed to add friend' })
             }
 
-            const currentUser = await User.findByPk(currentUserId)
-
             const notification = await NotificationService.create({
                 recipientId: Number(friendId),
                 type: 'friend_request',
                 currentUserId: currentUserId,
-                message: `${currentUser?.full_name} vừa gửi cho bạn một lời mời kết bạn`,
                 target_type: 'user',
                 target_id: currentUserId,
             })
@@ -333,17 +330,10 @@ class FriendService {
                 type: 'friend_request',
             })
 
-            const currentUser = await User.findOne({
-                where: {
-                    id: currentUserId,
-                },
-            })
-
             const notification = await NotificationService.create({
                 recipientId: Number(userId),
                 type: 'accept_friend_request',
                 currentUserId: currentUserId,
-                message: `${currentUser?.full_name} đã chấp nhận lời mời kết bạn`,
                 target_type: 'user',
                 target_id: currentUserId,
             })
