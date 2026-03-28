@@ -28,7 +28,7 @@ export const clearCookie = ({ res, cookies = [], path = '/', req }: IClearCookie
         res.cookie(cookie, '', {
             httpOnly: true,
             path,
-            sameSite: 'none',
+            sameSite: 'strict',
             secure: true,
             partitioned: true,
             maxAge: 0,
@@ -53,7 +53,7 @@ export const setCookie = ({ res, cookies = [], path = '/', req }: ISetCookie) =>
         res.cookie(cookie.name, cookie.value, {
             httpOnly: true,
             path,
-            sameSite: 'none',
+            sameSite: 'strict',
             secure: true,
             partitioned: true,
             domain: domain,

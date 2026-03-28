@@ -3,8 +3,7 @@ import { NextFunction, Request, Response } from 'express'
 import { NotFoundError, UnauthorizedError, UnprocessableEntityError } from '../errors/errors'
 import { RefreshToken } from '../models'
 import AuthService from '../services/AuthService'
-import clearCookie from '../utils/clearCookies'
-import { setCookie } from '../utils/cookiesManager'
+import { clearCookie, setCookie } from '../utils/cookiesManager'
 import {
     LoginRequest,
     LoginWithTokenRequest,

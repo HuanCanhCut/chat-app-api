@@ -82,4 +82,14 @@ Notification.init(
     },
 )
 
+Notification.prototype.toJSON = function () {
+    const values = { ...this.get() }
+
+    if (values.metadata) {
+        values.metadata = JSON.parse(values.metadata)
+    }
+
+    return values
+}
+
 export default Notification

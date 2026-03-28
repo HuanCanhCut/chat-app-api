@@ -1,7 +1,7 @@
 import { NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
 
-import clearCookie from '../utils/clearCookies'
+import { clearCookie } from '../utils/cookiesManager'
 import redisClient from '~/config/redis/redisClient'
 import { IRequest } from '~/types/type'
 
