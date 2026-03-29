@@ -11,6 +11,7 @@ import MessageStatus from './MessageStatusModel'
 import Notification from './NotificationModel'
 import PostMedia from './PostMedia'
 import Post from './PostModel'
+import PostScore from './PostScore.Model'
 import Reaction from './ReactionModel'
 import RefreshToken from './RefreshTokenModel'
 import SearchHistory from './SearchHistoryModel'
@@ -148,6 +149,13 @@ const associations = () => {
 
     Post.hasMany(PostMedia, { foreignKey: 'post_id', as: 'post_media' })
     PostMedia.belongsTo(Post, { foreignKey: 'post_id', as: 'post' })
+
+    /**
+     * Post and PostScore model
+     */
+
+    Post.hasOne(PostScore, { foreignKey: 'post_id', as: 'post_score' })
+    PostScore.belongsTo(Post, { foreignKey: 'post_id', as: 'post' })
 
     /**
      *  User and Post model

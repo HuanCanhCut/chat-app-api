@@ -1,7 +1,9 @@
+import { chunk } from 'lodash'
+import moment from 'moment'
 import { Op } from 'sequelize'
 
 import { NotFoundError } from '../errors/errors'
-import { User } from '../models'
+import { PostScore, User } from '../models'
 import Comment from '../models/CommentModel'
 import PostMedia from '../models/PostMedia'
 import Post from '../models/PostModel'
@@ -27,17 +29,31 @@ class PostService {
                 user_id,
                 caption,
                 is_public,
+                reaction_count: 0,
+                comment_count: 0,
+                share_count: 0,
             })
 
-            if (media && media.length > 0 && post.id) {
-                await PostMedia.bulkCreate(
-                    media.map((m) => ({
+            await sequelize.transaction(async (t) => {
+                await PostScore.create(
+                    {
                         post_id: post.id!,
-                        media_url: m.media_url,
-                        media_type: m.media_type,
-                    })),
+                        score: 0,
+                    },
+                    { transaction: t },
                 )
-            }
+
+                if (media?.length) {
+                    await PostMedia.bulkCreate(
+                        media.map((m) => ({
+                            post_id: post.id!,
+                            media_url: m.media_url,
+                            media_type: m.media_type,
+                        })),
+                        { transaction: t },
+                    )
+                }
+            })
 
             return await Post.findByPk(post.id, {
                 include: [
@@ -56,12 +72,49 @@ class PostService {
         }
     }
 
-    getPost = async ({ page, per_page }: { page: number; per_page: number }) => {
+    getPost = async ({ cursor, limit }: { cursor?: string; limit: number }) => {
         try {
-            const { rows: posts, count: total } = await Post.findAndCountAll({
-                distinct: true,
+            const encodeCursor = (score: number, id: number) =>
+                Buffer.from(JSON.stringify({ score, id })).toString('base64')
+
+            const decodeCursor = (cursor: string) => JSON.parse(Buffer.from(cursor, 'base64').toString('utf8'))
+
+            let whereCondition = {}
+
+            if (cursor) {
+                const { score, id } = decodeCursor(cursor)
+                whereCondition = {
+                    [Op.or]: [
+                        {
+                            '$post_score.score$': {
+                                [Op.lt]: score,
+                            },
+                        },
+                        {
+                            [Op.and]: [
+                                {
+                                    '$post_score.score$': score,
+                                },
+                                {
+                                    id: {
+                                        [Op.lt]: id,
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                }
+            }
+
+            const posts = (await Post.findAll({
                 subQuery: false,
                 include: [
+                    {
+                        model: PostScore,
+                        as: 'post_score',
+                        attributes: ['score'],
+                        required: true,
+                    },
                     {
                         model: User,
                         as: 'user',
@@ -69,6 +122,8 @@ class PostService {
                     {
                         model: PostMedia,
                         as: 'post_media',
+                        required: false,
+                        separate: true,
                     },
                 ],
                 attributes: {
@@ -76,11 +131,11 @@ class PostService {
                         [
                             sequelize.literal(`
                                 (
-                                    SELECT 
-                                        COUNT(1) 
-                                    FROM 
-                                        comments 
-                                    WHERE 
+                                    SELECT
+                                        COUNT(1)
+                                    FROM
+                                        comments
+                                    WHERE
                                         comments.post_id = Post.id
                                 )`),
                             'comments_count',
@@ -88,11 +143,11 @@ class PostService {
                         [
                             sequelize.literal(`
                                 (
-                                    SELECT 
-                                        COUNT(1) 
-                                    FROM 
-                                        reactions 
-                                    WHERE 
+                                    SELECT
+                                        COUNT(1)
+                                    FROM
+                                        reactions
+                                    WHERE
                                         reactions.reactionable_id = Post.id AND
                                         reactions.reactionable_type = 'Post'
                                 )`),
@@ -100,13 +155,22 @@ class PostService {
                         ],
                     ],
                 },
-                order: [['created_at', 'DESC']],
-                limit: per_page,
-                offset: (page - 1) * per_page,
-            })
+                where: whereCondition,
+                order: [
+                    [
+                        {
+                            model: PostScore,
+                            as: 'post_score',
+                        },
+                        'score',
+                        'DESC',
+                    ],
+                    ['id', 'DESC'],
+                ],
+                limit: limit + 1,
+            })) as (Post & { post_score: PostScore })[]
 
             const postIds = posts.map((post) => post.id)
-
             const topReactions = await Reaction.findAll({
                 where: {
                     reactionable_id: {
@@ -123,21 +187,29 @@ class PostService {
                 if (!acc[curr.reactionable_id]) {
                     acc[curr.reactionable_id] = []
                 }
-
                 if (acc[curr.reactionable_id].length <= 2) {
                     acc[curr.reactionable_id].push(curr)
                 }
-
                 return acc
             }, {})
 
             posts.forEach((post) => {
                 post.setDataValue('top_reactions', topReactionsMap[post.id as number])
 
-                return post
+                delete (post.dataValues as any).post_score
             })
 
-            return { posts, total }
+            const hasNextPage = posts.length > limit
+            const data = hasNextPage ? posts.slice(0, limit) : posts
+
+            const lastPost = data[data.length - 1]
+            const nextCursor = hasNextPage && lastPost ? encodeCursor(lastPost.post_score.score, lastPost.id!) : null
+
+            return {
+                posts: data,
+                has_next_page: hasNextPage,
+                next_cursor: nextCursor,
+            }
         } catch (error) {
             return handleServiceError(error)
         }
@@ -213,6 +285,12 @@ class PostService {
                 await reaction.save()
             }
 
+            await Post.increment('reaction_count', {
+                where: {
+                    id: post_id,
+                },
+            })
+
             return reaction
         } catch (error) {
             return handleServiceError(error)
@@ -235,10 +313,72 @@ class PostService {
                 },
             })
 
+            await Post.decrement('reaction_count', {
+                where: {
+                    id: post_id,
+                },
+            })
+
             return
         } catch (error) {
             return handleServiceError(error)
         }
+    }
+
+    updatePostScore = async (postId?: number) => {
+        const calculateScore = (post: Post): { post_id: number; score: number } => {
+            const ageInHours = post.created_at ? (Date.now() - new Date(post.created_at).getTime()) / 3600000 : 0
+            const engagement = post.reaction_count * 1.0 + post.comment_count * 2.0 + post.share_count * 3.0
+            const score = engagement / Math.pow(ageInHours + 2, 1.5)
+
+            return { post_id: post.id!, score }
+        }
+
+        if (postId !== undefined) {
+            const post = await Post.findByPk(postId)
+            if (!post) return
+
+            const score = calculateScore(post)
+            await PostScore.upsert(score)
+            return
+        }
+
+        const posts = await Post.findAll({
+            include: {
+                model: PostScore,
+                as: 'post_score',
+                attributes: ['updated_at'],
+                required: false,
+            },
+            where: {
+                [Op.or]: [
+                    {
+                        created_at: {
+                            [Op.gte]: moment().subtract(7, 'days').toDate(),
+                        },
+                    },
+                    {
+                        '$post_score.updated_at$': {
+                            [Op.is]: null,
+                        },
+                    },
+                ],
+            },
+        })
+
+        const scores = posts.map(calculateScore)
+
+        const BATCHES_SIZE = 100
+
+        const batches = chunk(scores, BATCHES_SIZE)
+
+        for (const batch of batches) {
+            await PostScore.bulkCreate(batch, {
+                updateOnDuplicate: ['score', 'updated_at'],
+            })
+        }
+
+        return scores.length
     }
 }
 

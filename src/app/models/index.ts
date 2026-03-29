@@ -10,6 +10,7 @@ import MessageMedia from './MessageMedia'
 import Message from './MessageModel'
 import MessageStatus from './MessageStatusModel'
 import Notification from './NotificationModel'
+import PostScore from './PostScore.Model'
 import MessageReaction from './ReactionModel'
 import RefreshToken from './RefreshTokenModel'
 import SearchHistory from './SearchHistoryModel'
@@ -39,6 +40,7 @@ export {
     MessageReaction,
     MessageStatus,
     Notification,
+    PostScore,
     RefreshToken,
     SearchHistory,
     User,

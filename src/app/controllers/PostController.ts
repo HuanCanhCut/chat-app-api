@@ -3,7 +3,8 @@ import { NextFunction, Response } from 'express'
 import { responsePagination } from '../response/responsePagination'
 import PostService from '../services/PostService'
 import ReactionService from '../services/ReactionService'
-import { IdRequest, PaginationRequest } from '../validator/api/common'
+import { IdRequest } from '../validator/api/common'
+import { CursorRequest } from '../validator/api/cursorSchema'
 import {
     CreatePostRequest,
     GetPostCommentsRequest,
@@ -33,22 +34,21 @@ class PostController {
         }
     }
 
-    getPosts = async (req: PaginationRequest, res: Response, next: NextFunction) => {
+    getPosts = async (req: CursorRequest, res: Response, next: NextFunction) => {
         try {
-            const { page, per_page } = req.query
+            const { cursor, limit = 10 } = req.query
 
-            const { posts, total } = await PostService.getPost({ page: Number(page), per_page: Number(per_page) })
+            const { posts, has_next_page, next_cursor } = await PostService.getPost({ cursor, limit: Number(limit) })
 
-            res.json(
-                responsePagination({
-                    req,
-                    data: posts,
-                    total,
-                    count: posts.length,
-                    current_page: Number(page),
-                    per_page: Number(per_page),
-                }),
-            )
+            res.json({
+                data: posts,
+                meta: {
+                    pagination: {
+                        has_next_page,
+                        next_cursor,
+                    },
+                },
+            })
         } catch (error) {
             return next(error)
         }
