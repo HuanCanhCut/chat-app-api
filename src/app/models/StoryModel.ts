@@ -10,6 +10,11 @@ class Story extends Model<InferAttributes<Story>, InferCreationAttributes<Story>
     declare background_url?: string
     declare created_at?: Date
     declare updated_at?: Date
+
+    /**
+     * Virtual fields
+     */
+    declare is_viewed?: boolean
 }
 Story.init(
     {
@@ -47,5 +52,15 @@ Story.init(
         sequelize,
     },
 )
+
+Story.prototype.toJSON = function () {
+    const values = { ...this.get() }
+
+    if (values.is_viewed !== undefined && values.is_viewed !== null) {
+        values.is_viewed = Boolean(values.is_viewed)
+    }
+
+    return values
+}
 
 export default Story
