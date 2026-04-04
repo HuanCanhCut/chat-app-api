@@ -4,6 +4,7 @@ import { sequelize } from '../../config/database'
 
 class Story extends Model<InferAttributes<Story>, InferCreationAttributes<Story>> {
     declare id?: number
+    declare uuid?: string
     declare user_id: number
     declare url: string
     declare type: 'image' | 'video' | 'text'
@@ -45,6 +46,11 @@ Story.init(
         background_url: {
             type: DataTypes.STRING,
             allowNull: true,
+        },
+        uuid: {
+            type: DataTypes.UUID,
+            defaultValue: DataTypes.UUIDV4,
+            allowNull: false,
         },
     },
     {

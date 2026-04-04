@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 import { TypedRequest } from '../types/request'
-import { idSchema } from './common'
+import { uuidSchema } from './common'
 import { BASE_REACTION } from '~/types/reactionType'
 
 export const createStorySchema = z.object({
@@ -29,7 +29,7 @@ export const reactToStorySchema = z.object({
     body: z.object({
         unified: z.enum(BASE_REACTION),
     }),
-    params: idSchema.shape.params,
+    params: uuidSchema.shape.params,
 })
 
 export type CreateStoryRequest = TypedRequest<z.infer<typeof createStorySchema>['body']>

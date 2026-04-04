@@ -136,9 +136,9 @@ class StoryService {
         }
     }
 
-    deleteStory = async ({ currentUserId, storyId }: { currentUserId: number; storyId: number }) => {
+    deleteStory = async ({ currentUserId, storyUuid }: { currentUserId: number; storyUuid: string }) => {
         try {
-            const story = await Story.findByPk(storyId)
+            const story = await Story.findOne({ where: { uuid: storyUuid } })
 
             if (!story) {
                 throw new NotFoundError({ message: 'Story not found' })
@@ -156,15 +156,19 @@ class StoryService {
 
     reactToStory = async ({
         currentUserId,
-        storyId,
+        storyUuid,
         unified,
     }: {
         currentUserId: number
-        storyId: number
+        storyUuid: string
         unified: BaseReactionUnified
     }) => {
         try {
-            const story = await Story.findByPk(storyId)
+            const story = await Story.findOne({
+                where: {
+                    uuid: storyUuid,
+                },
+            })
 
             if (!story) {
                 throw new NotFoundError({ message: 'Story not found' })
@@ -240,9 +244,13 @@ class StoryService {
         }
     }
 
-    removeStoryReacts = async ({ currentUserId, storyId }: { currentUserId: number; storyId: number }) => {
+    removeStoryReacts = async ({ currentUserId, storyUuid }: { currentUserId: number; storyUuid: string }) => {
         try {
-            const story = await Story.findByPk(storyId)
+            const story = await Story.findOne({
+                where: {
+                    uuid: storyUuid,
+                },
+            })
             if (!story) {
                 throw new NotFoundError({ message: 'Story not found' })
             }
@@ -251,7 +259,7 @@ class StoryService {
                 where: {
                     user_id: currentUserId,
                     reactionable_type: 'Story',
-                    reactionable_id: storyId,
+                    reactionable_id: story.get('id'),
                 },
             })
 
