@@ -2,7 +2,7 @@ import { NextFunction, Response } from 'express'
 
 import { responsePagination } from '../response/responsePagination'
 import StoryService from '../services/StoryService'
-import { PaginationRequest, UuidRequest } from '../validator/api/common'
+import { IdRequest, PaginationRequest, UuidRequest } from '../validator/api/common'
 import { CreateStoryRequest, ReactToStoryRequest } from '../validator/api/storySchema'
 
 class StoryController {
@@ -89,6 +89,22 @@ class StoryController {
             })
 
             res.sendStatus(204)
+        } catch (error) {
+            next(error)
+        }
+    }
+
+    getStoriesByUserId = async (req: IdRequest, res: Response, next: NextFunction) => {
+        try {
+            const { id } = req.params
+
+            const stories = await StoryService.getStoriesByUserId({
+                userId: Number(id),
+            })
+
+            res.json({
+                data: stories,
+            })
         } catch (error) {
             next(error)
         }

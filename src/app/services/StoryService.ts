@@ -98,7 +98,6 @@ class StoryService {
                 include: {
                     model: User,
                     as: 'user',
-                    attributes: ['id', 'avatar', 'full_name'],
                 },
                 where: {
                     user_id: {
@@ -264,6 +263,26 @@ class StoryService {
             })
 
             return story
+        } catch (error) {
+            return handleServiceError(error)
+        }
+    }
+
+    getStoriesByUserId = async ({ userId }: { userId: number }) => {
+        try {
+            const stories = await Story.findAll({
+                where: {
+                    user_id: userId,
+                },
+                include: [
+                    {
+                        model: User,
+                        as: 'user',
+                    },
+                ],
+            })
+
+            return stories
         } catch (error) {
             return handleServiceError(error)
         }
