@@ -79,14 +79,16 @@ class StoryService {
                             sequelize.literal(`(
                                 CASE 
                                     WHEN EXISTS (
-                                        SELECT 
-                                            (1) 
-                                        FROM 
-                                            user_viewed_stories 
-                                        WHERE 
-                                            user_id = ${sequelize.escape(currentUserId)}
-                                                AND
-                                            story_id = Story.id
+                                        SELECT 1 
+                                        FROM user_viewed_stories 
+                                        WHERE user_id = ${sequelize.escape(currentUserId)}
+                                            AND story_id = (
+                                                SELECT id
+                                                FROM stories s
+                                                WHERE s.user_id = Story.user_id
+                                                ORDER BY s.id DESC
+                                                LIMIT 1
+                                            )
                                     ) THEN TRUE 
                                 ELSE FALSE 
                                 END
@@ -280,18 +282,27 @@ class StoryService {
         }
     }
 
-    getStoriesByUserId = async ({ userId }: { userId: number }) => {
+    getUserStories = async ({ uuid }: { uuid: string }) => {
         try {
+            const story = await Story.findOne({
+                where: {
+                    uuid,
+                },
+                attributes: ['user_id'],
+            })
+
+            if (!story) {
+                throw new NotFoundError({ message: 'Story not found' })
+            }
+
             const stories = await Story.findAll({
                 where: {
-                    user_id: userId,
+                    user_id: story.get('user_id'),
                 },
-                include: [
-                    {
-                        model: User,
-                        as: 'user',
-                    },
-                ],
+                include: {
+                    model: User,
+                    as: 'user',
+                },
             })
 
             return stories

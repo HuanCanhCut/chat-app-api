@@ -3,9 +3,6 @@ const router = express.Router()
 
 import FriendController from '../app/controllers/FriendController'
 import UserController from '../app/controllers/UserController'
-import StoryController from '~/app/controllers/StoryController'
-import { validate } from '~/app/middlewares/validate'
-import { idSchema } from '~/app/validator/api/common'
 
 router.get('/friends', FriendController.getAllFriends.bind(FriendController))
 router.get('/friends/search', FriendController.searchFriend.bind(FriendController))
@@ -20,6 +17,5 @@ router.get('/search', UserController.searchUser.bind(UserController))
 router.get('/search-history', UserController.getSearchHistory.bind(UserController))
 router.post('/search-history', UserController.setSearchHistory.bind(UserController))
 router.get('/:nickname', UserController.getAnUser.bind(UserController))
-router.get('/:id/stories', validate(idSchema), StoryController.getStoriesByUserId)
 
 export default router

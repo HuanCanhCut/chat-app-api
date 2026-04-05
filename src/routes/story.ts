@@ -8,6 +8,7 @@ import { createStorySchema, reactToStorySchema } from '~/app/validator/api/story
 const router = express.Router()
 
 router.get('/', StoryController.getStories)
+router.get('/:uuid', validate(uuidSchema), StoryController.getUserStories)
 router.post('/', validate(createStorySchema), StoryController.createStory)
 router.delete('/:uuid', validate(uuidSchema), StoryController.deleteStory)
 router.post('/:uuid/react', validate(reactToStorySchema), StoryController.reactToStory)
