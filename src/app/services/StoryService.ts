@@ -93,6 +93,20 @@ class StoryService {
                             )`),
                             'is_viewed',
                         ],
+                        [
+                            sequelize.literal(`(
+                                SELECT COUNT(1) 
+                                FROM stories
+                                WHERE stories.user_id = Story.user_id
+                                    AND NOT EXISTS (
+                                        SELECT 1 
+                                        FROM user_viewed_stories
+                                        WHERE user_viewed_stories.user_id = ${sequelize.escape(currentUserId)}
+                                            AND user_viewed_stories.story_id = stories.id
+                                    )
+                            )`),
+                            'unviewed_count',
+                        ],
                     ],
                 },
                 include: {
@@ -126,9 +140,7 @@ class StoryService {
 
             return {
                 stories,
-                total: total.reduce((acc: number, curr: { count: number }) => {
-                    return acc + curr.count
-                }, 0),
+                total: total.length,
             }
         } catch (error) {
             return handleServiceError(error)
