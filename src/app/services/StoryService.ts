@@ -251,7 +251,14 @@ class StoryService {
                 }
             }
 
-            return story
+            const reactions = await Reaction.findAll({
+                where: {
+                    reactionable_type: 'Story',
+                    reactionable_id: story.get('id')!,
+                },
+            })
+
+            return reactions
         } catch (error) {
             return handleServiceError(error)
         }
@@ -299,10 +306,16 @@ class StoryService {
                 where: {
                     user_id: story.get('user_id'),
                 },
-                include: {
-                    model: User,
-                    as: 'user',
-                },
+                include: [
+                    {
+                        model: User,
+                        as: 'user',
+                    },
+                    {
+                        model: Reaction,
+                        as: 'reactions',
+                    },
+                ],
             })
 
             return stories

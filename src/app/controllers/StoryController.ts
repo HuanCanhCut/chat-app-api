@@ -64,14 +64,14 @@ class StoryController {
             const { unified } = req.body
             const decoded = req.decoded
 
-            const story = await StoryService.reactToStory({
+            const reactions = await StoryService.reactToStory({
                 currentUserId: decoded!.sub,
                 storyUuid: uuid,
                 unified,
             })
 
             res.json({
-                data: story,
+                data: reactions,
             })
         } catch (error) {
             next(error)
