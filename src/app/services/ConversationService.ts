@@ -95,20 +95,6 @@ class ConversationService {
         try {
             const { rows: conversations, count } = await Conversation.findAndCountAll({
                 distinct: true,
-                include: [
-                    {
-                        model: ConversationMember,
-                        as: 'members',
-                        include: [
-                            {
-                                model: User,
-                                as: 'user',
-                                required: true,
-                                runHooks: true,
-                            },
-                        ],
-                    },
-                ],
                 where: {
                     id: {
                         [Op.in]: sequelize.literal(`(
@@ -152,6 +138,48 @@ class ConversationService {
             })
 
             await Promise.all(promises)
+
+            const privateConversationIds = conversations
+                .filter((conversation) => !conversation.is_group)
+                .map((conversation) => conversation.id)
+
+            const privateConversationMembers = await ConversationMember.findAll({
+                where: {
+                    conversation_id: {
+                        [Op.in]: privateConversationIds,
+                    },
+                },
+                include: [
+                    {
+                        model: User,
+                        as: 'user',
+                        required: true,
+                    },
+                ],
+            })
+
+            const privateConversationMembersMap = privateConversationMembers.reduce(
+                (acc, member) => {
+                    if (!acc[member.conversation_id]) {
+                        acc[member.conversation_id] = []
+                    }
+
+                    acc[member.conversation_id].push(member)
+
+                    return acc
+                },
+                {} as Record<number, ConversationMember[]>,
+            )
+
+            conversations.forEach((conversation) => {
+                if (!conversation.is_group) {
+                    const members = privateConversationMembersMap[conversation.id]
+
+                    if (members) {
+                        conversation.dataValues.members = members
+                    }
+                }
+            })
 
             return { conversations, count }
         } catch (error) {

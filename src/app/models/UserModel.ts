@@ -25,6 +25,11 @@ class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
     declare password?: string
     declare is_online?: boolean
     declare active_status?: boolean
+
+    /**
+     * Virtual field
+     */
+    declare last_online_at?: Date
 }
 User.init(
     {
@@ -108,23 +113,22 @@ User.init(
 )
 
 User.afterFind(async (users: any) => {
-    if (users) {
-        const processor = async (user: any) => {
-            const showActiveStatus = user.dataValues.active_status
+    if (!users) return
 
-            const isOnline = await redisClient.get(`${RedisKey.USER_ONLINE}${user.dataValues.id}`)
-            user.dataValues.is_online = isOnline && showActiveStatus ? JSON.parse(isOnline).is_online : false
-            user.dataValues.last_online_at = isOnline ? JSON.parse(isOnline).last_online_at : null
-        }
+    const userList: User[] = Array.isArray(users) ? users : [users]
+    if (userList.length === 0) return
 
-        if (Array.isArray(users)) {
-            const promises = users.map(processor)
+    const keys = userList.map((u) => `${RedisKey.USER_ONLINE}${u.dataValues.id}`)
+    const results = await redisClient.mGet(keys as [string, ...string[]])
 
-            await Promise.all(promises)
-        } else {
-            await processor(users)
-        }
-    }
+    userList.forEach((user, i) => {
+        const raw = results[i]
+        const parsed = raw ? JSON.parse(raw) : null
+        const showActiveStatus = user.dataValues.active_status
+
+        user.dataValues.is_online = parsed?.is_online && showActiveStatus ? true : false
+        user.dataValues.last_online_at = parsed?.last_online_at ?? null
+    })
 })
 
 export default User

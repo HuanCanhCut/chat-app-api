@@ -186,6 +186,10 @@ class MessageService {
                         model: MessageStatus,
                         as: 'message_status',
                         required: true,
+                        limit: 5,
+                        where: {
+                            status: 'read',
+                        },
                         include: [
                             {
                                 model: User,
