@@ -3,7 +3,7 @@ import { NextFunction, Response } from 'express'
 import { responsePagination } from '../response/responsePagination'
 import StoryService from '../services/StoryService'
 import { PaginationRequest, UuidRequest } from '../validator/api/common'
-import { CreateStoryRequest, ReactToStoryRequest } from '../validator/api/storySchema'
+import { CreateStoryRequest, GetUserViewedStoryRequest, ReactToStoryRequest } from '../validator/api/storySchema'
 
 class StoryController {
     createStory = async (req: CreateStoryRequest, res: Response, next: NextFunction) => {
@@ -105,6 +105,50 @@ class StoryController {
             res.json({
                 data: stories,
             })
+        } catch (error) {
+            next(error)
+        }
+    }
+
+    viewStory = async (req: UuidRequest, res: Response, next: NextFunction) => {
+        try {
+            const { uuid } = req.params
+            const decoded = req.decoded
+
+            await StoryService.viewStory({
+                currentUserId: decoded!.sub,
+                storyUuid: uuid,
+            })
+
+            res.sendStatus(204)
+        } catch (error) {
+            next(error)
+        }
+    }
+
+    getUserViewedStories = async (req: GetUserViewedStoryRequest, res: Response, next: NextFunction) => {
+        try {
+            const { uuid } = req.params
+            const { page, per_page } = req.query
+            const decoded = req.decoded
+
+            const { userViewedStories, total } = await StoryService.getUserViewedStories({
+                storyUuid: uuid,
+                page: Number(page),
+                per_page: Number(per_page),
+                currentUserId: decoded!.sub,
+            })
+
+            res.json(
+                responsePagination({
+                    req,
+                    data: userViewedStories,
+                    total,
+                    count: userViewedStories.length,
+                    current_page: Number(page),
+                    per_page: Number(per_page),
+                }),
+            )
         } catch (error) {
             next(error)
         }

@@ -4,6 +4,7 @@ import { ForBiddenError, NotFoundError } from '../errors/errors'
 import { Friendships, User } from '../models'
 import Reaction from '../models/ReactionModel'
 import Story from '../models/StoryModel'
+import UserViewedStory from '../models/UserViewedStoryModel'
 import { handleServiceError } from '../utils/handleServiceError'
 import NotificationService from './NotificationService'
 import { sequelize } from '~/config/database'
@@ -319,6 +320,96 @@ class StoryService {
             })
 
             return stories
+        } catch (error) {
+            return handleServiceError(error)
+        }
+    }
+
+    viewStory = async ({ currentUserId, storyUuid }: { currentUserId: number; storyUuid: string }) => {
+        try {
+            const story = await Story.findOne({
+                where: {
+                    uuid: storyUuid,
+                },
+            })
+
+            if (!story) {
+                throw new NotFoundError({ message: 'Story not found' })
+            }
+
+            const userViewedStory = await UserViewedStory.findOne({
+                where: {
+                    user_id: currentUserId,
+                    story_id: story.get('id')!,
+                },
+            })
+
+            console.log(userViewedStory)
+
+            if (!userViewedStory) {
+                await UserViewedStory.create({
+                    user_id: currentUserId,
+                    story_id: story.get('id')!,
+                })
+            }
+        } catch (error) {
+            return handleServiceError(error)
+        }
+    }
+
+    getUserViewedStories = async ({
+        storyUuid,
+        page,
+        per_page,
+        currentUserId,
+    }: {
+        storyUuid: string
+        page: number
+        per_page: number
+        currentUserId: number
+    }) => {
+        try {
+            const story = await Story.findOne({
+                where: {
+                    uuid: storyUuid,
+                },
+                attributes: ['user_id', 'id'],
+            })
+
+            if (!story) {
+                throw new NotFoundError({ message: 'Story not found' })
+            }
+
+            if (story.get('user_id') !== currentUserId) {
+                throw new ForBiddenError({ message: 'You are not authorized to view this story' })
+            }
+
+            const { rows: userViewedStories, count: total } = await UserViewedStory.findAndCountAll({
+                where: {
+                    story_id: story.get('id')!,
+                },
+                include: [
+                    {
+                        model: User,
+                        as: 'user',
+                        include: [
+                            {
+                                model: Reaction,
+                                as: 'reactions',
+                                where: {
+                                    reactionable_type: 'Story',
+                                    reactionable_id: story.get('id')!,
+                                },
+                                required: false,
+                            },
+                        ],
+                    },
+                ],
+                limit: per_page,
+                offset: (page - 1) * per_page,
+            })
+
+            return { userViewedStories, total }
         } catch (error) {
             return handleServiceError(error)
         }

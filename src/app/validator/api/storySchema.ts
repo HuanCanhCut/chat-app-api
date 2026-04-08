@@ -1,8 +1,13 @@
 import { z } from 'zod'
 
 import { TypedRequest } from '../types/request'
-import { uuidSchema } from './common'
+import { paginationSchema, uuidSchema } from './common'
 import { BASE_REACTION } from '~/types/reactionType'
+
+export const getUserViewedStorySchema = z.object({
+    query: paginationSchema.shape.query,
+    params: uuidSchema.shape.params,
+})
 
 export const createStorySchema = z.object({
     body: z
@@ -32,6 +37,10 @@ export const reactToStorySchema = z.object({
     params: uuidSchema.shape.params,
 })
 
+export type GetUserViewedStoryRequest = TypedRequest<
+    z.infer<typeof getUserViewedStorySchema>['query'],
+    z.infer<typeof getUserViewedStorySchema>['params']
+>
 export type CreateStoryRequest = TypedRequest<z.infer<typeof createStorySchema>['body']>
 export type ReactToStoryRequest = TypedRequest<
     z.infer<typeof reactToStorySchema>['body'],
