@@ -13,6 +13,9 @@ class Message extends Model<InferAttributes<Message>, InferCreationAttributes<Me
     declare created_at?: Date
     declare updated_at?: Date
     declare parent_id?: number | null
+    declare forward_type?: 'Message' | 'Story' | 'Post' | null
+    declare forward_origin_id?: number | null
+
     declare parent?: Message | null
     declare message_status?: MessageStatus[] | null
 }
@@ -63,6 +66,16 @@ Message.init(
             },
             onDelete: 'CASCADE',
             onUpdate: 'CASCADE',
+        },
+        forward_type: {
+            type: DataTypes.ENUM('Message', 'Story', 'Post'),
+            allowNull: true,
+            defaultValue: null,
+        },
+        forward_origin_id: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            defaultValue: null,
         },
     },
     {

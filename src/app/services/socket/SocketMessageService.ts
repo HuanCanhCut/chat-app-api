@@ -30,6 +30,8 @@ class SocketMessageService {
         type = 'text',
         parent_id = null,
         media,
+        forward_type = null,
+        forward_origin_id = null,
     }: {
         conversationId: number
         senderId: number
@@ -41,6 +43,8 @@ class SocketMessageService {
             media_url: string
             media_type: 'image' | 'video'
         }>
+        forward_type?: 'Message' | 'Story' | 'Post' | null
+        forward_origin_id?: number | null
     }) => {
         const transaction = await sequelize.transaction()
 
@@ -57,6 +61,8 @@ class SocketMessageService {
                     content: message,
                     type,
                     parent_id: parent_id || null,
+                    forward_type: forward_type,
+                    forward_origin_id: forward_origin_id,
                 },
                 { transaction },
             )
@@ -221,6 +227,8 @@ class SocketMessageService {
         type = 'text',
         parent_id = null,
         media,
+        forward_type,
+        forward_origin_id,
     }: {
         conversation_uuid: string
         message: string
@@ -230,6 +238,8 @@ class SocketMessageService {
             media_url: string
             media_type: 'image' | 'video'
         }>
+        forward_type?: 'Message' | 'Story' | 'Post' | null
+        forward_origin_id?: number | null
     }) => {
         try {
             const tempConversationCache = await redisClient.get(`${RedisKey.TEMP_CONVERSATION}${conversation_uuid}`)
@@ -296,6 +306,8 @@ class SocketMessageService {
                 type,
                 parent_id,
                 media,
+                forward_type,
+                forward_origin_id,
             })
 
             if (!newMessage) {

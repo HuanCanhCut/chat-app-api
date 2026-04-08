@@ -333,7 +333,36 @@ class MessageService {
                         as: 'media',
                     },
                 ],
-
+                attributes: {
+                    include: [
+                        [
+                            sequelize.literal(`(
+                                CASE 
+                                    WHEN forward_type = 'Message' THEN (
+                                        SELECT JSON_OBJECT(
+                                            'id', id, 
+                                            'content', content, 
+                                            'created_at', created_at,
+                                            'type', type
+                                        )
+                                        FROM messages WHERE id = forward_origin_id
+                                    )
+                                    WHEN forward_type = 'Story' THEN (
+                                        SELECT JSON_OBJECT(
+                                            'id', id, 
+                                            'url', url,
+                                            'type', type,
+                                            'background_url', background_url
+                                        )
+                                        FROM stories WHERE id = forward_origin_id
+                                    )
+                                    ELSE NULL
+                                END
+                            )`),
+                            'forward_origin',
+                        ],
+                    ],
+                },
                 where: {
                     conversation_id: conversation.id,
                     // Get all messages except messages that have been revoked for-me by the current user

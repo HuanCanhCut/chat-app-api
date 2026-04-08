@@ -5,7 +5,7 @@ interface Links {
     next?: string
 }
 
-interface responsePagination {
+interface ResponsePaginationBase {
     req: Pick<Request, 'protocol' | 'get' | 'baseUrl'>
     data: any
     total: number
@@ -14,7 +14,17 @@ interface responsePagination {
     per_page: number
 }
 
-export const responsePagination = ({ req, data, total, count, current_page, per_page }: responsePagination) => {
+type ResponsePagination<T extends Record<string, unknown> = Record<string, unknown>> = ResponsePaginationBase & T
+
+export const responsePagination = <T extends Record<string, unknown>>({
+    req,
+    data,
+    total,
+    count,
+    current_page,
+    per_page,
+    ...rest
+}: ResponsePagination<T>) => {
     const baseUrl = `${req.protocol}://${req.get('host')}${req.baseUrl}`
 
     interface Response {
@@ -44,6 +54,7 @@ export const responsePagination = ({ req, data, total, count, current_page, per_
                 per_page,
             },
             links: {},
+            ...rest,
         },
     }
     let prevPage = current_page - 1

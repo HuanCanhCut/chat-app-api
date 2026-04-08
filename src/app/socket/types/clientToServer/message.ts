@@ -5,6 +5,8 @@ export interface MessageClientToServerEvents {
         type,
         parent_id,
         media,
+        forward_type,
+        forward_origin_id,
     }: {
         conversation_uuid: string
         message: string
@@ -14,6 +16,8 @@ export interface MessageClientToServerEvents {
             media_url: string
             media_type: 'image' | 'video'
         }>
+        forward_type?: 'Message' | 'Story' | 'Post' | null
+        forward_origin_id?: number | null
     }) => void
 
     READ_MESSAGE: ({ conversation_uuid, message_id }: { conversation_uuid: string; message_id: number }) => void

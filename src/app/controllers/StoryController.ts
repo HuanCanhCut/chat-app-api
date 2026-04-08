@@ -1,6 +1,7 @@
 import { NextFunction, Response } from 'express'
 
 import { responsePagination } from '../response/responsePagination'
+import ConversationService from '../services/ConversationService'
 import StoryService from '../services/StoryService'
 import { PaginationRequest, UuidRequest } from '../validator/api/common'
 import { CreateStoryRequest, GetUserViewedStoryRequest, ReactToStoryRequest } from '../validator/api/storySchema'
@@ -97,13 +98,22 @@ class StoryController {
     getUserStories = async (req: UuidRequest, res: Response, next: NextFunction) => {
         try {
             const { uuid } = req.params
+            const decoded = req.decoded
 
             const stories = await StoryService.getUserStories({
                 uuid,
             })
 
+            const generalConversation = await ConversationService.generalConversation({
+                currentUserId: decoded!.sub,
+                targetUserId: stories[0].user_id,
+            })
+
             res.json({
                 data: stories,
+                meta: {
+                    general_conversation: generalConversation,
+                },
             })
         } catch (error) {
             next(error)

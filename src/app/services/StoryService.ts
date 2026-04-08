@@ -344,8 +344,6 @@ class StoryService {
                 },
             })
 
-            console.log(userViewedStory)
-
             if (!userViewedStory) {
                 await UserViewedStory.create({
                     user_id: currentUserId,
