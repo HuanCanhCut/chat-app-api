@@ -342,19 +342,24 @@ class MessageService {
                                         SELECT JSON_OBJECT(
                                             'id', id, 
                                             'content', content, 
-                                            'created_at', created_at,
                                             'type', type
                                         )
                                         FROM messages WHERE id = forward_origin_id
                                     )
                                     WHEN forward_type = 'Story' THEN (
                                         SELECT JSON_OBJECT(
-                                            'id', id, 
-                                            'url', url,
-                                            'type', type,
-                                            'background_url', background_url
+                                            'id', stories.id, 
+                                            'url', stories.url,
+                                            'type', stories.type,
+                                            'background_url', stories.background_url,
+                                            'user', JSON_OBJECT(
+                                                'id', users.id,
+                                                'full_name', users.full_name
+                                            )
                                         )
-                                        FROM stories WHERE id = forward_origin_id
+                                        FROM stories
+                                        JOIN users ON users.id = stories.user_id
+                                        WHERE stories.id = forward_origin_id
                                     )
                                     ELSE NULL
                                 END

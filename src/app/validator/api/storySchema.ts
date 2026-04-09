@@ -10,24 +10,11 @@ export const getUserViewedStorySchema = z.object({
 })
 
 export const createStorySchema = z.object({
-    body: z
-        .object({
-            url: z.url({ error: 'Vui lòng nhập url hợp lệ' }),
-            type: z.enum(['image', 'video', 'text'], { error: 'Vui lòng chọn type là image, video hoặc text' }),
-            background_url: z.string().optional(),
-        })
-        .refine(
-            (data) => {
-                if (data.type === 'text') {
-                    return !!data.background_url
-                }
-                return true
-            },
-            {
-                message: 'Type text bắt buộc phải có background',
-                path: ['background_url'],
-            },
-        ),
+    body: z.object({
+        url: z.url({ error: 'Vui lòng nhập url hợp lệ' }),
+        type: z.enum(['image', 'video', 'text'], { error: 'Vui lòng chọn type là image, video hoặc text' }),
+        caption: z.string().optional(),
+    }),
 })
 
 export const reactToStorySchema = z.object({

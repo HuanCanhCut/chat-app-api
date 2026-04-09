@@ -9,10 +9,15 @@ import { CreateStoryRequest, GetUserViewedStoryRequest, ReactToStoryRequest } fr
 class StoryController {
     createStory = async (req: CreateStoryRequest, res: Response, next: NextFunction) => {
         try {
-            const { url, type, background_url } = req.body
+            const { url, type, caption } = req.body
             const decoded = req.decoded
 
-            const story = await StoryService.createStory({ currentUserId: decoded!.sub, url, type, background_url })
+            const story = await StoryService.createStory({
+                currentUserId: decoded!.sub,
+                url,
+                type,
+                caption,
+            })
 
             res.status(201).json(story)
         } catch (error) {

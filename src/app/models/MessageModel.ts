@@ -16,8 +16,12 @@ class Message extends Model<InferAttributes<Message>, InferCreationAttributes<Me
     declare forward_type?: 'Message' | 'Story' | 'Post' | null
     declare forward_origin_id?: number | null
 
+    /**
+     * Virtual fields
+     */
     declare parent?: Message | null
     declare message_status?: MessageStatus[] | null
+    declare forward_origin?: string
 }
 
 Message.init(
@@ -83,5 +87,15 @@ Message.init(
         sequelize,
     },
 )
+
+Message.prototype.toJSON = function () {
+    const data = this.get({ plain: true })
+
+    if (data.forward_origin) {
+        data.forward_origin = JSON.parse(data.forward_origin)
+    }
+
+    return data
+}
 
 export default Message

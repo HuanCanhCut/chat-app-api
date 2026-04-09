@@ -18,19 +18,20 @@ class StoryService {
         currentUserId,
         url,
         type,
-        background_url,
+        caption,
     }: {
         currentUserId: number
         url: string
         type: 'image' | 'video' | 'text'
-        background_url?: string
+        caption?: string
     }) => {
         try {
             const story = await Story.create({
                 user_id: currentUserId,
                 url,
                 type,
-                background_url,
+                background_url: type === 'text' ? url : undefined,
+                caption,
             })
             return story
         } catch (error) {

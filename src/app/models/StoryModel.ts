@@ -11,6 +11,7 @@ class Story extends Model<InferAttributes<Story>, InferCreationAttributes<Story>
     declare background_url?: string
     declare created_at?: Date
     declare updated_at?: Date
+    declare caption?: string
 
     /**
      * Virtual fields
@@ -51,6 +52,10 @@ Story.init(
             type: DataTypes.UUID,
             defaultValue: DataTypes.UUIDV4,
             allowNull: false,
+        },
+        caption: {
+            type: DataTypes.STRING,
+            allowNull: true,
         },
     },
     {
