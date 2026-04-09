@@ -107,6 +107,7 @@ class StoryController {
 
             const stories = await StoryService.getUserStories({
                 uuid,
+                currentUserId: decoded!.sub,
             })
 
             const generalConversation = await ConversationService.generalConversation({

@@ -291,7 +291,7 @@ class StoryService {
         }
     }
 
-    getUserStories = async ({ uuid }: { uuid: string }) => {
+    getUserStories = async ({ uuid, currentUserId }: { uuid: string; currentUserId: number }) => {
         try {
             const story = await Story.findOne({
                 where: {
@@ -318,7 +318,27 @@ class StoryService {
                         as: 'reactions',
                     },
                 ],
+                attributes: {
+                    include: [
+                        [
+                            sequelize.literal(`(
+                                CASE 
+                                    WHEN EXISTS (
+                                        SELECT 1 
+                                        FROM user_viewed_stories 
+                                        WHERE user_id = ${sequelize.escape(currentUserId)}
+                                            AND story_id = Story.id
+                                    ) THEN TRUE 
+                                ELSE FALSE 
+                                END
+                            )`),
+                            'is_viewed',
+                        ],
+                    ],
+                },
             })
+
+            console.log(stories)
 
             return stories
         } catch (error) {
