@@ -338,8 +338,6 @@ class StoryService {
                 },
             })
 
-            console.log(stories)
-
             return stories
         } catch (error) {
             return handleServiceError(error)
@@ -404,8 +402,12 @@ class StoryService {
             }
 
             const { rows: userViewedStories, count: total } = await UserViewedStory.findAndCountAll({
+                distinct: true,
                 where: {
                     story_id: story.get('id')!,
+                    user_id: {
+                        [Op.ne]: currentUserId,
+                    },
                 },
                 include: [
                     {
@@ -426,6 +428,17 @@ class StoryService {
                 ],
                 limit: per_page,
                 offset: (page - 1) * per_page,
+                order: [
+                    [
+                        sequelize.literal(`(
+                            SELECT COUNT(1) 
+                            FROM reactions 
+                            WHERE reactions.reactionable_id = UserViewedStory.story_id
+                            AND reactions.reactionable_type = 'Story'
+                        )`),
+                        'DESC',
+                    ],
+                ],
             })
 
             return { userViewedStories, total }
