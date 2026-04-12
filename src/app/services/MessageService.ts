@@ -665,23 +665,6 @@ class MessageService {
         }
     }
 
-    async getReactionsTypes({ messageId }: { messageId: number }) {
-        try {
-            const types = await Reaction.findAll({
-                where: {
-                    reactionable_id: messageId,
-                    reactionable_type: 'Message',
-                },
-                attributes: ['react', [sequelize.fn('COUNT', sequelize.col('react')), 'count']],
-                group: ['react'],
-            })
-
-            return types
-        } catch (error) {
-            return handleServiceError(error)
-        }
-    }
-
     async revokeMessage({
         messageId,
         conversationUuid,

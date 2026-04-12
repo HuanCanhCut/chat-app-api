@@ -1,6 +1,7 @@
 import { User } from '../models'
 import Reaction from '../models/ReactionModel'
 import { handleServiceError } from '../utils/handleServiceError'
+import { sequelize } from '~/config/database'
 import { ReactionableType } from '~/types/reactionType'
 
 class ReactionService {
@@ -43,6 +44,29 @@ class ReactionService {
                 reactions,
                 count,
             }
+        } catch (error) {
+            return handleServiceError(error)
+        }
+    }
+
+    async getReactionsTypes({
+        reactionableId,
+        reactionableType,
+    }: {
+        reactionableId: number
+        reactionableType: ReactionableType
+    }) {
+        try {
+            const types = await Reaction.findAll({
+                where: {
+                    reactionable_id: reactionableId,
+                    reactionable_type: reactionableType,
+                },
+                attributes: ['react', [sequelize.fn('COUNT', sequelize.col('react')), 'count']],
+                group: ['react'],
+            })
+
+            return types
         } catch (error) {
             return handleServiceError(error)
         }

@@ -7,6 +7,7 @@ import meRoute from './me'
 import messageRoute from './message'
 import notificationRoute from './notification'
 import postRoute from './post'
+import reactionRoute from './reaction'
 import storyRoute from './story'
 import themeRoute from './theme'
 import userRoute from './user'
@@ -23,6 +24,7 @@ const route = (app: Express) => {
     app.use('/api/posts', verifyToken, postRoute)
     app.use('/api/stories', verifyToken, storyRoute)
     app.use('/api/cloudinary', verifyToken, cloudinaryRoute)
+    app.use('/api/reactions', verifyToken, reactionRoute)
 }
 
 export default route

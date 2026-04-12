@@ -2,7 +2,6 @@ import { NextFunction, Response } from 'express'
 
 import { UnprocessableEntityError } from '../errors/errors'
 import MessageService from '../services/MessageService'
-import ReactionService from '../services/ReactionService'
 import { responseModel } from '../utils/responseModel'
 import { IRequest } from '~/types/type'
 
@@ -118,56 +117,6 @@ class MessageController {
             })
 
             res.json(response)
-        } catch (error: any) {
-            return next(error)
-        }
-    }
-
-    // [GET] /api/messages/:messageId/reactions
-    async getReactions(req: IRequest, res: Response, next: NextFunction) {
-        try {
-            const { messageId } = req.params
-            const { page, per_page, type = 'all' } = req.query
-
-            if (!messageId) {
-                return next(new UnprocessableEntityError({ message: 'Message id is required' }))
-            }
-
-            if (!page || !per_page) {
-                return next(new UnprocessableEntityError({ message: 'Page and per_page are required' }))
-            }
-
-            const { reactions, count } = await ReactionService.getReactionsByReactableId({
-                reactionable_id: Number(messageId),
-                reactionable_type: 'Message',
-                type: type as string,
-                per_page: Number(per_page),
-                page: Number(page),
-            })
-
-            const response = responseModel({
-                data: reactions,
-                total: count,
-                count: reactions.length,
-                current_page: Number(page),
-                total_pages: Math.ceil(count / Number(per_page)),
-                per_page: Number(per_page),
-            })
-
-            res.json(response)
-        } catch (error: any) {
-            return next(error)
-        }
-    }
-
-    // [GET] /api/messages/:messageId/reaction/types
-    async getReactionsTypes(req: IRequest, res: Response, next: NextFunction) {
-        try {
-            const { messageId } = req.params
-
-            const types = await MessageService.getReactionsTypes({ messageId: Number(messageId) })
-
-            res.json(types)
         } catch (error: any) {
             return next(error)
         }
