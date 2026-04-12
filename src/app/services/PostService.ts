@@ -72,7 +72,7 @@ class PostService {
         }
     }
 
-    getPost = async ({ cursor, limit }: { cursor?: string; limit: number }) => {
+    getPost = async ({ cursor, limit, currentUserId }: { cursor?: string; limit: number; currentUserId: number }) => {
         try {
             const encodeCursor = (score: number, id: number) =>
                 Buffer.from(JSON.stringify({ score, id })).toString('base64')
@@ -152,6 +152,20 @@ class PostService {
                                         reactions.reactionable_type = 'Post'
                                 )`),
                             'reactions_count',
+                        ],
+                        [
+                            sequelize.literal(`
+                                (
+                                    SELECT
+                                        react
+                                    FROM
+                                        reactions
+                                    WHERE
+                                        reactions.reactionable_type = 'Post' AND
+                                        reactions.reactionable_id = Post.id AND
+                                        reactions.user_id = ${currentUserId}
+                                )`),
+                            'reaction',
                         ],
                     ],
                 },
@@ -283,13 +297,13 @@ class PostService {
             if (!created) {
                 reaction.react = unified
                 await reaction.save()
+            } else {
+                await Post.increment('reaction_count', {
+                    where: {
+                        id: post_id,
+                    },
+                })
             }
-
-            await Post.increment('reaction_count', {
-                where: {
-                    id: post_id,
-                },
-            })
 
             return reaction
         } catch (error) {

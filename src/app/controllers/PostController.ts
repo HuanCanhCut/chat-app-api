@@ -38,7 +38,11 @@ class PostController {
         try {
             const { cursor, limit = 10 } = req.query
 
-            const { posts, has_next_page, next_cursor } = await PostService.getPost({ cursor, limit: Number(limit) })
+            const { posts, has_next_page, next_cursor } = await PostService.getPost({
+                cursor,
+                limit: Number(limit),
+                currentUserId: req.decoded.sub,
+            })
 
             res.json({
                 data: posts,

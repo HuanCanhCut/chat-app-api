@@ -19,6 +19,7 @@ class Post extends Model<InferAttributes<Post>, InferCreationAttributes<Post>> {
      */
     declare top_reactions?: Reaction[]
     declare total_reactions?: number
+    declare post_reactions?: Reaction[]
 }
 Post.init(
     {
