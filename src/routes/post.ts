@@ -17,6 +17,7 @@ router.get('/', validate(cursorSchema), PostController.getPosts)
 router.post('/', validate(createPostSchema), PostController.createPost)
 router.get('/:id/reactions', validate(getPostReactionsSchema), PostController.getPostReactions)
 router.get('/:id/comments', validate(getPostCommentSchema), PostController.getPostComments)
+router.get('/:id', validate(idSchema), PostController.getPostById)
 router.post('/:id/react', validate(reactPostSchema), PostController.reactPost)
 router.delete('/:id/unreact', validate(idSchema), PostController.unreactPost)
 

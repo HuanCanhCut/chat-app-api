@@ -394,6 +394,32 @@ class PostService {
 
         return scores.length
     }
+
+    getPostById = async (id: number) => {
+        try {
+            const post = await Post.findByPk(id)
+
+            if (!post) {
+                throw new NotFoundError({ message: 'Bài viết không tồn tại' })
+            }
+
+            const topReactions = await Reaction.findAll({
+                where: {
+                    reactionable_type: 'Post',
+                    reactionable_id: id,
+                },
+                attributes: ['react', 'reactionable_id'],
+                group: ['react', 'reactionable_id'],
+                order: [[sequelize.fn('COUNT', sequelize.col('react')), 'DESC']],
+            })
+
+            post.setDataValue('top_reactions', topReactions)
+
+            return post
+        } catch (error) {
+            return handleServiceError(error)
+        }
+    }
 }
 
 export default new PostService()

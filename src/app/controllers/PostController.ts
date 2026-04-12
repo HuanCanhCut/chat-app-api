@@ -150,6 +150,20 @@ class PostController {
             return next(error)
         }
     }
+
+    getPostById = async (req: IdRequest, res: Response, next: NextFunction) => {
+        try {
+            const { id } = req.params
+
+            const post = await PostService.getPostById(Number(id))
+
+            res.json({
+                data: post,
+            })
+        } catch (error) {
+            return next(error)
+        }
+    }
 }
 
 export default new PostController()
