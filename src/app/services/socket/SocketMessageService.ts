@@ -339,8 +339,7 @@ class SocketMessageService {
                             `${RedisKey.CONVERSATION_UUID}${conversation_uuid}`,
                             JSON.stringify(conversation),
                             {
-                                // 1 hour
-                                EX: 60 * 60,
+                                EX: 60 * 5, // 5 minutes
                             },
                         )
                     }
@@ -373,7 +372,7 @@ class SocketMessageService {
                                     `${RedisKey.CONVERSATION_UUID}${conversation_uuid}`,
                                     JSON.stringify(conversation),
                                     {
-                                        EX: 60 * 60, // 1 hour
+                                        EX: 60 * 5, // 5 minutes
                                     },
                                 )
 

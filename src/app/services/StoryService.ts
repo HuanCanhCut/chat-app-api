@@ -69,7 +69,7 @@ class StoryService {
                 )
 
                 await redisClient.set(`${RedisKey.FRIENDS_IDS_OF_USER}${currentUserId}`, JSON.stringify(friendIds), {
-                    EX: 60 * 5, // 5 minutes
+                    EX: 60 * 4, // 4 minutes
                 })
             }
 
@@ -193,6 +193,7 @@ class StoryService {
                 where: {
                     reactionable_type: 'Story',
                     reactionable_id: story.get('id'),
+                    user_id: currentUserId,
                 },
             })
 
@@ -220,9 +221,11 @@ class StoryService {
                 if (notification && story.user_id !== currentUserId) {
                     const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${Number(story.user_id)}`, 0, -1)
 
-                    ioInstance.to(socketIds).emit('NEW_NOTIFICATION', {
-                        notification,
-                    })
+                    if (socketIds.length > 0) {
+                        ioInstance.to(socketIds).emit('NEW_NOTIFICATION', {
+                            notification,
+                        })
+                    }
                 }
             } else {
                 const MAX_REACTION_COUNT = 5
@@ -257,6 +260,7 @@ class StoryService {
                 where: {
                     reactionable_type: 'Story',
                     reactionable_id: story.get('id')!,
+                    user_id: currentUserId,
                 },
             })
 
@@ -316,6 +320,10 @@ class StoryService {
                     {
                         model: Reaction,
                         as: 'reactions',
+                        where: {
+                            user_id: currentUserId,
+                        },
+                        required: false,
                     },
                 ],
                 attributes: {

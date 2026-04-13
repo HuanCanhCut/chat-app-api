@@ -270,7 +270,7 @@ class FriendService {
                 await redisClient.set(
                     `${RedisKey.FRIENDS_IDS_OF_USER}${currentUserId}`,
                     JSON.stringify(currentFriendsIds),
-                    { EX: 60 * 5 }, // 5 minutes
+                    { EX: 60 * 4 }, // 4 minutes
                 )
             }
 
