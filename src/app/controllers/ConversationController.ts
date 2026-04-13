@@ -8,7 +8,6 @@ import {
     ChangeConversationEmojiRequest,
     ChangeConversationMemberNicknameRequest,
     ChangeConversationThemeRequest,
-    CreateConversationRequest,
     CreateTempConversationRequest,
     DesignateLeaderRequest,
     RemoveLeaderRequest,
@@ -390,7 +389,7 @@ class ConversationController {
     }
 
     // [POST] /api/conversations
-    async createConversation(req: CreateConversationRequest, res: Response, next: NextFunction) {
+    async createConversation(req: IRequest, res: Response, next: NextFunction) {
         try {
             const { name, user_id } = req.body
             const avatar = req.file
@@ -399,6 +398,12 @@ class ConversationController {
 
             if (!avatar) {
                 throw new UnprocessableEntityError({ message: 'avatar is required' })
+            }
+
+            if (user_id.length < 2) {
+                throw new UnprocessableEntityError({
+                    message: 'At least 2 users are required to create a conversation',
+                })
             }
 
             const createdConversation = await ConversationService.createConversation({
