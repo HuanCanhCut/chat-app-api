@@ -1,15 +1,15 @@
 import { Socket } from 'socket.io'
 
-import SocketUserStatusService from '../services/SocketUserStatusService'
-import { SocketEvent } from '~/enum/socketEvent'
+import SocketUserStatusService from '../services/socket/SocketUserStatusService'
+import { ClientToServerEvents, InterServerEvents, ServerToClientEvents } from './types'
 
 class userStatusListener {
-    constructor(socket: Socket) {
+    constructor(socket: Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents>) {
         const socketUserStatusService = new SocketUserStatusService(socket)
 
         socketUserStatusService.CONNECT()
 
-        socket.on(SocketEvent.VISIBILITY_CHANGE, socketUserStatusService.VISIBILITY_CHANGE)
+        socket.on('VISIBILITY_CHANGE', socketUserStatusService.VISIBILITY_CHANGE)
 
         socket.on('disconnect', socketUserStatusService.DISCONNECT)
     }

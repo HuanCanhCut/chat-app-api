@@ -2,14 +2,14 @@ import { literal, Op, QueryTypes, Sequelize } from 'sequelize'
 import { Literal } from 'sequelize/types/utils'
 import { v4 as uuidv4 } from 'uuid'
 
-import { AppError, ConflictError, InternalServerError, NotFoundError, UnprocessableEntityError } from '../errors/errors'
+import { ConflictError, InternalServerError, NotFoundError, UnprocessableEntityError } from '../errors/errors'
 import { Conversation, ConversationMember, Friendships, Notification, User } from '../models'
+import { handleServiceError } from '../utils/handleServiceError'
 import NotificationService from './NotificationService'
 import { sequelize } from '~/config/database'
 import { redisClient } from '~/config/redis'
 import { ioInstance } from '~/config/socket'
 import { RedisKey } from '~/enum/redis'
-import { SocketEvent } from '~/enum/socketEvent'
 
 interface SendMakeFriendRequestProps {
     userId: number
@@ -39,17 +39,10 @@ class FriendService {
                     as: 'user',
                     required: true,
                     on: this.friendShipJoinLiteral(userId),
-                    attributes: {
-                        exclude: ['password', 'email'],
-                    },
                 },
             })
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -90,25 +83,24 @@ class FriendService {
                 throw new InternalServerError({ message: 'Failed to add friend' })
             }
 
-            const notificationData = await NotificationService.create({
+            const notification = await NotificationService.create({
                 recipientId: Number(friendId),
                 type: 'friend_request',
                 currentUserId: currentUserId,
-                message: 'vừa gửi cho bạn một lời mời kết bạn',
+                target_type: 'user',
+                target_id: currentUserId,
             })
 
             // Send notification to user
             const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${Number(friendId)}`, 0, -1)
 
             if (socketIds && socketIds.length > 0) {
-                ioInstance?.to(socketIds).emit(SocketEvent.NEW_NOTIFICATION, notificationData)
+                if (notification) {
+                    ioInstance?.to(socketIds).emit('NEW_NOTIFICATION', { notification })
+                }
             }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -120,9 +112,6 @@ class FriendService {
                         model: User,
                         as: 'user',
                         required: true,
-                        attributes: {
-                            exclude: ['password', 'email'],
-                        },
                     },
                 ],
                 where: {
@@ -143,12 +132,8 @@ class FriendService {
             })
 
             return !!isFriend
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -162,12 +147,8 @@ class FriendService {
             })
 
             return friendCount
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -187,6 +168,10 @@ class FriendService {
                 ) AS mutual_friends_count
             `
 
+            if (friendIds.length === 0) {
+                return 0
+            }
+
             interface MutualFriendCount {
                 mutual_friends_count: number
             }
@@ -194,15 +179,12 @@ class FriendService {
             const mutualFriendCount = await sequelize.query<MutualFriendCount>(mutualFriendCountQuery, {
                 replacements: { userId, friendIds },
                 type: QueryTypes.SELECT,
+                // logging: console.log,
             })
 
             return mutualFriendCount[0].mutual_friends_count
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -221,9 +203,6 @@ class FriendService {
     }) {
         try {
             interface UserInclude {
-                attributes: {
-                    exclude: string[]
-                }
                 model: typeof User
                 as: string
                 required: boolean
@@ -234,9 +213,6 @@ class FriendService {
 
             // Build the include for User, adding search if q is present
             const userInclude: UserInclude = {
-                attributes: {
-                    exclude: ['password', 'email'],
-                },
                 model: User,
                 as: 'user',
                 required: true,
@@ -274,9 +250,6 @@ class FriendService {
                     attributes: ['id'],
                     include: [
                         {
-                            attributes: {
-                                exclude: ['password', 'email'],
-                            },
                             model: User,
                             as: 'user',
                             required: true,
@@ -297,7 +270,7 @@ class FriendService {
                 await redisClient.set(
                     `${RedisKey.FRIENDS_IDS_OF_USER}${currentUserId}`,
                     JSON.stringify(currentFriendsIds),
-                    { EX: 60 * 60 }, // 1 hour
+                    { EX: 60 * 5 }, // 5 minutes
                 )
             }
 
@@ -324,12 +297,8 @@ class FriendService {
             await Promise.all(promises)
 
             return { friends, count }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -361,11 +330,12 @@ class FriendService {
                 type: 'friend_request',
             })
 
-            const notificationData = await NotificationService.create({
+            const notification = await NotificationService.create({
                 recipientId: Number(userId),
                 type: 'accept_friend_request',
                 currentUserId: currentUserId,
-                message: 'đã chấp nhận lời mời kết bạn',
+                target_type: 'user',
+                target_id: currentUserId,
             })
 
             const hasConversation = await Conversation.findOne({
@@ -423,16 +393,14 @@ class FriendService {
             const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${Number(userId)}`, 0, -1)
 
             if (socketIds && socketIds.length > 0) {
-                ioInstance.to(socketIds).emit(SocketEvent.NEW_NOTIFICATION, notificationData)
+                if (notification) {
+                    ioInstance.to(socketIds).emit('NEW_NOTIFICATION', { notification })
+                }
             }
 
             await redisClient.del(`${RedisKey.FRIENDS_IDS_OF_USER}${currentUserId}`)
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -450,7 +418,7 @@ class FriendService {
             }
 
             const notification = await Notification.findOne({
-                where: { recipient_id: currentUserId, sender_id: Number(senderId), type: 'friend_request' },
+                where: { recipient_id: currentUserId, actor_id: Number(senderId), type: 'friend_request' },
                 attributes: ['id'],
             })
 
@@ -467,14 +435,10 @@ class FriendService {
             const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${Number(currentUserId)}`, 0, -1)
 
             if (socketIds && socketIds.length > 0) {
-                ioInstance.to(socketIds).emit(SocketEvent.REMOVE_NOTIFICATION, { notification_id: notification?.id })
+                ioInstance.to(socketIds).emit('REMOVE_NOTIFICATION', { notification_id: notification?.id })
             }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -496,12 +460,8 @@ class FriendService {
             })
 
             await redisClient.del(`${RedisKey.FRIENDS_IDS_OF_USER}${currentUserId}`)
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -521,14 +481,14 @@ class FriendService {
             const notification = await Notification.findOne({
                 where: {
                     recipient_id: Number(userId),
-                    sender_id: currentUserId,
+                    actor_id: currentUserId,
                     type: 'friend_request',
                 },
                 attributes: ['id'],
             })
 
             if (socketIds && socketIds.length > 0) {
-                ioInstance.to(socketIds).emit(SocketEvent.REMOVE_NOTIFICATION, { notification_id: notification?.id })
+                ioInstance.to(socketIds).emit('REMOVE_NOTIFICATION', { notification_id: notification?.id ?? 0 })
             }
 
             if (notification) {
@@ -539,12 +499,8 @@ class FriendService {
             } else {
                 await isMakeFriendRequest.destroy()
             }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -570,9 +526,7 @@ class FriendService {
                     where: {
                         id: Sequelize.col('Friendships.user_id'),
                     },
-                    attributes: {
-                        exclude: ['password', 'email'],
-                    },
+
                     runHooks: true,
                 },
                 limit: Number(per_page),
@@ -580,12 +534,8 @@ class FriendService {
             })
 
             return { friendInvitations, count }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -608,12 +558,8 @@ class FriendService {
                 per_page,
                 q: query,
             })
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -626,10 +572,8 @@ class FriendService {
                 return [] // No one is online
             }
 
-            // Extract user IDs from Redis keys
             const onlineUserIds = onlineUserKeys
                 .map((key) => {
-                    // Extract user ID from the Redis key format (socket_id:123)
                     const keyPrefix = `${RedisKey.SOCKET_ID}`
                     if (key.startsWith(keyPrefix)) {
                         const idStr = key.substring(keyPrefix.length)
@@ -664,12 +608,8 @@ class FriendService {
             })
 
             return friends
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 }

@@ -17,4 +17,5 @@ router.get('/search', UserController.searchUser.bind(UserController))
 router.get('/search-history', UserController.getSearchHistory.bind(UserController))
 router.post('/search-history', UserController.setSearchHistory.bind(UserController))
 router.get('/:nickname', UserController.getAnUser.bind(UserController))
+
 export default router

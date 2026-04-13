@@ -1,16 +1,23 @@
 import Block from './BlockModel'
+import Comment from './CommentModel'
 import ConversationMember from './ConversationMemberModel'
 import Conversation from './ConversationModel'
 import ConversationTheme from './ConversationThemeModel'
 import DeletedConversation from './DeletedConversation'
 import Friendships from './FriendshipsModel'
+import MessageMedia from './MessageMedia'
 import Message from './MessageModel'
-import MessageReaction from './MessageReactionModel'
 import MessageStatus from './MessageStatusModel'
 import Notification from './NotificationModel'
+import PostMedia from './PostMedia'
+import Post from './PostModel'
+import PostScore from './PostScore.Model'
+import Reaction from './ReactionModel'
 import RefreshToken from './RefreshTokenModel'
 import SearchHistory from './SearchHistoryModel'
+import Story from './StoryModel'
 import User from './UserModel'
+import UserViewedStory from './UserViewedStoryModel'
 
 const associations = () => {
     // define relations
@@ -29,8 +36,8 @@ const associations = () => {
     /**
      * Notification model
      */
-    Notification.belongsTo(User, { foreignKey: 'sender_id', as: 'sender_user' })
-    User.hasMany(Notification, { foreignKey: 'sender_id', as: 'notifications' })
+    Notification.belongsTo(User, { foreignKey: 'actor_id', as: 'actor' })
+    User.hasMany(Notification, { foreignKey: 'actor_id', as: 'notifications' })
 
     /**
      * Search history model
@@ -82,14 +89,91 @@ const associations = () => {
     User.hasMany(MessageStatus, { foreignKey: 'receiver_id', as: 'message_status' })
 
     /**
-     * Message react model
+     * Message - MessageMedia model
      */
-    User.hasMany(MessageReaction, { foreignKey: 'user_id', as: 'reactions' })
-    MessageReaction.belongsTo(User, { foreignKey: 'user_id', as: 'user_reaction' })
 
-    Message.hasMany(MessageReaction, { foreignKey: 'message_id', as: 'reactions' })
-    MessageReaction.belongsTo(Message, { foreignKey: 'message_id', as: 'message' })
+    Message.hasMany(MessageMedia, { foreignKey: 'message_id', as: 'media' })
+    MessageMedia.belongsTo(Message, { foreignKey: 'message_id', as: 'message' })
 
+    /**
+     * Reaction model
+     */
+    User.hasMany(Reaction, { foreignKey: 'user_id', as: 'reactions' })
+    Reaction.belongsTo(User, { foreignKey: 'user_id', as: 'user_reaction' })
+
+    Message.hasMany(Reaction, {
+        foreignKey: 'reactionable_id',
+        as: 'message_reactions',
+        constraints: false,
+        scope: { reactionable_type: 'Message' },
+    })
+
+    Reaction.belongsTo(Message, {
+        foreignKey: 'reactionable_id',
+        as: 'message_reactionable',
+        constraints: false,
+        scope: { reactionable_type: 'Message' },
+    })
+
+    Post.hasMany(Reaction, {
+        foreignKey: 'reactionable_id',
+        as: 'post_reactions',
+        constraints: false,
+        scope: { reactionable_type: 'Post' },
+    })
+
+    Reaction.belongsTo(Post, {
+        foreignKey: 'reactionable_id',
+        as: 'post_reactionable',
+        constraints: false,
+        scope: { reactionable_type: 'Post' },
+    })
+
+    Comment.hasMany(Reaction, {
+        foreignKey: 'reactionable_id',
+        as: 'comment_reactions',
+        constraints: false,
+        scope: { reactionable_type: 'Comment' },
+    })
+
+    Reaction.belongsTo(Comment, {
+        foreignKey: 'reactionable_id',
+        as: 'comment_reactionable',
+        constraints: false,
+        scope: { reactionable_type: 'Comment' },
+    })
+
+    /**
+     * Post and PostMedia model
+     */
+
+    Post.hasMany(PostMedia, { foreignKey: 'post_id', as: 'post_media' })
+    PostMedia.belongsTo(Post, { foreignKey: 'post_id', as: 'post' })
+
+    /**
+     * Post and PostScore model
+     */
+
+    Post.hasOne(PostScore, { foreignKey: 'post_id', as: 'post_score' })
+    PostScore.belongsTo(Post, { foreignKey: 'post_id', as: 'post' })
+
+    /**
+     *  User and Post model
+     */
+
+    User.hasMany(Post, { foreignKey: 'user_id', as: 'posts' })
+    Post.belongsTo(User, { foreignKey: 'user_id', as: 'user' })
+
+    /**
+     * User comment post model
+     */
+
+    User.hasMany(Comment, { foreignKey: 'user_id', as: 'comments' })
+    Comment.belongsTo(User, { foreignKey: 'user_id', as: 'user' })
+
+    /**
+     * Message parent model
+     */
     Message.hasMany(Message, { foreignKey: 'parent_id', as: 'children' })
     Message.belongsTo(Message, { foreignKey: 'parent_id', as: 'parent' })
 
@@ -124,6 +208,44 @@ const associations = () => {
 
     User.hasMany(DeletedConversation, { foreignKey: 'user_id', as: 'deleted_conversations' })
     DeletedConversation.belongsTo(User, { foreignKey: 'user_id', as: 'user' })
+
+    /**
+     * User - Story Model
+     */
+
+    User.hasMany(Story, { foreignKey: 'user_id', as: 'stories' })
+    Story.belongsTo(User, { foreignKey: 'user_id', as: 'user' })
+
+    /**
+     * User - UserViewedStory Model
+     */
+
+    User.hasMany(UserViewedStory, { foreignKey: 'user_id', as: 'user_viewed_stories' })
+    UserViewedStory.belongsTo(User, { foreignKey: 'user_id', as: 'user' })
+
+    Story.hasMany(UserViewedStory, { foreignKey: 'story_id', as: 'user_viewed_stories' })
+    UserViewedStory.belongsTo(Story, { foreignKey: 'story_id', as: 'story' })
+
+    /**
+     * Story - Reaction Model
+     */
+    Story.hasMany(Reaction, {
+        foreignKey: 'reactionable_id',
+        as: 'reactions',
+        constraints: false,
+        scope: {
+            reactionable_type: 'Story',
+        },
+    })
+
+    Reaction.belongsTo(Story, {
+        foreignKey: 'reactionable_id',
+        as: 'story_reaction',
+        constraints: false,
+        scope: {
+            reactionable_type: 'Story',
+        },
+    })
 }
 
 export default associations

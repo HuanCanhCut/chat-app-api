@@ -1,15 +1,19 @@
 import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
 
 import { sequelize } from '../../config/database'
+import { NotificationType } from '../../types/notificationTypes'
 
 class Notification extends Model<InferAttributes<Notification>, InferCreationAttributes<Notification>> {
     declare id?: number
-    declare type: 'friend_request' | 'accept_friend_request' | 'message'
+    declare type: NotificationType
     declare recipient_id: number
     declare message: string
     declare is_read?: boolean
     declare is_seen?: boolean
-    declare sender_id: number
+    declare actor_id: number
+    declare metadata?: string
+    declare target_type: string
+    declare target_id: number
     declare created_at?: Date
     declare updated_at?: Date
 }
@@ -49,7 +53,7 @@ Notification.init(
             allowNull: false,
             defaultValue: false,
         },
-        sender_id: {
+        actor_id: {
             type: DataTypes.INTEGER,
             allowNull: false,
             references: {
@@ -59,11 +63,33 @@ Notification.init(
             onDelete: 'CASCADE',
             onUpdate: 'CASCADE',
         },
+        metadata: {
+            type: DataTypes.JSON,
+            allowNull: true,
+        },
+        target_type: {
+            type: DataTypes.STRING,
+            allowNull: false,
+        },
+        target_id: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+        },
     },
     {
         tableName: 'notifications',
         sequelize,
     },
 )
+
+Notification.prototype.toJSON = function () {
+    const values = { ...this.get() }
+
+    if (values.metadata) {
+        values.metadata = JSON.parse(values.metadata)
+    }
+
+    return values
+}
 
 export default Notification

@@ -2,8 +2,8 @@ import { NextFunction, Response } from 'express'
 
 import { NotFoundError, UnprocessableEntityError } from '../errors/errors'
 import UserService from '../services/UserService'
-import clearCookie from '../utils/clearCookies'
-import { IRequest, MulterRequest } from '~/type'
+import { clearCookie } from '../utils/cookiesManager'
+import { IRequest, MulterRequest } from '~/types/type'
 
 class MeController {
     // [GET] /auth/me

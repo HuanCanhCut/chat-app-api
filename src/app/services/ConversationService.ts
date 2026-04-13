@@ -1,17 +1,17 @@
 import { Op, QueryTypes } from 'sequelize'
 import { v4 as uuidv4 } from 'uuid'
 
-import { AppError, ConflictError, ForBiddenError, InternalServerError, NotFoundError } from '../errors/errors'
+import { ConflictError, ForBiddenError, InternalServerError, NotFoundError } from '../errors/errors'
 import uploadSingleFile from '../helper/uploadToCloudinary'
 import { Block, Conversation, ConversationMember, ConversationTheme, User } from '../models'
 import DeletedConversation from '../models/DeletedConversation'
 import MessageService from '../services/MessageService'
+import { handleServiceError } from '../utils/handleServiceError'
 import UserService from './UserService'
 import { sequelize } from '~/config/database'
 import { redisClient } from '~/config/redis'
 import { ioInstance } from '~/config/socket'
 import { RedisKey } from '~/enum/redis'
-import { SocketEvent } from '~/enum/socketEvent'
 
 class ConversationService {
     async userAllowedToConversation({
@@ -78,12 +78,8 @@ class ConversationService {
             )
 
             return conversation
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -99,23 +95,6 @@ class ConversationService {
         try {
             const { rows: conversations, count } = await Conversation.findAndCountAll({
                 distinct: true,
-                include: [
-                    {
-                        model: ConversationMember,
-                        as: 'members',
-                        include: [
-                            {
-                                model: User,
-                                as: 'user',
-                                required: true,
-                                attributes: {
-                                    exclude: ['password', 'email'],
-                                },
-                                runHooks: true,
-                            },
-                        ],
-                    },
-                ],
                 where: {
                     id: {
                         [Op.in]: sequelize.literal(`(
@@ -160,13 +139,51 @@ class ConversationService {
 
             await Promise.all(promises)
 
-            return { conversations, count }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
+            const privateConversationIds = conversations
+                .filter((conversation) => !conversation.is_group)
+                .map((conversation) => conversation.id)
 
-            throw new InternalServerError({ message: error.message })
+            const privateConversationMembers = await ConversationMember.findAll({
+                where: {
+                    conversation_id: {
+                        [Op.in]: privateConversationIds,
+                    },
+                },
+                include: [
+                    {
+                        model: User,
+                        as: 'user',
+                        required: true,
+                    },
+                ],
+            })
+
+            const privateConversationMembersMap = privateConversationMembers.reduce(
+                (acc, member) => {
+                    if (!acc[member.conversation_id]) {
+                        acc[member.conversation_id] = []
+                    }
+
+                    acc[member.conversation_id].push(member)
+
+                    return acc
+                },
+                {} as Record<number, ConversationMember[]>,
+            )
+
+            conversations.forEach((conversation) => {
+                if (!conversation.is_group) {
+                    const members = privateConversationMembersMap[conversation.id]
+
+                    if (members) {
+                        conversation.dataValues.members = members
+                    }
+                }
+            })
+
+            return { conversations, count }
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -194,17 +211,13 @@ class ConversationService {
                             {
                                 model: User,
                                 as: 'user',
-                                attributes: {
-                                    exclude: ['password', 'email'],
-                                },
+
                                 runHooks: true,
                             },
                             {
                                 model: User,
                                 as: 'added_by',
-                                attributes: {
-                                    exclude: ['password', 'email'],
-                                },
+
                                 runHooks: true,
                             },
                         ],
@@ -220,9 +233,6 @@ class ConversationService {
                             {
                                 model: User,
                                 as: 'blocker',
-                                attributes: {
-                                    exclude: ['password', 'email'],
-                                },
                             },
                         ],
                     },
@@ -230,12 +240,8 @@ class ConversationService {
             })
 
             return conversation
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -251,9 +257,6 @@ class ConversationService {
                                 model: User,
                                 as: 'user',
                                 required: true,
-                                attributes: {
-                                    exclude: ['password', 'email'],
-                                },
                             },
                         ],
                     },
@@ -293,12 +296,8 @@ class ConversationService {
             })
 
             return conversations
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -328,7 +327,7 @@ class ConversationService {
                 throw new InternalServerError({ message: 'Failed to rename conversation' })
             }
 
-            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_RENAMED, {
+            ioInstance.to(conversationUuid).emit('CONVERSATION_RENAMED', {
                 conversation_uuid: conversationUuid,
                 key: 'name',
                 value: conversationName,
@@ -347,12 +346,8 @@ class ConversationService {
             delete savedConversation.dataValues.members
 
             return savedConversation
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -395,7 +390,7 @@ class ConversationService {
                 throw new InternalServerError({ message: 'Failed to change conversation avatar' })
             }
 
-            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_AVATAR_CHANGED, {
+            ioInstance.to(conversationUuid).emit('CONVERSATION_AVATAR_CHANGED', {
                 conversation_uuid: conversationUuid,
                 key: 'avatar',
                 value: result?.secure_url,
@@ -414,12 +409,8 @@ class ConversationService {
             delete conversation.dataValues.members
 
             return conversation
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -456,13 +447,13 @@ class ConversationService {
                 throw new InternalServerError({ message: 'Failed to change conversation theme' })
             }
 
-            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_THEME_CHANGED, {
+            ioInstance.to(conversationUuid).emit('CONVERSATION_THEME_CHANGED', {
                 conversation_uuid: conversationUuid,
                 key: 'theme',
                 value: theme,
             })
 
-            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_EMOJI_CHANGED, {
+            ioInstance.to(conversationUuid).emit('CONVERSATION_EMOJI_CHANGED', {
                 conversation_uuid: conversationUuid,
                 key: 'emoji',
                 value: theme.emoji,
@@ -488,12 +479,8 @@ class ConversationService {
             delete savedConversation.dataValues.members
 
             return savedConversation
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -522,7 +509,7 @@ class ConversationService {
                 throw new InternalServerError({ message: 'Failed to change conversation emoji' })
             }
 
-            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_EMOJI_CHANGED, {
+            ioInstance.to(conversationUuid).emit('CONVERSATION_EMOJI_CHANGED', {
                 conversation_uuid: conversationUuid,
                 key: 'emoji',
                 value: unifiedEmoji,
@@ -541,12 +528,8 @@ class ConversationService {
             delete savedConversation.dataValues.members
 
             return savedConversation
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -601,7 +584,7 @@ class ConversationService {
                 throw new InternalServerError({ message: 'Failed to change conversation member nickname' })
             }
 
-            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_MEMBER_NICKNAME_CHANGED, {
+            ioInstance.to(conversationUuid).emit('CONVERSATION_MEMBER_NICKNAME_CHANGED', {
                 conversation_uuid: conversationUuid,
                 user_id: userId,
                 key: 'nickname',
@@ -622,12 +605,8 @@ class ConversationService {
             })
 
             return savedMember
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -673,9 +652,6 @@ class ConversationService {
                                 {
                                     model: User,
                                     as: 'user',
-                                    attributes: {
-                                        exclude: ['password', 'email'],
-                                    },
                                 },
                             ],
                             paranoid: false,
@@ -736,23 +712,17 @@ class ConversationService {
                             {
                                 model: User,
                                 as: 'user',
-                                attributes: {
-                                    exclude: ['password', 'email'],
-                                },
                             },
                             {
                                 model: User,
                                 as: 'added_by',
-                                attributes: {
-                                    exclude: ['password', 'email'],
-                                },
                             },
                         ],
                     })
                 }),
             )
 
-            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_MEMBER_ADDED, {
+            ioInstance.to(conversationUuid).emit('CONVERSATION_MEMBER_ADDED', {
                 conversation_uuid: conversationUuid,
                 members,
             })
@@ -767,7 +737,7 @@ class ConversationService {
                     )
 
                     if (socketIds && socketIds.length > 0) {
-                        ioInstance.to(socketIds).emit(SocketEvent.CONVERSATION_MEMBER_JOINED)
+                        ioInstance.to(socketIds).emit('CONVERSATION_MEMBER_JOINED')
                     }
                 }
             }
@@ -796,12 +766,8 @@ class ConversationService {
             }
 
             return members
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -836,12 +802,8 @@ class ConversationService {
             }
 
             return member
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -883,7 +845,7 @@ class ConversationService {
                 throw new InternalServerError({ message: 'Failed to change leader role in conversation' })
             }
 
-            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_LEADER_CHANGED, {
+            ioInstance.to(conversationUuid).emit('CONVERSATION_LEADER_CHANGED', {
                 conversation_uuid: conversationUuid,
                 key: 'role',
                 value: role,
@@ -919,12 +881,8 @@ class ConversationService {
             })
 
             return savedUserMember
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -997,7 +955,7 @@ class ConversationService {
 
             await member.destroy()
 
-            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_MEMBER_REMOVED, {
+            ioInstance.to(conversationUuid).emit('CONVERSATION_MEMBER_REMOVED', {
                 conversation_uuid: conversationUuid,
                 member_id: memberId,
             })
@@ -1014,12 +972,8 @@ class ConversationService {
                 type: 'system_remove_user',
                 currentUserId,
             })
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -1098,16 +1052,12 @@ class ConversationService {
                 currentUserId,
             })
 
-            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_MEMBER_LEAVED, {
+            ioInstance.to(conversationUuid).emit('CONVERSATION_MEMBER_LEAVED', {
                 conversation_uuid: conversationUuid,
                 member_id: userMemberId,
             })
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -1135,26 +1085,19 @@ class ConversationService {
                     {
                         model: User,
                         as: 'blocker',
-                        attributes: {
-                            exclude: ['password', 'email'],
-                        },
                     },
                 ],
             })
 
-            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_BLOCKED, {
+            ioInstance.to(conversationUuid).emit('CONVERSATION_BLOCKED', {
                 conversation_uuid: conversationUuid,
                 key: 'block_conversation',
                 value: userBlock,
             })
 
             return userBlock
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -1191,17 +1134,13 @@ class ConversationService {
 
             await block.destroy()
 
-            ioInstance.to(conversationUuid).emit(SocketEvent.CONVERSATION_UNBLOCKED, {
+            ioInstance.to(conversationUuid).emit('CONVERSATION_UNBLOCKED', {
                 conversation_uuid: conversationUuid,
                 key: 'block_conversation',
                 value: null,
             })
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -1238,12 +1177,8 @@ class ConversationService {
                     deleted_at: new Date(),
                 })
             }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -1329,19 +1264,15 @@ class ConversationService {
                         const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${userId}`, 0, -1)
 
                         if (socketIds && socketIds.length > 0) {
-                            ioInstance?.to(socketIds).emit(SocketEvent.NEW_CONVERSATION, conversation)
+                            ioInstance?.to(socketIds).emit('NEW_CONVERSATION', conversation)
                         }
                     }
                 }
             }
 
             return conversation
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -1398,12 +1329,8 @@ class ConversationService {
             })
 
             return conversation
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 }

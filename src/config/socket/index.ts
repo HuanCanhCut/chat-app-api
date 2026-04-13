@@ -1,10 +1,11 @@
 import { Server, Socket } from 'socket.io'
 
 import onConnection from '~/app/socket'
+import { ClientToServerEvents, InterServerEvents, ServerToClientEvents } from '~/app/socket/types'
 
-let ioInstance: Server
+let ioInstance: Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents>
 
-const socketIO = (io: Server) => {
+const socketIO = (io: Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents>) => {
     ioInstance = io
 
     ioInstance.on('connection', (socketInstance: Socket) => {

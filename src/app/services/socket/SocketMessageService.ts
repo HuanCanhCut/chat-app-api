@@ -1,21 +1,17 @@
-import { QueryTypes } from 'sequelize'
-import { Op } from 'sequelize'
+import { Op, QueryTypes } from 'sequelize'
 import { Socket } from 'socket.io'
 
-import { InternalServerError } from '../errors/errors'
-import { Block, Conversation, Message, MessageStatus } from '../models'
-import { ConversationMember } from '../models'
-import { User } from '../models'
-import MessageReaction from '../models/MessageReactionModel'
-import MessageService from '../services/MessageService'
-import ConversationService from './ConversationService'
+import { InternalServerError } from '../../errors/errors'
+import { Block, Conversation, ConversationMember, Message, MessageMedia, MessageStatus, User } from '../../models'
+import Reaction from '../../models/ReactionModel'
+import ConversationService from '../ConversationService'
+import MessageService from '../MessageService'
 import { sequelize } from '~/config/database'
 import { redisClient } from '~/config/redis'
 import { ioInstance } from '~/config/socket'
 import { RedisKey } from '~/enum/redis'
-import { SocketEvent } from '~/enum/socketEvent'
 import logger from '~/logger/logger'
-import { TempConversationModel } from '~/type'
+import { TempConversationModel } from '~/types/type'
 
 class SocketMessageService {
     private socket?: Socket
@@ -33,6 +29,9 @@ class SocketMessageService {
         message,
         type = 'text',
         parent_id = null,
+        media,
+        forward_type = null,
+        forward_origin_id = null,
     }: {
         conversationId: number
         senderId: number
@@ -40,6 +39,12 @@ class SocketMessageService {
         message: string
         type: string
         parent_id: number | null
+        media?: Array<{
+            media_url: string
+            media_type: 'image' | 'video'
+        }>
+        forward_type?: 'Message' | 'Story' | 'Post' | null
+        forward_origin_id?: number | null
     }) => {
         const transaction = await sequelize.transaction()
 
@@ -56,20 +61,34 @@ class SocketMessageService {
                     content: message,
                     type,
                     parent_id: parent_id || null,
+                    forward_type: forward_type,
+                    forward_origin_id: forward_origin_id,
                 },
                 { transaction },
             )
 
             if (newMessage.id) {
-                for (const userId of userIds) {
-                    await MessageStatus.create(
-                        {
-                            message_id: newMessage.id,
-                            receiver_id: userId.id,
-                            status: userId.is_online ? 'delivered' : 'sent',
-                        },
-                        { transaction },
-                    )
+                type MessageStatusType = 'delivered' | 'sent' | 'read'
+
+                const bulkStatusData = userIds.map((userId) => ({
+                    message_id: newMessage.id!,
+                    receiver_id: userId.id,
+                    status: userId.is_online ? ('delivered' as MessageStatusType) : ('sent' as MessageStatusType),
+                }))
+
+                if (media) {
+                    const bulkMediaData = media.map((m) => ({
+                        message_id: newMessage.id!,
+                        media_url: m.media_url,
+                        media_type: m.media_type,
+                    }))
+
+                    await Promise.all([
+                        MessageStatus.bulkCreate(bulkStatusData, { transaction }),
+                        MessageMedia.bulkCreate(bulkMediaData, { transaction }),
+                    ])
+                } else {
+                    await MessageStatus.bulkCreate(bulkStatusData, { transaction })
                 }
             }
 
@@ -86,7 +105,7 @@ class SocketMessageService {
                         required: true,
                         attributes: {
                             include: [[MessageService.isReadLiteral(senderId), 'is_read']],
-                            exclude: ['password', 'email'],
+                            exclude: ['email', 'password'],
                         },
                     },
                     {
@@ -103,10 +122,14 @@ class SocketMessageService {
                                             'last_read_message_id',
                                         ],
                                     ],
-                                    exclude: ['password', 'email'],
+                                    exclude: ['email', 'password'],
                                 },
                             },
                         ],
+                    },
+                    {
+                        model: MessageMedia,
+                        as: 'media',
                     },
                     {
                         model: Message,
@@ -203,11 +226,20 @@ class SocketMessageService {
         message,
         type = 'text',
         parent_id = null,
+        media,
+        forward_type,
+        forward_origin_id,
     }: {
         conversation_uuid: string
         message: string
         type: string
         parent_id?: number | null
+        media?: Array<{
+            media_url: string
+            media_type: 'image' | 'video'
+        }>
+        forward_type?: 'Message' | 'Story' | 'Post' | null
+        forward_origin_id?: number | null
     }) => {
         try {
             const tempConversationCache = await redisClient.get(`${RedisKey.TEMP_CONVERSATION}${conversation_uuid}`)
@@ -273,6 +305,9 @@ class SocketMessageService {
                 message,
                 type,
                 parent_id,
+                media,
+                forward_type,
+                forward_origin_id,
             })
 
             if (!newMessage) {
@@ -289,7 +324,7 @@ class SocketMessageService {
                     last_message: newMessage,
                 }
 
-                ioInstance.to(conversation_uuid).emit(SocketEvent.NEW_MESSAGE, { conversation })
+                ioInstance.to(conversation_uuid).emit('NEW_MESSAGE', { conversation })
             } else {
                 // get conversation from database
                 const conversation = await ConversationService.getConversationByUuid({
@@ -315,7 +350,7 @@ class SocketMessageService {
                         last_message: newMessage,
                     }
 
-                    ioInstance.to(conversation_uuid).emit(SocketEvent.NEW_MESSAGE, { conversation: conversationData })
+                    ioInstance.to(conversation_uuid).emit('NEW_MESSAGE', { conversation: conversationData })
                 }
             }
 
@@ -347,7 +382,7 @@ class SocketMessageService {
                                     last_message: newMessage,
                                 }
 
-                                ioInstance.to(socketId).emit(SocketEvent.NEW_MESSAGE, {
+                                ioInstance.to(socketId).emit('NEW_MESSAGE', {
                                     conversation: conversationData,
                                 })
                             }
@@ -422,7 +457,7 @@ class SocketMessageService {
                                             'last_read_message_id',
                                         ],
                                     ],
-                                    exclude: ['password', 'email'],
+                                    exclude: ['email', 'password'],
                                 },
                             },
                         ],
@@ -431,9 +466,10 @@ class SocketMessageService {
                         model: User,
                         as: 'sender',
                         required: true,
-                        attributes: {
-                            exclude: ['password', 'email'],
-                        },
+                    },
+                    {
+                        model: MessageMedia,
+                        as: 'media',
                     },
                     {
                         model: Message,
@@ -459,7 +495,10 @@ class SocketMessageService {
                             {
                                 model: User,
                                 as: 'sender',
-                                attributes: { exclude: ['password', 'email'] },
+                            },
+                            {
+                                model: MessageMedia,
+                                as: 'media',
                             },
                         ],
                     },
@@ -472,7 +511,7 @@ class SocketMessageService {
 
             ioInstance
                 .to(conversation_uuid)
-                .emit(SocketEvent.UPDATE_READ_MESSAGE, { message, user_read_id: this.currentUserId, conversation_uuid })
+                .emit('UPDATE_READ_MESSAGE', { message, user_read_id: this.currentUserId, conversation_uuid })
 
             const userIds = await this.getUsersOnlineStatus(conversation_uuid)
 
@@ -485,7 +524,7 @@ class SocketMessageService {
                     const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${user.id}`, 0, -1)
 
                     if (socketIds && socketIds.length > 0) {
-                        ioInstance.to(socketIds).emit(SocketEvent.UPDATE_READ_MESSAGE, {
+                        ioInstance.to(socketIds).emit('UPDATE_READ_MESSAGE', {
                             message,
                             user_read_id: this.currentUserId,
                         })
@@ -536,10 +575,11 @@ class SocketMessageService {
                 return
             }
 
-            const hasReaction = await MessageReaction.findOne({
+            const hasReaction = await Reaction.findOne({
                 where: {
-                    message_id: message_id,
+                    reactionable_id: message_id,
                     user_id: user_react_id,
+                    reactionable_type: 'Message',
                 },
             })
 
@@ -549,37 +589,33 @@ class SocketMessageService {
                 hasReaction.react = react
                 messageReaction = await hasReaction.save()
             } else {
-                messageReaction = await MessageReaction.create({
-                    message_id: message_id,
+                messageReaction = await Reaction.create({
+                    reactionable_id: message_id,
                     react,
                     user_id: user_react_id,
+                    reactionable_type: 'Message',
                 })
             }
 
             const [reaction, top_reactions, total_reactions] = await Promise.all([
-                MessageReaction.findByPk(messageReaction.id, {
+                Reaction.findByPk(messageReaction.id, {
                     include: [
                         {
                             model: User,
                             as: 'user_reaction',
-                            attributes: {
-                                exclude: ['password', 'email'],
-                            },
                         },
                     ],
                 }),
 
-                MessageReaction.findAll({
+                Reaction.findAll({
                     where: {
-                        message_id: message_id,
+                        reactionable_id: message_id,
+                        reactionable_type: 'Message',
                     },
                     include: [
                         {
                             model: User,
                             as: 'user_reaction',
-                            attributes: {
-                                exclude: ['password', 'email'],
-                            },
                         },
                     ],
                     attributes: ['react'],
@@ -588,16 +624,15 @@ class SocketMessageService {
                     limit: 2,
                 }),
 
-                MessageReaction.count({
+                Reaction.count({
                     where: {
-                        message_id: message_id,
+                        reactionable_id: message_id,
+                        reactionable_type: 'Message',
                     },
                 }),
             ])
 
-            ioInstance
-                .to(conversation_uuid)
-                .emit(SocketEvent.REACT_MESSAGE, { reaction, top_reactions, total_reactions })
+            ioInstance.to(conversation_uuid).emit('REACT_MESSAGE', { reaction, top_reactions, total_reactions })
         } catch (error) {
             logger.error('REACT_MESSAGE', error)
         }
@@ -643,16 +678,18 @@ class SocketMessageService {
             }
 
             const [, top_reactions, total_reactions] = await Promise.all([
-                await MessageReaction.destroy({
+                await Reaction.destroy({
                     where: {
-                        message_id: message_id,
+                        reactionable_id: message_id,
+                        reactionable_type: 'Message',
                         user_id: user_reaction_id,
                     },
                 }),
 
-                MessageReaction.findAll({
+                Reaction.findAll({
                     where: {
-                        message_id: message_id,
+                        reactionable_id: message_id,
+                        reactionable_type: 'Message',
                     },
                     include: [
                         {
@@ -667,14 +704,15 @@ class SocketMessageService {
                     limit: 2,
                 }),
 
-                MessageReaction.count({
+                Reaction.count({
                     where: {
-                        message_id: message_id,
+                        reactionable_id: message_id,
+                        reactionable_type: 'Message',
                     },
                 }),
             ])
 
-            ioInstance.to(conversation_uuid).emit(SocketEvent.REMOVE_REACTION, {
+            ioInstance.to(conversation_uuid).emit('REMOVE_REACTION', {
                 message_id,
                 react,
                 top_reactions,
@@ -695,7 +733,7 @@ class SocketMessageService {
         is_typing: boolean
     }) => {
         try {
-            this.socket?.broadcast.to(conversation_uuid).emit(SocketEvent.MESSAGE_TYPING, {
+            this.socket?.broadcast.to(conversation_uuid).emit('MESSAGE_TYPING', {
                 user_id,
                 is_typing,
                 conversation_uuid,

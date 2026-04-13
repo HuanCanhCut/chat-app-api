@@ -1,13 +1,12 @@
 import { Socket } from 'socket.io'
 
-import { ConversationMember } from '../models'
-import ConversationService from './ConversationService'
+import { ConversationMember } from '../../models'
+import ConversationService from '../ConversationService'
+import UserService from '../UserService'
 import SocketMessageService from './SocketMessageService'
-import UserService from './UserService'
 import { redisClient } from '~/config/redis'
 import { ioInstance } from '~/config/socket'
 import { RedisKey } from '~/enum/redis'
-import { SocketEvent } from '~/enum/socketEvent'
 import logger from '~/logger/logger'
 
 class SocketCallService {
@@ -34,7 +33,7 @@ class SocketCallService {
             const isCalling = await redisClient.get(`${RedisKey.IS_CALLING}${callee_id}`)
 
             if (isCalling) {
-                ioInstance.to(this.socket.id).emit(SocketEvent.CALL_BUSY)
+                ioInstance.to(this.socket.id).emit('CALL_BUSY')
 
                 return
             }
@@ -65,7 +64,7 @@ class SocketCallService {
                 })
 
             if (calleeSocketIds && calleeSocketIds.length > 0) {
-                ioInstance.to(calleeSocketIds).emit(SocketEvent.INITIATE_CALL, {
+                ioInstance.to(calleeSocketIds).emit('INITIATE_CALL', {
                     caller,
                     type,
                     uuid,
@@ -103,13 +102,13 @@ class SocketCallService {
             const otherCalleeSocketIds = calleeSocketIds.filter((socketId) => socketId !== this.socket?.id)
 
             if (otherCalleeSocketIds && otherCalleeSocketIds.length > 0) {
-                ioInstance.to(otherCalleeSocketIds).emit(SocketEvent.CANCEL_INCOMING_CALL, {
+                ioInstance.to(otherCalleeSocketIds).emit('CANCEL_INCOMING_CALL', {
                     caller_id,
                 })
             }
 
             if (callerSocketIds && callerSocketIds.length > 0) {
-                ioInstance.to(callerSocketIds).emit(SocketEvent.ACCEPTED_CALL, {
+                ioInstance.to(callerSocketIds).emit('ACCEPTED_CALL', {
                     peer_id,
                 })
             }
@@ -138,7 +137,7 @@ class SocketCallService {
 
             // Gửi sự kiện kết thúc cuộc gọi đến người nhận
             if (calleeSocketIds && calleeSocketIds.length > 0) {
-                ioInstance.to(calleeSocketIds).emit(SocketEvent.END_CALL, {
+                ioInstance.to(calleeSocketIds).emit('END_CALL', {
                     caller_id,
                     callee_id,
                 })
@@ -146,7 +145,7 @@ class SocketCallService {
 
             // Gửi sự kiện kết thúc cuộc gọi đến người gọi
             if (callerSocketIds && callerSocketIds.length > 0) {
-                ioInstance.to(callerSocketIds).emit(SocketEvent.END_CALL, {
+                ioInstance.to(callerSocketIds).emit('END_CALL', {
                     caller_id,
                     callee_id,
                 })
@@ -213,7 +212,7 @@ class SocketCallService {
                 })
 
             if (toUserSocketIds && toUserSocketIds.length > 0) {
-                ioInstance.to(toUserSocketIds).emit(SocketEvent.RENEGOTIATION_OFFER, {
+                ioInstance.to(toUserSocketIds).emit('RENEGOTIATION_OFFER', {
                     from_user_id,
                     caller_id,
                     callee_id,
@@ -250,7 +249,7 @@ class SocketCallService {
                 })
 
             if (toUserSocketIds && toUserSocketIds.length > 0) {
-                ioInstance.to(toUserSocketIds).emit(SocketEvent.RENEGOTIATION_ANSWER, {
+                ioInstance.to(toUserSocketIds).emit('RENEGOTIATION_ANSWER', {
                     from_user_id,
                     caller_id,
                     callee_id,
@@ -269,7 +268,7 @@ class SocketCallService {
             const callerSocketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${caller_id}`, 0, -1)
 
             if (callerSocketIds && callerSocketIds.length > 0) {
-                ioInstance.to(callerSocketIds).emit(SocketEvent.REJECT_CALL, {
+                ioInstance.to(callerSocketIds).emit('REJECT_CALL', {
                     caller_id,
                 })
             }

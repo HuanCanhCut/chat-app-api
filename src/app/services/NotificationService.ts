@@ -1,15 +1,28 @@
-import { AppError, InternalServerError, NotFoundError } from '../errors/errors'
+import { NotFoundError } from '../errors/errors'
 import { Notification, User } from '../models'
+import { handleServiceError } from '../utils/handleServiceError'
+import { NotificationType } from '~/types/notificationTypes'
 
 interface ICreateNotification {
     recipientId: number
-    type: 'friend_request' | 'accept_friend_request' | 'message'
+    type: NotificationType
     currentUserId: number
-    message: 'vừa gửi cho bạn một lời mời kết bạn' | 'đã chấp nhận lời mời kết bạn'
+    target_type: string
+    target_id: number
+    metadata?: string
+    message?: string
 }
 
 class NotificationService {
-    async create({ recipientId, type, currentUserId, message }: ICreateNotification) {
+    async create({
+        recipientId,
+        type,
+        currentUserId,
+        target_type,
+        target_id,
+        metadata,
+        message = '',
+    }: ICreateNotification) {
         try {
             const currentUser = await User.findOne({
                 where: {
@@ -21,28 +34,44 @@ class NotificationService {
                 throw new NotFoundError({ message: 'User not found' })
             }
 
+            if (!message) {
+                switch (type) {
+                    case 'friend_request':
+                        message = '{actor} đã gửi cho bạn lời mời kết bạn'
+                        break
+                    case 'accept_friend_request':
+                        message = '{actor} đã chấp nhận lời mời kết bạn của bạn'
+                        break
+                    case 'message':
+                        message = '{actor} đã gửi cho bạn một tin nhắn'
+                        break
+                    case 'reaction':
+                        message = '{actor} đã reaction hành động của bạn'
+                        break
+                }
+            }
+
             const notification = await Notification.create({
                 recipient_id: Number(recipientId),
                 type,
-                sender_id: currentUserId,
-                message: `${currentUser.full_name} ${message}`,
+                actor_id: currentUserId,
+                message,
+                target_type,
+                target_id,
+                metadata,
             })
 
-            const notificationData = {
-                notification: {
-                    ...notification?.dataValues,
-                    sender_id: currentUserId,
-                    sender_user: currentUser,
-                },
-            }
-
-            return notificationData
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+            return await Notification.findByPk(notification.id, {
+                include: [
+                    {
+                        model: User,
+                        as: 'actor',
+                        required: true,
+                    },
+                ],
+            })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -58,7 +87,7 @@ class NotificationService {
         await Notification.destroy({
             where: {
                 recipient_id: recipientId,
-                sender_id: senderId,
+                actor_id: senderId,
                 type,
             },
         })
@@ -85,11 +114,8 @@ class NotificationService {
                 include: [
                     {
                         model: User,
-                        as: 'sender_user',
+                        as: 'actor',
                         required: true,
-                        attributes: {
-                            exclude: ['password', 'email'],
-                        },
                     },
                 ],
                 order: [['created_at', 'DESC']],
@@ -98,48 +124,32 @@ class NotificationService {
             })
 
             return { notifications, total }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
     async markAsRead({ notificationId }: { notificationId: number }) {
         try {
             await Notification.update({ is_read: true }, { where: { id: notificationId } })
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
     async markAsUnread({ notificationId }: { notificationId: number }) {
         try {
             await Notification.update({ is_read: false }, { where: { id: notificationId } })
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
     async markAsSeen({ currentUserId }: { currentUserId: number }) {
         try {
             await Notification.update({ is_seen: true }, { where: { recipient_id: currentUserId } })
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 }

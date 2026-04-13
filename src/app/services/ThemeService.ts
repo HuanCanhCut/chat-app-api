@@ -1,6 +1,5 @@
-import { InternalServerError } from '../errors/errors'
-import { AppError } from '../errors/errors'
 import { ConversationTheme } from '../models'
+import { handleServiceError } from '../utils/handleServiceError'
 
 class ThemeService {
     async getTheme({ page, per_page }: { page: number; per_page: number }) {
@@ -15,12 +14,8 @@ class ThemeService {
                 themes,
                 total: count,
             }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 }

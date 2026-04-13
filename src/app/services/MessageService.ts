@@ -23,16 +23,16 @@ import {
     NotFoundError,
     UnprocessableEntityError,
 } from '../errors/errors'
-import { Conversation, Message, MessageStatus, User } from '../models'
+import { Conversation, Message, MessageMedia, MessageStatus, User } from '../models'
 import DeletedConversation from '../models/DeletedConversation'
-import MessageReaction from '../models/MessageReactionModel'
+import Reaction from '../models/ReactionModel'
+import { handleServiceError } from '../utils/handleServiceError'
 import ConversationService from './ConversationService'
-import SocketMessageService from './SocketMessageService'
+import SocketMessageService from './socket/SocketMessageService'
 import { sequelize } from '~/config/database'
 import { redisClient } from '~/config/redis'
 import { ioInstance } from '~/config/socket'
 import { RedisKey } from '~/enum/redis'
-import { SocketEvent } from '~/enum/socketEvent'
 
 class MessageService {
     async createSystemMessage({
@@ -142,12 +142,8 @@ class MessageService {
                     await this.replaceContentAndIsRead(parentMessage, currentUserId)
                 }
             }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -185,21 +181,19 @@ class MessageService {
                         model: User,
                         as: 'sender',
                         required: true,
-                        attributes: {
-                            exclude: ['password', 'email'],
-                        },
                     },
                     {
                         model: MessageStatus,
                         as: 'message_status',
                         required: true,
+                        limit: 5,
+                        where: {
+                            status: 'read',
+                        },
                         include: [
                             {
                                 model: User,
                                 as: 'receiver',
-                                attributes: {
-                                    exclude: ['password', 'email'],
-                                },
                             },
                         ],
                     },
@@ -215,12 +209,8 @@ class MessageService {
             }
 
             return lastMessage
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -297,7 +287,7 @@ class MessageService {
                                             'last_read_message_id',
                                         ],
                                     ],
-                                    exclude: ['password', 'email'],
+                                    exclude: ['email', 'password'],
                                 },
                             },
                         ],
@@ -306,9 +296,6 @@ class MessageService {
                         model: User,
                         as: 'sender',
                         required: true,
-                        attributes: {
-                            exclude: ['password', 'email'],
-                        },
                     },
                     {
                         model: Message,
@@ -334,11 +321,53 @@ class MessageService {
                             {
                                 model: User,
                                 as: 'sender',
-                                attributes: { exclude: ['password', 'email'] },
+                            },
+                            {
+                                model: MessageMedia,
+                                as: 'media',
                             },
                         ],
                     },
+                    {
+                        model: MessageMedia,
+                        as: 'media',
+                    },
                 ],
+                attributes: {
+                    include: [
+                        [
+                            sequelize.literal(`(
+                                CASE 
+                                    WHEN forward_type = 'Message' THEN (
+                                        SELECT JSON_OBJECT(
+                                            'id', id, 
+                                            'content', content, 
+                                            'type', type
+                                        )
+                                        FROM messages WHERE id = forward_origin_id
+                                    )
+                                    WHEN forward_type = 'Story' THEN (
+                                        SELECT JSON_OBJECT(
+                                            'id', stories.id, 
+                                            'url', stories.url,
+                                            'type', stories.type,
+                                            'background_url', stories.background_url,
+                                            'user', JSON_OBJECT(
+                                                'id', users.id,
+                                                'full_name', users.full_name
+                                            )
+                                        )
+                                        FROM stories
+                                        JOIN users ON users.id = stories.user_id
+                                        WHERE stories.id = forward_origin_id
+                                    )
+                                    ELSE NULL
+                                END
+                            )`),
+                            'forward_origin',
+                        ],
+                    ],
+                },
                 where: {
                     conversation_id: conversation.id,
                     // Get all messages except messages that have been revoked for-me by the current user
@@ -373,17 +402,15 @@ class MessageService {
 
             const promises = messages.map(async (message) => {
                 const [top_reactions, total_reactions] = await Promise.all([
-                    MessageReaction.findAll({
+                    Reaction.findAll({
                         where: {
-                            message_id: message.id,
+                            reactionable_id: message.id,
+                            reactionable_type: 'Message',
                         },
                         include: [
                             {
                                 model: User,
                                 as: 'user_reaction',
-                                attributes: {
-                                    exclude: ['password', 'email'],
-                                },
                             },
                         ],
                         attributes: ['react'],
@@ -392,9 +419,10 @@ class MessageService {
                         limit: 2,
                     }),
 
-                    MessageReaction.count({
+                    Reaction.count({
                         where: {
-                            message_id: message.id,
+                            reactionable_id: message.id,
+                            reactionable_type: 'Message',
                         },
                     }),
 
@@ -433,12 +461,8 @@ class MessageService {
                 messages,
                 count,
             }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -466,12 +490,8 @@ class MessageService {
             }
 
             return messagesData
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -519,7 +539,6 @@ class MessageService {
             const beforeCount = Math.min(halfPerPage, targetMessageIndex)
             const afterCount = Number(limit) - beforeCount - 1 // -1 cho tin nhắn hiện tại
 
-            // Lấy tin nhắn trước, hiện tại và sau cùng lúc bằng Promise.all
             const [beforeMessages, currentMessageData, afterMessages] = await Promise.all([
                 targetMessageIndex > 0
                     ? this.handleGetMessages({
@@ -560,12 +579,8 @@ class MessageService {
                 beforeCount,
                 targetMessageIndex,
             }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -598,24 +613,36 @@ class MessageService {
                 },
             })
 
-            const { rows: messageImages, count } = await Message.findAndCountAll({
+            const { rows: messageImages, count } = await MessageMedia.findAndCountAll({
                 distinct: true,
-                where: {
-                    type: 'image',
-                    conversation_id: conversation.id,
-                    [Op.not]: {
-                        id: {
-                            [Op.in]: sequelize.literal(`
-                                (
-                                    SELECT message_id 
-                                    FROM message_statuses 
-                                    WHERE message_statuses.message_id = Message.id 
-                                    AND message_statuses.is_revoked = 1
-                                    AND message_statuses.receiver_id = ${sequelize.escape(currentUserId)}
-                                )
+                include: [
+                    {
+                        required: true,
+                        model: Message,
+                        as: 'message',
+                        where: {
+                            conversation_id: conversation.id,
+                            [Op.not]: {
+                                id: {
+                                    [Op.in]: sequelize.literal(`
+                                        (
+                                            SELECT message_id
+                                            FROM message_statuses
+                                            WHERE message_statuses.message_id = message.id
+                                            AND message_statuses.is_revoked = 1
+                                            AND message_statuses.receiver_id = ${sequelize.escape(currentUserId)}
+                                        )
                             `),
+                                },
+                            },
                         },
+                        attributes: [],
                     },
+                ],
+                limit: Number(per_page),
+                offset: (Number(page) - 1) * Number(per_page),
+                order: [['id', 'DESC']],
+                where: {
                     created_at: {
                         [Op.and]: [
                             {
@@ -627,89 +654,14 @@ class MessageService {
                         ],
                     },
                 },
-                limit: Number(per_page),
-                offset: (Number(page) - 1) * Number(per_page),
-                order: [['id', 'DESC']],
             })
 
             return {
                 messageImages,
                 count,
             }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
-        }
-    }
-
-    async getReactions({
-        messageId,
-        type,
-        per_page,
-        page,
-    }: {
-        messageId: number
-        type: string
-        per_page: number
-        page: number
-    }) {
-        try {
-            const { rows: reactions, count } = await MessageReaction.findAndCountAll({
-                distinct: true,
-                where: {
-                    message_id: messageId,
-                    ...(type !== 'all' && {
-                        react: type as string,
-                    }),
-                },
-                include: [
-                    {
-                        model: User,
-                        as: 'user_reaction',
-                        required: true,
-                        attributes: {
-                            exclude: ['password', 'email'],
-                        },
-                    },
-                ],
-                limit: Number(per_page),
-                offset: (Number(page) - 1) * Number(per_page),
-                order: [['id', 'DESC']],
-            })
-
-            return {
-                reactions,
-                count,
-            }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
-        }
-    }
-
-    async getReactionsTypes({ messageId }: { messageId: number }) {
-        try {
-            const types = await MessageReaction.findAll({
-                where: {
-                    message_id: messageId,
-                },
-                attributes: ['react', [sequelize.fn('COUNT', sequelize.col('react')), 'count']],
-                group: ['react'],
-            })
-
-            return types
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -796,17 +748,13 @@ class MessageService {
             }
 
             if (revokeType === 'for-other') {
-                ioInstance.to(conversationUuid).emit(SocketEvent.MESSAGE_REVOKE, {
+                ioInstance.to(conversationUuid).emit('MESSAGE_REVOKE', {
                     message_id: messageId,
                     conversation_uuid: conversationUuid,
                 })
             }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -853,9 +801,6 @@ class MessageService {
                         model: User,
                         as: 'sender',
                         required: true,
-                        attributes: {
-                            exclude: ['password', 'email'],
-                        },
                     },
                 ],
                 where: {
@@ -898,12 +843,8 @@ class MessageService {
                 messages,
                 count,
             }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -1145,12 +1086,8 @@ class MessageService {
                 linkPreviews,
                 count,
             }
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 
@@ -1172,12 +1109,8 @@ class MessageService {
             })
 
             return unreadConversationCount.length
-        } catch (error: any) {
-            if (error instanceof AppError) {
-                throw error
-            }
-
-            throw new InternalServerError({ message: error.message })
+        } catch (error) {
+            return handleServiceError(error)
         }
     }
 }

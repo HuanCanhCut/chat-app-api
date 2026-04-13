@@ -6,10 +6,12 @@ import ConversationMember from './ConversationMemberModel'
 import Conversation from './ConversationModel'
 import ConversationTheme from './ConversationThemeModel'
 import Friendships from './FriendshipsModel'
+import MessageMedia from './MessageMedia'
 import Message from './MessageModel'
-import MessageReaction from './MessageReactionModel'
 import MessageStatus from './MessageStatusModel'
 import Notification from './NotificationModel'
+import PostScore from './PostScore.Model'
+import MessageReaction from './ReactionModel'
 import RefreshToken from './RefreshTokenModel'
 import SearchHistory from './SearchHistoryModel'
 import User from './UserModel'
@@ -34,9 +36,11 @@ export {
     ConversationTheme,
     Friendships,
     Message,
+    MessageMedia,
     MessageReaction,
     MessageStatus,
     Notification,
+    PostScore,
     RefreshToken,
     SearchHistory,
     User,

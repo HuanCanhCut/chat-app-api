@@ -13,8 +13,15 @@ class Message extends Model<InferAttributes<Message>, InferCreationAttributes<Me
     declare created_at?: Date
     declare updated_at?: Date
     declare parent_id?: number | null
+    declare forward_type?: 'Message' | 'Story' | 'Post' | null
+    declare forward_origin_id?: number | null
+
+    /**
+     * Virtual fields
+     */
     declare parent?: Message | null
     declare message_status?: MessageStatus[] | null
+    declare forward_origin?: string
 }
 
 Message.init(
@@ -64,11 +71,31 @@ Message.init(
             onDelete: 'CASCADE',
             onUpdate: 'CASCADE',
         },
+        forward_type: {
+            type: DataTypes.ENUM('Message', 'Story', 'Post'),
+            allowNull: true,
+            defaultValue: null,
+        },
+        forward_origin_id: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            defaultValue: null,
+        },
     },
     {
         tableName: 'messages',
         sequelize,
     },
 )
+
+Message.prototype.toJSON = function () {
+    const data = this.get({ plain: true })
+
+    if (data.forward_origin) {
+        data.forward_origin = JSON.parse(data.forward_origin)
+    }
+
+    return data
+}
 
 export default Message

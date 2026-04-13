@@ -3,12 +3,16 @@ import { Server, Socket } from 'socket.io'
 
 import callListener from './call'
 import conversationListener from './conversation'
+import { ClientToServerEvents, InterServerEvents, ServerToClientEvents } from './types'
 import userStatusListener from './userStatus'
 import messageListener from '~/app/socket/message'
 import { redisClient } from '~/config/redis'
 import { RedisKey } from '~/enum/redis'
 
-const onConnection = async (socketInstance: Socket, ioInstance: Server) => {
+const onConnection = async (
+    socketInstance: Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents>,
+    ioInstance: Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents>,
+) => {
     console.log('\x1b[33m===>>>Socket connected', socketInstance.id, '\x1b[0m')
 
     const cookies = socketInstance.handshake.headers.cookie

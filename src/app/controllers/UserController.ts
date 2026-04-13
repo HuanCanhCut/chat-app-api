@@ -2,7 +2,7 @@ import { NextFunction, Response } from 'express'
 
 import { UnprocessableEntityError } from '../errors/errors'
 import UserService from '../services/UserService'
-import { IRequest } from '~/type'
+import { IRequest } from '~/types/type'
 
 class UserController {
     // [GET] /user/:nickname

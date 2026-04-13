@@ -65,43 +65,43 @@ class UnprocessableEntityError extends AppError {
 
 // 429: Too Many Requests
 class TooManyRequestsError extends AppError {
-    constructor({ message = ReasonPhrases.TOO_MANY_REQUESTS }: Message) {
-        super(message, StatusCodes.TOO_MANY_REQUESTS)
+    constructor({ message = ReasonPhrases.TOO_MANY_REQUESTS, error = {} }: ErrorProps) {
+        super(message, StatusCodes.TOO_MANY_REQUESTS, error)
     }
 }
 
 // 500: Internal Server Error
 class InternalServerError extends AppError {
-    constructor({ message = ReasonPhrases.INTERNAL_SERVER_ERROR }: Message) {
-        super(message, StatusCodes.INTERNAL_SERVER_ERROR)
+    constructor({ message = ReasonPhrases.INTERNAL_SERVER_ERROR, error = {} }: ErrorProps) {
+        super(message, StatusCodes.INTERNAL_SERVER_ERROR, error)
     }
 }
 
 // 501: Not Implemented
 class NotImplementedError extends AppError {
-    constructor({ message = ReasonPhrases.NOT_IMPLEMENTED }: Message) {
-        super(message, StatusCodes.NOT_IMPLEMENTED)
+    constructor({ message = ReasonPhrases.NOT_IMPLEMENTED, error = {} }: ErrorProps) {
+        super(message, StatusCodes.NOT_IMPLEMENTED, error)
     }
 }
 
 // 502: Bad Gateway
 class BadGatewayError extends AppError {
-    constructor({ message = ReasonPhrases.BAD_GATEWAY }: Message) {
-        super(message, StatusCodes.BAD_GATEWAY)
+    constructor({ message = ReasonPhrases.BAD_GATEWAY, error = {} }: ErrorProps) {
+        super(message, StatusCodes.BAD_GATEWAY, error)
     }
 }
 
 // 503: Service Unavailable
 class ServiceUnavailableError extends AppError {
-    constructor({ message = ReasonPhrases.SERVICE_UNAVAILABLE }: Message) {
-        super(message, StatusCodes.SERVICE_UNAVAILABLE)
+    constructor({ message = ReasonPhrases.SERVICE_UNAVAILABLE, error = {} }: ErrorProps) {
+        super(message, StatusCodes.SERVICE_UNAVAILABLE, error)
     }
 }
 
 // 504: Gateway Timeout
 class GatewayTimeoutError extends AppError {
-    constructor({ message = ReasonPhrases.GATEWAY_TIMEOUT }: Message) {
-        super(message, StatusCodes.GATEWAY_TIMEOUT)
+    constructor({ message = ReasonPhrases.GATEWAY_TIMEOUT, error = {} }: ErrorProps) {
+        super(message, StatusCodes.GATEWAY_TIMEOUT, error)
     }
 }
 

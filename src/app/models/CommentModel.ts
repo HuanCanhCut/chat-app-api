@@ -1,35 +1,26 @@
 import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
 
 import { sequelize } from '../../config/database'
-import { UserModel } from '~/type'
 
-class MessageReaction extends Model<InferAttributes<MessageReaction>, InferCreationAttributes<MessageReaction>> {
+class Comment extends Model<InferAttributes<Comment>, InferCreationAttributes<Comment>> {
     declare id?: number
-    declare message_id: number
+    declare post_id: number
     declare user_id: number
-    declare react: string
+    declare content: string
+    declare parent_id?: number | null
+    declare deleted_at?: Date
     declare created_at?: Date
     declare updated_at?: Date
-
-    declare user_reaction?: UserModel
 }
-
-MessageReaction.init(
+Comment.init(
     {
         id: {
             type: DataTypes.INTEGER,
             primaryKey: true,
             autoIncrement: true,
         },
-        message_id: {
+        post_id: {
             type: DataTypes.INTEGER,
-            allowNull: false,
-            references: {
-                model: 'messages',
-                key: 'id',
-            },
-            onDelete: 'CASCADE',
-            onUpdate: 'CASCADE',
         },
         user_id: {
             type: DataTypes.INTEGER,
@@ -38,18 +29,27 @@ MessageReaction.init(
                 model: 'users',
                 key: 'id',
             },
+        },
+        content: {
+            type: DataTypes.TEXT,
+            allowNull: false,
+        },
+        parent_id: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            references: {
+                model: 'comments',
+                key: 'id',
+            },
             onDelete: 'CASCADE',
             onUpdate: 'CASCADE',
         },
-        react: {
-            type: DataTypes.STRING,
-            allowNull: false,
-        },
     },
     {
-        tableName: 'message_reactions',
+        tableName: 'comments',
         sequelize,
+        paranoid: true,
     },
 )
 
-export default MessageReaction
+export default Comment

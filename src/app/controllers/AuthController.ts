@@ -3,7 +3,14 @@ import { NextFunction, Request, Response } from 'express'
 import { NotFoundError, UnauthorizedError, UnprocessableEntityError } from '../errors/errors'
 import { RefreshToken } from '../models'
 import AuthService from '../services/AuthService'
-import clearCookie from '../utils/clearCookies'
+import { clearCookie, setCookie } from '../utils/cookiesManager'
+import {
+    LoginRequest,
+    LoginWithTokenRequest,
+    RegisterRequest,
+    ResetPasswordRequest,
+    SendVerifyCodeRequest,
+} from '../validator/api/authSchema'
 import { User } from '~/app/models'
 
 class AuthController {
@@ -27,24 +34,24 @@ class AuthController {
             refresh_token: refreshToken,
         })
 
-        res.status(status)
-            .setHeader('Set-Cookie', [
-                `access_token=${token}; max-age=${60820005}; httpOnly; path=/; sameSite=Lax; secure; Partitioned; domain=${req?.headers.origin?.split('://')[1].split(':')[0]}`,
-                `refresh_token=${refreshToken}; max-age=${Number(process.env.EXPIRED_REFRESH_TOKEN)}; httpOnly; path=/; sameSite=Lax; secure; Partitioned; domain=${req?.headers.origin?.split('://')[1].split(':')[0]}`,
-            ])
-            .json({
-                data: user,
-            })
+        setCookie({
+            res,
+            cookies: [
+                { name: 'access_token', value: token },
+                { name: 'refresh_token', value: refreshToken },
+            ],
+            req,
+        })
+
+        res.status(status).json({
+            data: user,
+        })
     }
 
     // [POST] /auth/register
-    async register(req: Request, res: Response, next: NextFunction) {
+    async register(req: RegisterRequest, res: Response, next: NextFunction) {
         const { email, password } = req.body
         try {
-            if (!email || !password) {
-                return next(new UnprocessableEntityError({ message: 'Email and password are required' }))
-            }
-
             const { token, refreshToken, user } = await AuthService.register({ email, password })
 
             this.sendToClient({ res, user, token, refreshToken, status: 201, req })
@@ -54,13 +61,9 @@ class AuthController {
     }
 
     // [POST] /auth/login
-    async login(req: Request, res: Response, next: NextFunction) {
+    async login(req: LoginRequest, res: Response, next: NextFunction) {
         try {
             const { email, password } = req.body
-
-            if (!email || !password) {
-                return next(new UnprocessableEntityError({ message: 'Email and password are required' }))
-            }
 
             const { token, refreshToken, user } = await AuthService.login({ email, password })
 
@@ -86,13 +89,9 @@ class AuthController {
     }
 
     // [POST] /auth/loginwithtoken
-    async loginWithToken(req: Request, res: Response, next: NextFunction) {
+    async loginWithToken(req: LoginWithTokenRequest, res: Response, next: NextFunction) {
         try {
             const { token } = req.body
-
-            if (!token) {
-                return next(new UnauthorizedError({ message: 'Authorization token is required' }))
-            }
 
             const { token: accessToken, refreshToken, user } = await AuthService.loginWithToken({ token })
 
@@ -113,15 +112,19 @@ class AuthController {
 
             const { newAccessToken, newRefreshToken } = await AuthService.refreshToken({ refresh_token })
 
-            res.setHeader('Set-Cookie', [
-                `access_token=${newAccessToken}; max-age=${60820005}; path=/; sameSite=Lax; secure; Partitioned; domain=${req?.headers.origin?.split('://')[1].split(':')[0]}`,
-                `refresh_token=${newRefreshToken}; max-age=${Number(process.env.EXPIRED_REFRESH_TOKEN)}; path=/; sameSite=Lax; secure; Partitioned; domain=${req?.headers.origin?.split('://')[1].split(':')[0]}`,
-            ])
-                .status(200)
-                .json({
-                    // access token expire
-                    exp: Math.floor(Date.now() / 1000) + Number(process.env.EXPIRED_TOKEN),
-                })
+            setCookie({
+                res,
+                cookies: [
+                    { name: 'access_token', value: newAccessToken },
+                    { name: 'refresh_token', value: newRefreshToken },
+                ],
+                req,
+            })
+
+            res.status(200).json({
+                // access token expire
+                exp: Math.floor(Date.now() / 1000) + Number(process.env.EXPIRED_TOKEN),
+            })
         } catch (error: any) {
             if (error instanceof UnauthorizedError) {
                 clearCookie({ res, cookies: ['access_token', 'refresh_token'], req })
@@ -132,13 +135,9 @@ class AuthController {
     }
 
     // [GET] /auth/verify
-    async sendVerifyCode(req: Request, res: Response, next: NextFunction) {
+    async sendVerifyCode(req: SendVerifyCodeRequest, res: Response, next: NextFunction) {
         try {
             const { email } = req.body
-
-            if (!email) {
-                return next(new UnprocessableEntityError({ message: 'Email is required' }))
-            }
 
             if (!/^\w+([\\.-]?\w+)*@\w+([\\.-]?\w+)*(\.\w{2,3})+$/.test(email)) {
                 return next(new UnprocessableEntityError({ message: 'Email is invalid' }))
@@ -157,13 +156,9 @@ class AuthController {
     }
 
     // // [POST] /auth/reset-password
-    async resetPassword(req: Request, res: Response, next: NextFunction) {
+    async resetPassword(req: ResetPasswordRequest, res: Response, next: NextFunction) {
         try {
             const { email, code, password } = req.body
-
-            if (!email || !code || !password) {
-                return next(new UnprocessableEntityError({ message: 'Email, code and password are required' }))
-            }
 
             await AuthService.resetPassword({ email, code, password })
 

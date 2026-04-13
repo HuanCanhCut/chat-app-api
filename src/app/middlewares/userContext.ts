@@ -1,7 +1,7 @@
 import { NextFunction } from 'express'
 
 import userContext from '../utils/userContext'
-import { IRequest } from '~/type'
+import { IRequest } from '~/types/type'
 
 const setUserContextMiddleware = (req: IRequest, res: any, next: NextFunction) => {
     if (req.decoded?.sub) {
