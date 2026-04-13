@@ -9,15 +9,6 @@ export const createTempConversationSchema = z.object({
     }),
 })
 
-export const createConversationSchema = z.object({
-    body: z.object({
-        name: z.string().min(1),
-        user_id: z.array(z.coerce.number().int().positive()).min(2, {
-            message: 'At least 2 users are required to create a conversation',
-        }),
-    }),
-})
-
 export const renameConversationSchema = z.object({
     body: z.object({
         name: z.string().min(1),
@@ -68,7 +59,6 @@ export const removeUserFromConversationSchema = z.object({
 })
 
 export type CreateTempConversationRequest = TypedRequest<z.infer<typeof createTempConversationSchema>['body']>
-export type CreateConversationRequest = TypedRequest<z.infer<typeof createConversationSchema>['body']>
 export type RenameConversationRequest = TypedRequest<
     z.infer<typeof renameConversationSchema>['body'],
     z.infer<typeof renameConversationSchema>['params']

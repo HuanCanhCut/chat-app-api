@@ -8,7 +8,6 @@ import {
     changeConversationEmojiSchema,
     changeConversationMemberNicknameSchema,
     changeConversationThemeSchema,
-    createConversationSchema,
     createTempConversationSchema,
     designateLeaderSchema,
     removeLeaderSchema,
@@ -23,12 +22,7 @@ router.post(
     validate(createTempConversationSchema),
     ConversationController.createTempConversation.bind(ConversationController),
 )
-router.post(
-    '/',
-    validate(createConversationSchema),
-    upload.single('avatar'),
-    ConversationController.createConversation.bind(ConversationController),
-)
+router.post('/', upload.single('avatar'), ConversationController.createConversation.bind(ConversationController))
 router.get('/search', validate(querySchema), ConversationController.searchConversation.bind(ConversationController))
 router.get('/:uuid', validate(uuidSchema), ConversationController.getConversationByUuid.bind(ConversationController))
 router.delete('/:uuid', validate(uuidSchema), ConversationController.deleteConversation.bind(ConversationController))
