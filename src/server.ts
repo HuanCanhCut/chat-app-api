@@ -103,6 +103,10 @@ cronJobs()
 
 app.use(errorHandler)
 
+// make express trust the proxy of the load balancer (nginx)
+// so that we can get the correct protocol and host from the request
+app.set('trust proxy', true)
+
 server.listen(process.env.PORT, () => {
     console.log(`Server is running on port ${process.env.PORT}`)
 })

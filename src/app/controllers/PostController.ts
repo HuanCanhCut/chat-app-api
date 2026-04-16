@@ -1,6 +1,6 @@
 import { NextFunction, Response } from 'express'
 
-import { responsePagination } from '../response/responsePagination'
+import { responseCursorPagination, responsePagination } from '../response/responsePagination'
 import PostService from '../services/PostService'
 import ReactionService from '../services/ReactionService'
 import { IdRequest } from '../validator/api/common'
@@ -38,21 +38,30 @@ class PostController {
         try {
             const { cursor, limit = 10 } = req.query
 
-            const { posts, has_next_page, next_cursor } = await PostService.getPost({
+            const { posts, next_cursor } = await PostService.getPost({
                 cursor,
                 limit: Number(limit),
                 currentUserId: req.decoded.sub,
             })
 
-            res.json({
-                data: posts,
-                meta: {
-                    pagination: {
-                        has_next_page,
-                        next_cursor,
-                    },
-                },
-            })
+            res.json(
+                responseCursorPagination({
+                    req,
+                    data: posts,
+                    limit: Number(limit),
+                    next_cursor,
+                }),
+            )
+
+            // res.json({
+            //     data: posts,
+            //     meta: {
+            //         pagination: {
+            //             has_next_page,
+            //             next_cursor,
+            //         },
+            //     },
+            // })
         } catch (error) {
             return next(error)
         }

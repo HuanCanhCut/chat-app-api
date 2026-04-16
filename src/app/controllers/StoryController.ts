@@ -1,9 +1,9 @@
 import { NextFunction, Response } from 'express'
 
-import { responsePagination } from '../response/responsePagination'
+import { responseCursorPagination, responsePagination } from '../response/responsePagination'
 import ConversationService from '../services/ConversationService'
 import StoryService from '../services/StoryService'
-import { PaginationRequest, UuidRequest } from '../validator/api/common'
+import { CursorPaginationRequest, UuidRequest } from '../validator/api/common'
 import { CreateStoryRequest, GetUserViewedStoryRequest, ReactToStoryRequest } from '../validator/api/storySchema'
 
 class StoryController {
@@ -25,25 +25,23 @@ class StoryController {
         }
     }
 
-    getStories = async (req: PaginationRequest, res: Response, next: NextFunction) => {
+    getStories = async (req: CursorPaginationRequest, res: Response, next: NextFunction) => {
         try {
-            const { page, per_page } = req.query
+            const { cursor, limit } = req.query
             const decoded = req.decoded
 
-            const { stories, total } = await StoryService.getStories({
-                page: Number(page),
-                per_page: Number(per_page),
+            const { stories, next_cursor } = await StoryService.getStories({
+                cursor,
+                limit: Number(limit),
                 currentUserId: decoded!.sub,
             })
 
             res.json(
-                responsePagination({
+                responseCursorPagination({
                     req,
                     data: stories,
-                    total,
-                    count: stories.length,
-                    current_page: Number(page),
-                    per_page: Number(per_page),
+                    limit: Number(limit),
+                    next_cursor: next_cursor,
                 }),
             )
         } catch (error) {

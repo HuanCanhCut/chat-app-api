@@ -11,6 +11,17 @@ export const paginationSchema = z.object({
     }),
 })
 
+export const cursorPaginationSchema = z.object({
+    query: z.object({
+        cursor: z.string().optional(),
+        limit: z.coerce
+            .number()
+            .min(1, { error: 'Limit must be at least 1' })
+            .max(100, { error: 'Limit must be at most 100' })
+            .transform(String),
+    }),
+})
+
 export const idSchema = z.object({
     params: z.object({
         id: z.coerce.number().int().positive().transform(String),
@@ -31,5 +42,6 @@ export const querySchema = z.object({
 
 export type QueryRequest = TypedRequest<any, any, z.infer<typeof querySchema>['query']>
 export type PaginationRequest = TypedRequest<any, any, z.infer<typeof paginationSchema>['query']>
+export type CursorPaginationRequest = TypedRequest<any, any, z.infer<typeof cursorPaginationSchema>['query']>
 export type IdRequest = TypedRequest<any, z.infer<typeof idSchema>['params']>
 export type UuidRequest = TypedRequest<any, z.infer<typeof uuidSchema>['params']>

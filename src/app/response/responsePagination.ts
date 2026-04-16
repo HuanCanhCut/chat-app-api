@@ -74,3 +74,38 @@ export const responsePagination = <T extends Record<string, unknown>>({
 
     return response
 }
+
+interface ResponseCursorPaginationBase {
+    req: Pick<Request, 'protocol' | 'get' | 'baseUrl'>
+    data: any
+    limit: number
+    next_cursor?: string | null
+}
+
+type ResponseCursorPagination<T extends Record<string, unknown> = Record<string, unknown>> =
+    ResponseCursorPaginationBase & T
+
+export const responseCursorPagination = <T extends Record<string, unknown>>({
+    req,
+    data,
+    limit,
+    next_cursor,
+    ...rest
+}: ResponseCursorPagination<T>) => {
+    const baseUrl = `${req.protocol}://${req.get('host')}${req.baseUrl}`
+
+    return {
+        data,
+        meta: {
+            pagination: {
+                limit,
+                has_next_page: !!next_cursor,
+                next_cursor,
+            },
+            links: {
+                next: next_cursor ? `${baseUrl}?cursor=${next_cursor}&limit=${limit}` : null,
+            },
+            ...rest,
+        },
+    }
+}

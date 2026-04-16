@@ -5,6 +5,7 @@ import { Friendships, User } from '../models'
 import Reaction from '../models/ReactionModel'
 import Story from '../models/StoryModel'
 import UserViewedStory from '../models/UserViewedStoryModel'
+import { decodeCursor, encodeCursor } from '../utils/cursor'
 import { handleServiceError } from '../utils/handleServiceError'
 import NotificationService from './NotificationService'
 import { sequelize } from '~/config/database'
@@ -40,15 +41,17 @@ class StoryService {
     }
 
     getStories = async ({
-        page,
-        per_page,
+        cursor,
+        limit,
         currentUserId,
     }: {
-        page: number
-        per_page: number
+        cursor?: string
+        limit: number
         currentUserId: number
     }) => {
         try {
+            const { id: cursorId } = decodeCursor<{ id: number }>(cursor) ?? {}
+
             let friendIds: number[] = []
 
             const friendIdsCache = await redisClient.get(`${RedisKey.FRIENDS_IDS_OF_USER}${currentUserId}`)
@@ -73,8 +76,19 @@ class StoryService {
                 })
             }
 
-            const { rows: stories, count: total } = await Story.findAndCountAll({
-                distinct: true,
+            const whereClause: Record<string, unknown> = {
+                user_id: {
+                    [Op.in]: [currentUserId, ...friendIds],
+                },
+            }
+
+            if (cursorId) {
+                whereClause.id = {
+                    [Op.lt]: cursorId,
+                }
+            }
+
+            const stories = await Story.findAll({
                 attributes: {
                     include: [
                         [
@@ -117,13 +131,8 @@ class StoryService {
                     model: User,
                     as: 'user',
                 },
-                where: {
-                    user_id: {
-                        [Op.in]: [currentUserId, ...friendIds],
-                    },
-                },
-                limit: per_page,
-                offset: (page - 1) * per_page,
+                where: whereClause,
+                limit: limit + 1,
                 order: [
                     [
                         sequelize.literal(
@@ -142,9 +151,14 @@ class StoryService {
                 group: ['Story.user_id'],
             })
 
+            const hasNext = stories.length > limit
+            const paginatedStories = hasNext ? stories.slice(0, limit) : stories
+
+            const nextCursor = hasNext ? encodeCursor({ id: paginatedStories[paginatedStories.length - 1].id }) : null
+
             return {
-                stories,
-                total: total.length,
+                stories: paginatedStories,
+                next_cursor: nextCursor,
             }
         } catch (error) {
             return handleServiceError(error)

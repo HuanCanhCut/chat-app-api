@@ -8,6 +8,7 @@ import Comment from '../models/CommentModel'
 import PostMedia from '../models/PostMedia'
 import Post from '../models/PostModel'
 import Reaction from '../models/ReactionModel'
+import { decodeCursor, encodeCursor } from '../utils/cursor'
 import { handleServiceError } from '../utils/handleServiceError'
 import { sequelize } from '~/config/database'
 import { BaseReactionUnified } from '~/types/reactionType'
@@ -74,15 +75,11 @@ class PostService {
 
     getPost = async ({ cursor, limit, currentUserId }: { cursor?: string; limit: number; currentUserId: number }) => {
         try {
-            const encodeCursor = (score: number, id: number) =>
-                Buffer.from(JSON.stringify({ score, id })).toString('base64')
-
-            const decodeCursor = (cursor: string) => JSON.parse(Buffer.from(cursor, 'base64').toString('utf8'))
-
             let whereCondition = {}
 
             if (cursor) {
-                const { score, id } = decodeCursor(cursor)
+                const { score, id } = decodeCursor<{ score: number; id: number }>(cursor)
+
                 whereCondition = {
                     [Op.or]: [
                         {
@@ -217,11 +214,11 @@ class PostService {
             const data = hasNextPage ? posts.slice(0, limit) : posts
 
             const lastPost = data[data.length - 1]
-            const nextCursor = hasNextPage && lastPost ? encodeCursor(lastPost.post_score.score, lastPost.id!) : null
+            const nextCursor =
+                hasNextPage && lastPost ? encodeCursor({ score: lastPost.post_score.score, id: lastPost.id }) : null
 
             return {
                 posts: data,
-                has_next_page: hasNextPage,
                 next_cursor: nextCursor,
             }
         } catch (error) {
