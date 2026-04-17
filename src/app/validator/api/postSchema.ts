@@ -1,44 +1,19 @@
 import { z } from 'zod'
 
 import { TypedRequest } from '../types/request'
-import { idSchema, paginationSchema } from './common'
-import { decodeCursor } from '~/app/utils/cursor'
+import { cursorField, idSchema, limitSchema, paginationSchema } from './common'
 import { BASE_REACTION } from '~/types/reactionType'
 
 const getPostCursorSchema = z.object({
-    id: z.number(),
+    last_id: z.number(),
     score: z.number(),
 })
 
 type GetPostCursorQuery = z.infer<typeof getPostCursorSchema>
 
 const getPostsSchema = z.object({
-    query: z.object({
-        cursor: z
-            .base64({ error: 'cursor must be a valid base64 string' })
-            .superRefine((val, ctx) => {
-                try {
-                    const decoded = decodeCursor(val)
-                    const result = getPostCursorSchema.safeParse(decoded)
-
-                    if (!result.success) {
-                        result.error.issues.forEach((issue) => {
-                            ctx.addIssue({
-                                code: 'custom',
-                                message: issue.message,
-                                path: issue.path,
-                            })
-                        })
-                    }
-                } catch {
-                    ctx.addIssue({
-                        code: 'custom',
-                        message: 'Cursor is not valid JSON',
-                    })
-                }
-            })
-            .optional(),
-        limit: z.coerce.number().int().min(1).max(100).default(10).transform(String),
+    query: limitSchema.shape.query.extend({
+        cursor: cursorField(getPostCursorSchema),
     }),
 })
 

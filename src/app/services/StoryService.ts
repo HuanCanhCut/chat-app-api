@@ -7,6 +7,7 @@ import Story from '../models/StoryModel'
 import UserViewedStory from '../models/UserViewedStoryModel'
 import { decodeCursor, encodeCursor } from '../utils/cursor'
 import { handleServiceError } from '../utils/handleServiceError'
+import { LastIdType } from '../validator/api/common'
 import NotificationService from './NotificationService'
 import { sequelize } from '~/config/database'
 import { redisClient } from '~/config/redis'
@@ -50,7 +51,7 @@ class StoryService {
         currentUserId: number
     }) => {
         try {
-            const { id: cursorId } = decodeCursor<{ id: number }>(cursor) ?? {}
+            const { last_id: cursorId } = decodeCursor<LastIdType>(cursor) ?? {}
 
             let friendIds: number[] = []
 
@@ -154,7 +155,9 @@ class StoryService {
             const hasNext = stories.length > limit
             const paginatedStories = hasNext ? stories.slice(0, limit) : stories
 
-            const nextCursor = hasNext ? encodeCursor({ id: paginatedStories[paginatedStories.length - 1].id }) : null
+            const nextCursor = hasNext
+                ? encodeCursor<LastIdType>({ last_id: paginatedStories[paginatedStories.length - 1].id! })
+                : null
 
             return {
                 stories: paginatedStories,

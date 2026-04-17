@@ -3,8 +3,13 @@ import { NextFunction, Response } from 'express'
 import { responseCursorPagination, responsePagination } from '../response/responsePagination'
 import ConversationService from '../services/ConversationService'
 import StoryService from '../services/StoryService'
-import { CursorPaginationRequest, UuidRequest } from '../validator/api/common'
-import { CreateStoryRequest, GetUserViewedStoryRequest, ReactToStoryRequest } from '../validator/api/storySchema'
+import { UuidRequest } from '../validator/api/common'
+import {
+    CreateStoryRequest,
+    GetStoriesRequest,
+    GetUserViewedStoryRequest,
+    ReactToStoryRequest,
+} from '../validator/api/storySchema'
 
 class StoryController {
     createStory = async (req: CreateStoryRequest, res: Response, next: NextFunction) => {
@@ -25,7 +30,7 @@ class StoryController {
         }
     }
 
-    getStories = async (req: CursorPaginationRequest, res: Response, next: NextFunction) => {
+    getStories = async (req: GetStoriesRequest, res: Response, next: NextFunction) => {
         try {
             const { cursor, limit } = req.query
             const decoded = req.decoded

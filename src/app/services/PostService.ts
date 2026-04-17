@@ -79,7 +79,7 @@ class PostService {
             let whereCondition = {}
 
             if (cursor) {
-                const { score, id } = decodeCursor<GetPostCursorQuery>(cursor)
+                const { score, last_id } = decodeCursor<GetPostCursorQuery>(cursor)
 
                 whereCondition = {
                     [Op.or]: [
@@ -95,7 +95,7 @@ class PostService {
                                 },
                                 {
                                     id: {
-                                        [Op.lt]: id,
+                                        [Op.lt]: last_id,
                                     },
                                 },
                             ],
@@ -216,7 +216,12 @@ class PostService {
 
             const lastPost = data[data.length - 1]
             const nextCursor =
-                hasNextPage && lastPost ? encodeCursor({ score: lastPost.post_score.score, id: lastPost.id }) : null
+                hasNextPage && lastPost
+                    ? encodeCursor<GetPostCursorQuery>({
+                          score: lastPost.post_score.score,
+                          last_id: lastPost.id!,
+                      })
+                    : null
 
             return {
                 posts: data,
