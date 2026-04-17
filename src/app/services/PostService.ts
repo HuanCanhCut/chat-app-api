@@ -10,6 +10,7 @@ import Post from '../models/PostModel'
 import Reaction from '../models/ReactionModel'
 import { decodeCursor, encodeCursor } from '../utils/cursor'
 import { handleServiceError } from '../utils/handleServiceError'
+import { GetPostCursorQuery } from '../validator/api/postSchema'
 import { sequelize } from '~/config/database'
 import { BaseReactionUnified } from '~/types/reactionType'
 
@@ -73,12 +74,12 @@ class PostService {
         }
     }
 
-    getPost = async ({ cursor, limit, currentUserId }: { cursor?: string; limit: number; currentUserId: number }) => {
+    getPosts = async ({ cursor, limit, currentUserId }: { cursor?: string; limit: number; currentUserId: number }) => {
         try {
             let whereCondition = {}
 
             if (cursor) {
-                const { score, id } = decodeCursor<{ score: number; id: number }>(cursor)
+                const { score, id } = decodeCursor<GetPostCursorQuery>(cursor)
 
                 whereCondition = {
                     [Op.or]: [

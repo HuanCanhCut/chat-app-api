@@ -4,11 +4,11 @@ import { responseCursorPagination, responsePagination } from '../response/respon
 import PostService from '../services/PostService'
 import ReactionService from '../services/ReactionService'
 import { IdRequest } from '../validator/api/common'
-import { CursorRequest } from '../validator/api/cursorSchema'
 import {
     CreatePostRequest,
     GetPostCommentsRequest,
     GetPostReactionsRequest,
+    GetPostsRequest,
     ReactPostRequest,
 } from '../validator/api/postSchema'
 
@@ -34,11 +34,11 @@ class PostController {
         }
     }
 
-    getPosts = async (req: CursorRequest, res: Response, next: NextFunction) => {
+    getPosts = async (req: GetPostsRequest, res: Response, next: NextFunction) => {
         try {
             const { cursor, limit = 10 } = req.query
 
-            const { posts, next_cursor } = await PostService.getPost({
+            const { posts, next_cursor } = await PostService.getPosts({
                 cursor,
                 limit: Number(limit),
                 currentUserId: req.decoded.sub,
@@ -52,16 +52,6 @@ class PostController {
                     next_cursor,
                 }),
             )
-
-            // res.json({
-            //     data: posts,
-            //     meta: {
-            //         pagination: {
-            //             has_next_page,
-            //             next_cursor,
-            //         },
-            //     },
-            // })
         } catch (error) {
             return next(error)
         }

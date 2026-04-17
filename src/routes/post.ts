@@ -3,17 +3,17 @@ import express from 'express'
 import PostController from '~/app/controllers/PostController'
 import { validate } from '~/app/middlewares/validate'
 import { idSchema } from '~/app/validator/api/common'
-import { cursorSchema } from '~/app/validator/api/cursorSchema'
 import {
     createPostSchema,
     getPostCommentSchema,
     getPostReactionsSchema,
+    getPostsSchema,
     reactPostSchema,
 } from '~/app/validator/api/postSchema'
 
 const router = express.Router()
 
-router.get('/', validate(cursorSchema), PostController.getPosts)
+router.get('/', validate(getPostsSchema), PostController.getPosts)
 router.post('/', validate(createPostSchema), PostController.createPost)
 router.get('/:id/reactions', validate(getPostReactionsSchema), PostController.getPostReactions)
 router.get('/:id/comments', validate(getPostCommentSchema), PostController.getPostComments)
