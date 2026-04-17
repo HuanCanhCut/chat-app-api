@@ -1,3 +1,5 @@
+import { Op } from 'sequelize'
+
 import { User } from '../models'
 import Reaction from '../models/ReactionModel'
 import { handleServiceError } from '../utils/handleServiceError'
@@ -67,6 +69,44 @@ class ReactionService {
             })
 
             return types
+        } catch (error) {
+            return handleServiceError(error)
+        }
+    }
+
+    async getTopReactions({
+        reactionableIds,
+        reactionableType,
+        limit = 2,
+    }: {
+        reactionableIds: number[]
+        reactionableType: ReactionableType
+        limit: number
+    }) {
+        try {
+            const topReactions = await Reaction.findAll({
+                where: {
+                    reactionable_id: {
+                        [Op.in]: reactionableIds as number[],
+                    },
+                    reactionable_type: reactionableType,
+                },
+                attributes: ['react', 'reactionable_id'],
+                group: ['react', 'reactionable_id'],
+                order: [[sequelize.fn('COUNT', sequelize.col('react')), 'DESC']],
+            })
+
+            const topReactionsMap = topReactions.reduce((acc: Record<string, Reaction[]>, curr) => {
+                if (!acc[curr.reactionable_id]) {
+                    acc[curr.reactionable_id] = []
+                }
+                if (acc[curr.reactionable_id].length <= limit) {
+                    acc[curr.reactionable_id].push(curr)
+                }
+                return acc
+            }, {})
+
+            return topReactionsMap
         } catch (error) {
             return handleServiceError(error)
         }

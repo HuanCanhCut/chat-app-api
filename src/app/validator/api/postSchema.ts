@@ -44,13 +44,6 @@ const getPostReactionsSchema = z.object({
     }),
 })
 
-const getPostCommentSchema = z.object({
-    params: idSchema.shape.params,
-    query: paginationSchema.shape.query.extend({
-        parent_id: z.string().optional(),
-    }),
-})
-
 const reactPostSchema = z.object({
     body: z.object({
         unified: z.enum(BASE_REACTION),
@@ -65,18 +58,12 @@ type GetPostReactionsRequest = TypedRequest<
     z.infer<typeof getPostReactionsSchema>['params'],
     z.infer<typeof getPostReactionsSchema>['query']
 >
-type GetPostCommentsRequest = TypedRequest<
-    any,
-    z.infer<typeof getPostCommentSchema>['params'],
-    z.infer<typeof getPostCommentSchema>['query']
->
+
 type ReactPostRequest = TypedRequest<z.infer<typeof reactPostSchema>['body'], z.infer<typeof reactPostSchema>['params']>
 
 export {
     CreatePostRequest,
     createPostSchema,
-    getPostCommentSchema,
-    GetPostCommentsRequest,
     GetPostCursorQuery,
     GetPostReactionsRequest,
     getPostReactionsSchema,

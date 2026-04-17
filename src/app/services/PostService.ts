@@ -10,7 +10,9 @@ import Post from '../models/PostModel'
 import Reaction from '../models/ReactionModel'
 import { decodeCursor, encodeCursor } from '../utils/cursor'
 import { handleServiceError } from '../utils/handleServiceError'
+import { LastIdCursor } from '../validator/api/common'
 import { GetPostCursorQuery } from '../validator/api/postSchema'
+import ReactionService from './ReactionService'
 import { sequelize } from '~/config/database'
 import { BaseReactionUnified } from '~/types/reactionType'
 
@@ -234,33 +236,75 @@ class PostService {
 
     getPostComment = async ({
         post_id,
-        page,
-        per_page,
+        limit,
+        cursor,
         parent_id,
     }: {
         post_id: number
-        page: number
-        per_page: number
+        limit: number
+        cursor?: string
         parent_id?: number | null
     }) => {
         try {
-            const { rows: comments, count: total } = await Comment.findAndCountAll({
-                distinct: true,
-                include: {
-                    model: User,
-                    as: 'user',
+            const whereClause: Record<string, unknown> = {
+                post_id,
+                parent_id: parent_id ? parent_id : { [Op.is]: null },
+            }
+
+            if (cursor) {
+                const { last_id } = decodeCursor<LastIdCursor>(cursor)
+
+                whereClause.id = {
+                    [Op.lt]: last_id,
+                }
+            }
+
+            const comments = await Comment.findAll({
+                include: [
+                    {
+                        model: User,
+                        as: 'user',
+                    },
+                ],
+                attributes: {
+                    include: [
+                        [
+                            sequelize.literal(`
+                        (
+                            SELECT
+                                COUNT(1)
+                            FROM
+                                reactions
+                            WHERE
+                                reactions.reactionable_type = 'Comment' AND
+                                reactions.reactionable_id = Comment.id
+                        )
+                        `),
+                            'reaction_count',
+                        ],
+                    ],
                 },
-                where: {
-                    post_id,
-                    parent_id: parent_id ? parent_id : { [Op.is]: null },
-                },
-                limit: per_page,
-                offset: (page - 1) * per_page,
+                where: whereClause,
+                limit: limit + 1,
                 order: [['id', 'DESC']],
-                logging: console.log,
             })
 
-            return { comments, total }
+            const topReactionsMap = await ReactionService.getTopReactions({
+                reactionableIds: comments.map((comment) => comment.id!),
+                reactionableType: 'Comment',
+                limit: 2,
+            })
+
+            comments.forEach((comment) => {
+                comment.setDataValue('top_reactions', topReactionsMap[comment.id!])
+            })
+
+            const hasMore = comments.length > limit
+            const data = hasMore ? comments.slice(0, limit) : comments
+
+            const nextCursor = hasMore ? encodeCursor<LastIdCursor>({ last_id: data[data.length - 1].id! }) : null
+
+            return { comments: data, next_cursor: nextCursor }
         } catch (error) {
             return handleServiceError(error)
         }
@@ -419,6 +463,61 @@ class PostService {
             post.setDataValue('top_reactions', topReactions)
 
             return post
+        } catch (error) {
+            return handleServiceError(error)
+        }
+    }
+
+    createComment = async ({
+        postId,
+        content,
+        parentId,
+        currentUserId,
+    }: {
+        postId: number
+        content: string
+        parentId: number | null
+        currentUserId: number
+    }) => {
+        try {
+            const hasPost = await Post.findByPk(postId)
+
+            if (!hasPost) {
+                throw new NotFoundError({ message: 'Bài viết không tồn tại' })
+            }
+
+            if (parentId) {
+                const hasParentComment = await Comment.findByPk(parentId)
+
+                if (!hasParentComment) {
+                    throw new NotFoundError({ message: 'Bình luận cha không tồn tại' })
+                }
+            }
+
+            const comment = await sequelize.transaction(async (t) => {
+                const newComment = await Comment.create(
+                    {
+                        post_id: postId,
+                        user_id: currentUserId,
+                        content,
+                        parent_id: parentId,
+                    },
+                    { transaction: t },
+                )
+
+                await hasPost.increment('comment_count', { by: 1, transaction: t })
+
+                return newComment
+            })
+
+            const commentData = await Comment.findByPk(comment.id, {
+                include: {
+                    model: User,
+                    as: 'user',
+                },
+            })
+
+            return commentData
         } catch (error) {
             return handleServiceError(error)
         }

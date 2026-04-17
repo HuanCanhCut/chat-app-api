@@ -38,10 +38,21 @@ const limitSchema = z.object({
 
 const cursorField = <T extends z.ZodTypeAny>(cursorSchema: T) =>
     z
-        .string()
+        .base64url({ error: 'cursor must be a valid base64url string' })
         .superRefine((val, ctx) => {
+            const addInvalidError = () =>
+                ctx.addIssue({
+                    code: 'custom',
+                    message: 'cursor must be a valid base64url string',
+                })
+
             try {
                 const decoded = decodeCursor(val)
+
+                if (typeof decoded !== 'object' || decoded === null || Array.isArray(decoded)) {
+                    return addInvalidError()
+                }
+
                 const result = cursorSchema.safeParse(decoded)
 
                 if (!result.success) {
@@ -54,10 +65,7 @@ const cursorField = <T extends z.ZodTypeAny>(cursorSchema: T) =>
                     })
                 }
             } catch {
-                ctx.addIssue({
-                    code: 'custom',
-                    message: 'Cursor is not valid JSON',
-                })
+                addInvalidError()
             }
         })
         .optional()
@@ -69,7 +77,7 @@ const paginationSchema = z.object({
     }),
 })
 
-type LastIdType = z.infer<typeof lastIdSchema>
+type LastIdCursor = z.infer<typeof lastIdSchema>
 type QueryRequest = TypedRequest<any, any, z.infer<typeof querySchema>['query']>
 type PaginationRequest = TypedRequest<any, any, z.infer<typeof paginationSchema>['query']>
 type IdRequest = TypedRequest<any, z.infer<typeof idSchema>['params']>
@@ -80,8 +88,8 @@ export {
     emailSchema,
     IdRequest,
     idSchema,
+    LastIdCursor,
     lastIdSchema,
-    LastIdType,
     limitSchema,
     PaginationRequest,
     paginationSchema,

@@ -6,7 +6,7 @@ interface Links {
 }
 
 interface ResponsePaginationBase {
-    req: Pick<Request, 'protocol' | 'get' | 'baseUrl'>
+    req: Pick<Request, 'protocol' | 'get' | 'originalUrl'>
     data: any
     total: number
     count: number
@@ -25,7 +25,7 @@ export const responsePagination = <T extends Record<string, unknown>>({
     per_page,
     ...rest
 }: ResponsePagination<T>) => {
-    const baseUrl = `${req.protocol}://${req.get('host')}${req.baseUrl}`
+    const baseUrl = `${req.protocol}://${req.get('host')}${req.originalUrl.split('?')[0]}`
 
     interface Response {
         data: any
@@ -76,7 +76,7 @@ export const responsePagination = <T extends Record<string, unknown>>({
 }
 
 interface ResponseCursorPaginationBase {
-    req: Pick<Request, 'protocol' | 'get' | 'baseUrl'>
+    req: Pick<Request, 'protocol' | 'get' | 'originalUrl'>
     data: any
     limit: number
     next_cursor?: string | null
@@ -92,7 +92,7 @@ export const responseCursorPagination = <T extends Record<string, unknown>>({
     next_cursor,
     ...rest
 }: ResponseCursorPagination<T>) => {
-    const baseUrl = `${req.protocol}://${req.get('host')}${req.baseUrl}`
+    const baseUrl = `${req.protocol}://${req.get('host')}${req.originalUrl.split('?')[0]}`
 
     return {
         data,

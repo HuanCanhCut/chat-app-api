@@ -1,20 +1,28 @@
 import { z } from 'zod'
 
 import { TypedRequest } from '../types/request'
-import { cursorField, lastIdSchema, limitSchema } from './common'
+import { cursorField, idSchema, lastIdSchema, limitSchema } from './common'
 
-const getCommentCursorSchema = z.object({
-    query: lastIdSchema,
-})
-
-type GetCommentCursorQuery = z.infer<typeof getCommentCursorSchema>
-
-const getCommentsSchema = z.object({
+const getPostCommentsSchema = z.object({
+    params: idSchema.shape.params,
     query: limitSchema.shape.query.extend({
-        cursor: cursorField(getCommentCursorSchema),
+        parent_id: z.string().optional(),
+        cursor: cursorField(lastIdSchema),
     }),
 })
 
-type GetCommentsRequest = TypedRequest<any, any, z.infer<typeof getCommentsSchema>['query']>
+const createCommentSchema = z.object({
+    body: z.object({
+        content: z.string(),
+        parent_id: z.coerce.number().int().positive().optional(),
+    }),
+    params: idSchema.shape.params,
+})
 
-export { GetCommentCursorQuery, GetCommentsRequest, getCommentsSchema }
+type GetPostCommentRequest = TypedRequest<any, any, z.infer<typeof getPostCommentsSchema>['query']>
+type CreateCommentRequest = TypedRequest<
+    z.infer<typeof createCommentSchema>['body'],
+    z.infer<typeof createCommentSchema>['params']
+>
+
+export { CreateCommentRequest, createCommentSchema, GetPostCommentRequest, getPostCommentsSchema }
