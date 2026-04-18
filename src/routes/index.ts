@@ -2,6 +2,7 @@ import { Express } from 'express'
 
 import authRoute from './auth'
 import cloudinaryRoute from './cloudinary'
+import commentRoute from './comment'
 import conversationRoute from './conversation'
 import meRoute from './me'
 import messageRoute from './message'
@@ -25,6 +26,7 @@ const route = (app: Express) => {
     app.use('/api/stories', verifyToken, storyRoute)
     app.use('/api/cloudinary', verifyToken, cloudinaryRoute)
     app.use('/api/reactions', verifyToken, reactionRoute)
+    app.use('/api/comments', verifyToken, commentRoute)
 }
 
 export default route

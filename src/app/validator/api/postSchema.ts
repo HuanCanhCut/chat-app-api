@@ -58,7 +58,6 @@ type GetPostReactionsRequest = TypedRequest<
     z.infer<typeof getPostReactionsSchema>['params'],
     z.infer<typeof getPostReactionsSchema>['query']
 >
-
 type ReactPostRequest = TypedRequest<z.infer<typeof reactPostSchema>['body'], z.infer<typeof reactPostSchema>['params']>
 
 export {

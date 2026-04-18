@@ -3,7 +3,6 @@ import { NextFunction, Response } from 'express'
 import { responseCursorPagination, responsePagination } from '../response/responsePagination'
 import PostService from '../services/PostService'
 import ReactionService from '../services/ReactionService'
-import { CreateCommentRequest, GetPostCommentRequest } from '../validator/api/commentSchema'
 import { IdRequest } from '../validator/api/common'
 import {
     CreatePostRequest,
@@ -85,31 +84,6 @@ class PostController {
         }
     }
 
-    getPostComments = async (req: GetPostCommentRequest, res: Response, next: NextFunction) => {
-        try {
-            const { id } = req.params
-            const { limit, cursor, parent_id } = req.query
-
-            const { comments, next_cursor } = await PostService.getPostComment({
-                post_id: Number(id),
-                limit: Number(limit),
-                cursor,
-                parent_id: Number(parent_id) || null,
-            })
-
-            res.json(
-                responseCursorPagination({
-                    req,
-                    data: comments,
-                    limit: Number(limit),
-                    next_cursor,
-                }),
-            )
-        } catch (error) {
-            return next(error)
-        }
-    }
-
     reactPost = async (req: ReactPostRequest, res: Response, next: NextFunction) => {
         try {
             const { id } = req.params
@@ -156,29 +130,6 @@ class PostController {
 
             res.json({
                 data: post,
-            })
-        } catch (error) {
-            return next(error)
-        }
-    }
-
-    // [POST] /posts/:id/comment
-    createComment = async (req: CreateCommentRequest, res: Response, next: NextFunction) => {
-        try {
-            const { id } = req.params
-            const { content, parent_id } = req.body
-
-            const decoded = req.decoded
-
-            const comment = await PostService.createComment({
-                postId: Number(id),
-                currentUserId: decoded.sub,
-                content,
-                parentId: Number(parent_id) || null,
-            })
-
-            res.json({
-                data: comment,
             })
         } catch (error) {
             return next(error)
