@@ -216,11 +216,11 @@ class AuthServices {
                 throw new UnauthorizedError({ message: 'Invalid or expired token' })
             }
 
-            // Giữ giá trị exp token cũ gắn vào token mới
-            const exp = Math.floor((decoded.exp * 1000 - Date.now()) / 1000)
-
             const newAccessToken = createToken({ payload }).token
-            const newRefreshToken = createToken({ payload, expRefresh: exp }).refreshToken
+            const newRefreshToken = createToken({
+                payload,
+                expRefresh: Number(process.env.EXPIRED_REFRESH_TOKEN),
+            }).refreshToken
 
             await RefreshToken.update(
                 {
