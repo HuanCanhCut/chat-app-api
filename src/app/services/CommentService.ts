@@ -133,6 +133,20 @@ class CommentService {
                         `),
                             'react',
                         ],
+                        [
+                            sequelize.literal(`
+                                (
+                                    SELECT
+                                        COUNT(1)
+                                    FROM
+                                        comments
+                                    WHERE
+                                        comments.parent_id = Comment.id
+                                        AND comments.deleted_at IS NULL
+                                )
+                        `),
+                            'reply_count',
+                        ],
                     ],
                 },
                 where: whereClause,

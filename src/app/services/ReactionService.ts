@@ -100,7 +100,7 @@ class ReactionService {
                 if (!acc[curr.reactionable_id]) {
                     acc[curr.reactionable_id] = []
                 }
-                if (acc[curr.reactionable_id].length <= limit) {
+                if (acc[curr.reactionable_id].length < limit) {
                     acc[curr.reactionable_id].push(curr)
                 }
                 return acc

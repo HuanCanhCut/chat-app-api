@@ -3,6 +3,7 @@ import cors from 'cors'
 import express, { Request, Response } from 'express'
 import admin from 'firebase-admin'
 import http from 'http'
+import morgan from 'morgan'
 import { PeerServer } from 'peer'
 import { Server } from 'socket.io'
 
@@ -86,7 +87,7 @@ app.use(
 
 app.use(express.json())
 app.use(cookieParser())
-
+app.use(morgan('dev'))
 app.use(setUserContextMiddleware)
 
 route(app)

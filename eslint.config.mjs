@@ -6,6 +6,9 @@ import tseslint from 'typescript-eslint'
 import pluginJs from '@eslint/js'
 
 export default [
+    {
+        ignores: ['**/node_modules/**', '**/dist/**', '**/.next/**', '**/out/**', '**/public/**', '*.config.js'],
+    },
     { files: ['**/*.{js,mjs,cjs,ts}'] },
     { languageOptions: { globals: { ...globals.browser, ...globals.node } } },
     pluginJs.configs.recommended,
@@ -44,6 +47,5 @@ export default [
             ],
             'simple-import-sort/exports': 'warn',
         },
-        ignores: ['**/node_modules/', '**/dist/'],
     },
 ]

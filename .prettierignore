@@ -1,2 +1,7 @@
-node_modules/
-dist/
+node_modules
+.next
+out
+dist
+public
+*.config.js
+*.config.ts
