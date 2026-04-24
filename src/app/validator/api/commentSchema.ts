@@ -15,7 +15,7 @@ const getPostCommentsSchema = z.object({
 const createCommentSchema = z.object({
     body: z.object({
         content: z.string(),
-        parent_id: z.coerce.number().int().positive().optional(),
+        parent_id: z.coerce.number().int().positive().optional().nullable(),
     }),
     params: idSchema.shape.params,
 })
