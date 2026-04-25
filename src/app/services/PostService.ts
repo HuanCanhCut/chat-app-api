@@ -30,8 +30,6 @@ class PostService {
                 user_id,
                 caption,
                 is_public,
-                reaction_count: 0,
-                comment_count: 0,
                 share_count: 0,
             })
 
@@ -135,7 +133,7 @@ class PostService {
                                     WHERE
                                         comments.post_id = Post.id
                                 )`),
-                            'comments_count',
+                            'comment_count',
                         ],
                         [
                             sequelize.literal(`
@@ -148,7 +146,7 @@ class PostService {
                                         reactions.reactionable_id = Post.id AND
                                         reactions.reactionable_type = 'Post'
                                 )`),
-                            'reactions_count',
+                            'reaction_count',
                         ],
                         [
                             sequelize.literal(`
@@ -265,12 +263,6 @@ class PostService {
             if (!created) {
                 reaction.react = unified
                 await reaction.save()
-            } else {
-                await Post.increment('reaction_count', {
-                    where: {
-                        id: post_id,
-                    },
-                })
             }
 
             return reaction
@@ -295,12 +287,6 @@ class PostService {
                 },
             })
 
-            await Post.decrement('reaction_count', {
-                where: {
-                    id: post_id,
-                },
-            })
-
             return
         } catch (error) {
             return handleServiceError(error)
@@ -310,14 +296,37 @@ class PostService {
     updatePostScore = async (postId?: number) => {
         const calculateScore = (post: Post): { post_id: number; score: number } => {
             const ageInHours = post.created_at ? (Date.now() - new Date(post.created_at).getTime()) / 3600000 : 0
-            const engagement = post.reaction_count * 1.0 + post.comment_count * 2.0 + post.share_count * 3.0
+            const engagement =
+                (post?.reaction_count || 0) * 1.0 + (post?.comment_count || 0) * 2.0 + (post?.share_count || 0) * 3.0
             const score = engagement / Math.pow(ageInHours + 2, 1.5)
 
             return { post_id: post.id!, score }
         }
 
         if (postId !== undefined) {
-            const post = await Post.findByPk(postId)
+            const post = await Post.findByPk(postId, {
+                attributes: {
+                    include: [
+                        [
+                            sequelize.literal(`(
+                                SELECT COUNT(1)
+                                FROM reactions
+                                WHERE reactions.reactionable_id = Post.id
+                                AND reactions.reactionable_type = 'Post'
+                            )`),
+                            'reaction_count',
+                        ],
+                        [
+                            sequelize.literal(`(
+                                SELECT COUNT(1)
+                                FROM comments
+                                WHERE comments.post_id = Post.id
+                            )`),
+                            'comment_count',
+                        ],
+                    ],
+                },
+            })
             if (!post) return
 
             const score = calculateScore(post)

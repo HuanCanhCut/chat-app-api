@@ -8,8 +8,6 @@ class Post extends Model<InferAttributes<Post>, InferCreationAttributes<Post>> {
     declare user_id: number
     declare caption?: string
     declare is_public?: boolean
-    declare reaction_count: number
-    declare comment_count: number
     declare share_count: number
     declare created_at?: Date
     declare updated_at?: Date
@@ -20,6 +18,8 @@ class Post extends Model<InferAttributes<Post>, InferCreationAttributes<Post>> {
     declare top_reactions?: Reaction[]
     declare total_reactions?: number
     declare post_reactions?: Reaction[]
+    declare reaction_count?: number
+    declare comment_count?: number
 }
 Post.init(
     {
@@ -46,16 +46,6 @@ Post.init(
             type: DataTypes.BOOLEAN,
             allowNull: false,
             defaultValue: true,
-        },
-        reaction_count: {
-            type: DataTypes.INTEGER,
-            allowNull: false,
-            defaultValue: 0,
-        },
-        comment_count: {
-            type: DataTypes.INTEGER,
-            allowNull: false,
-            defaultValue: 0,
         },
         share_count: {
             type: DataTypes.INTEGER,

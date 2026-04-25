@@ -1,6 +1,6 @@
 import { Op } from 'sequelize'
 
-import { NotFoundError } from '../errors/errors'
+import { ForBiddenError, NotFoundError } from '../errors/errors'
 import { User } from '../models'
 import Comment from '../models/CommentModel'
 import Post from '../models/PostModel'
@@ -48,8 +48,6 @@ class CommentService {
                     },
                     { transaction: t },
                 )
-
-                await hasPost.increment('comment_count', { by: 1, transaction: t })
 
                 return newComment
             })
@@ -281,6 +279,33 @@ class CommentService {
             comment.setDataValue('top_reactions', topReactionsMap[comment.id!])
 
             return comment
+        } catch (error) {
+            return handleServiceError(error)
+        }
+    }
+
+    deleteComment = async ({ comment_id, user_id }: { comment_id: number; user_id: number }) => {
+        try {
+            const comment = await Comment.findByPk(comment_id)
+
+            if (!comment) {
+                throw new NotFoundError({ message: 'Bình luận không tồn tại' })
+            }
+
+            if (comment.user_id !== user_id) {
+                throw new ForBiddenError({ message: 'Bạn không có quyền xóa bình luận này' })
+            }
+
+            await sequelize.transaction(async (t) => {
+                await comment.destroy({ transaction: t })
+
+                await Reaction.destroy({
+                    where: { reactionable_id: comment_id, reactionable_type: 'Comment' },
+                    transaction: t,
+                })
+            })
+
+            return
         } catch (error) {
             return handleServiceError(error)
         }

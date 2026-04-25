@@ -10,5 +10,6 @@ router.get('/:id', validate(idSchema), CommentController.getCommentById)
 router.post('/:id', validate(createCommentSchema), CommentController.createComment)
 router.post('/:id/react', validate(reactCommentSchema), CommentController.reactComment)
 router.delete('/:id/unreact', validate(idSchema), CommentController.unreactComment)
+router.delete('/:id', validate(idSchema), CommentController.deleteComment)
 
 export default router

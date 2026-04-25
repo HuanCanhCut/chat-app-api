@@ -110,6 +110,23 @@ class CommentController {
             return next(error)
         }
     }
+
+    deleteComment = async (req: IdRequest, res: Response, next: NextFunction) => {
+        try {
+            const { id } = req.params
+
+            const decoded = req.decoded
+
+            await CommentService.deleteComment({
+                comment_id: Number(id),
+                user_id: decoded.sub,
+            })
+
+            res.sendStatus(204)
+        } catch (error) {
+            return next(error)
+        }
+    }
 }
 
 export default new CommentController()
