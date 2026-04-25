@@ -30,6 +30,32 @@ class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
      * Virtual field
      */
     declare last_online_at?: Date
+
+    static associate(models: any) {
+        this.hasMany(models.RefreshToken, { foreignKey: 'user_id' })
+        this.hasMany(models.Friendships, { foreignKey: 'user_id', as: 'user_friendships' })
+        this.hasMany(models.Friendships, { foreignKey: 'friend_id', as: 'friend_friendships' })
+        this.hasMany(models.Notification, { foreignKey: 'actor_id', as: 'notifications' })
+        this.hasMany(models.SearchHistory, { foreignKey: 'user_id', as: 'search_histories' })
+        this.hasMany(models.SearchHistory, { foreignKey: 'user_search_id', as: 'user_search_histories' })
+        this.hasMany(models.ConversationMember, { foreignKey: 'user_id', as: 'members' })
+        this.hasMany(models.ConversationMember, { foreignKey: 'added_by_id', as: 'added_by' })
+        this.hasMany(models.Message, { foreignKey: 'sender_id', as: 'messages' })
+        this.hasMany(models.MessageStatus, { foreignKey: 'receiver_id', as: 'message_status' })
+        this.hasMany(models.Reaction, { foreignKey: 'user_id', as: 'reactions' })
+        this.hasMany(models.Post, { foreignKey: 'user_id', as: 'posts' })
+        this.hasMany(models.Comment, { foreignKey: 'user_id', as: 'comments' })
+        this.hasMany(models.Block, { foreignKey: 'user_id', as: 'blocks' })
+        this.hasMany(models.Block, {
+            foreignKey: 'blockable_id',
+            as: 'blocked_by',
+            constraints: false,
+            scope: { blockable_type: 'User' },
+        })
+        this.hasMany(models.DeletedConversation, { foreignKey: 'user_id', as: 'deleted_conversations' })
+        this.hasMany(models.Story, { foreignKey: 'user_id', as: 'stories' })
+        this.hasMany(models.UserViewedStory, { foreignKey: 'user_id', as: 'user_viewed_stories' })
+    }
 }
 User.init(
     {

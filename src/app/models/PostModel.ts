@@ -20,6 +20,18 @@ class Post extends Model<InferAttributes<Post>, InferCreationAttributes<Post>> {
     declare post_reactions?: Reaction[]
     declare reaction_count?: number
     declare comment_count?: number
+
+    static associate(models: any) {
+        this.hasMany(models.Reaction, {
+            foreignKey: 'reactionable_id',
+            as: 'post_reactions',
+            constraints: false,
+            scope: { reactionable_type: 'Post' },
+        })
+        this.hasMany(models.PostMedia, { foreignKey: 'post_id', as: 'post_media' })
+        this.hasOne(models.PostScore, { foreignKey: 'post_id', as: 'post_score' })
+        this.belongsTo(models.User, { foreignKey: 'user_id', as: 'user' })
+    }
 }
 Post.init(
     {

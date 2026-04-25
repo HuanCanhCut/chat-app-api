@@ -12,6 +12,11 @@ class MessageStatus extends Model<InferAttributes<MessageStatus>, InferCreationA
     declare read_at?: Date
     declare created_at?: Date
     declare updated_at?: Date
+
+    static associate(models: any) {
+        this.belongsTo(models.Message, { foreignKey: 'message_id', as: 'message' })
+        this.belongsTo(models.User, { foreignKey: 'receiver_id', as: 'receiver' })
+    }
 }
 
 MessageStatus.init(

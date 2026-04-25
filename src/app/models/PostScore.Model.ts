@@ -15,6 +15,10 @@ class PostScore extends Model<InferAttributes<PostScore>, InferCreationAttribute
      */
     declare top_reactions?: Reaction[]
     declare total_reactions?: number
+
+    static associate(models: any) {
+        this.belongsTo(models.Post, { foreignKey: 'post_id', as: 'post' })
+    }
 }
 PostScore.init(
     {

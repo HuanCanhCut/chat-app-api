@@ -17,6 +17,16 @@ class Comment extends Model<InferAttributes<Comment>, InferCreationAttributes<Co
      * Virtual field
      */
     declare top_reactions?: Reaction[]
+
+    static associate(models: any) {
+        this.hasMany(models.Reaction, {
+            foreignKey: 'reactionable_id',
+            as: 'comment_reactions',
+            constraints: false,
+            scope: { reactionable_type: 'Comment' },
+        })
+        this.belongsTo(models.User, { foreignKey: 'user_id', as: 'user' })
+    }
 }
 Comment.init(
     {
