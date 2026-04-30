@@ -436,5 +436,20 @@ class ConversationController {
             return next(e)
         }
     }
+
+    getPenguinAIConversation = async (req: IRequest, res: Response, next: NextFunction) => {
+        try {
+            const decoded = req.decoded
+
+            const penguinAIPenguin = await ConversationService.generalConversation({
+                currentUserId: decoded.sub,
+                targetUserId: Number(process.env.BOT_ID),
+            })
+
+            res.json({ data: penguinAIPenguin })
+        } catch (error) {
+            return next(error)
+        }
+    }
 }
 export default new ConversationController()

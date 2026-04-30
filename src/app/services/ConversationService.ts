@@ -56,7 +56,7 @@ class ConversationService {
             const [conversation] = await sequelize.query(
                 `
                     SELECT
-                        c.uuid
+                        c.*
                     FROM
                         conversation_members cm1
                     JOIN conversation_members cm2 ON cm1.conversation_id = cm2.conversation_id
@@ -154,6 +154,7 @@ class ConversationService {
                         model: User,
                         as: 'user',
                         required: true,
+                        runHooks: true,
                     },
                 ],
             })
@@ -1326,6 +1327,28 @@ class ConversationService {
 
             await redisClient.set(`${RedisKey.TEMP_CONVERSATION}${conversation.uuid}`, JSON.stringify(conversation), {
                 EX: 60 * 10, // 10 minutes
+            })
+
+            return conversation
+        } catch (error) {
+            return handleServiceError(error)
+        }
+    }
+
+    getPenguinAIConversation = async ({ currentUserId }: { currentUserId: number }) => {
+        try {
+            const conversation = await Conversation.findOne({
+                where: {
+                    is_group: false,
+                },
+                include: [
+                    {
+                        model: ConversationMember,
+                        where: {
+                            user_id: currentUserId,
+                        },
+                    },
+                ],
             })
 
             return conversation

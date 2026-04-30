@@ -14,9 +14,11 @@ import {
     removeUserFromConversationSchema,
     renameConversationSchema,
 } from '~/app/validator/api/conversationSchema'
+
 const router = express.Router()
 
 router.get('/', validate(paginationSchema), ConversationController.getConversations.bind(ConversationController))
+router.get('/penguin-ai', ConversationController.getPenguinAIConversation.bind(ConversationController))
 router.post(
     '/temp',
     validate(createTempConversationSchema),
