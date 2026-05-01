@@ -139,14 +139,14 @@ class ConversationService {
 
             await Promise.all(promises)
 
-            const privateConversationIds = conversations
+            const personalConversationIds = conversations
                 .filter((conversation) => !conversation.is_group)
                 .map((conversation) => conversation.id)
 
-            const privateConversationMembers = await ConversationMember.findAll({
+            const personalConversationMembers = await ConversationMember.findAll({
                 where: {
                     conversation_id: {
-                        [Op.in]: privateConversationIds,
+                        [Op.in]: personalConversationIds,
                     },
                 },
                 include: [
@@ -159,7 +159,7 @@ class ConversationService {
                 ],
             })
 
-            const privateConversationMembersMap = privateConversationMembers.reduce(
+            const personalConversationMembersMap = personalConversationMembers.reduce(
                 (acc, member) => {
                     if (!acc[member.conversation_id]) {
                         acc[member.conversation_id] = []
@@ -174,7 +174,7 @@ class ConversationService {
 
             conversations.forEach((conversation) => {
                 if (!conversation.is_group) {
-                    const members = privateConversationMembersMap[conversation.id]
+                    const members = personalConversationMembersMap[conversation.id]
 
                     if (members) {
                         conversation.dataValues.members = members

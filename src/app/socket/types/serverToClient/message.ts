@@ -46,4 +46,7 @@ export interface MessageServerToClientEvents {
     }) => void
 
     MESSAGE_REVOKE: ({ message_id, conversation_uuid }: { message_id: number; conversation_uuid: string }) => void
+
+    // ------------------------------- AI -------------------------------
+    UPDATE_MESSAGE: ({ message_id, chunk }: { message_id: number; chunk: string }) => void
 }

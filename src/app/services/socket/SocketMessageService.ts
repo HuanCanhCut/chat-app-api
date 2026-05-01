@@ -6,6 +6,7 @@ import { Block, Conversation, ConversationMember, Message, MessageMedia, Message
 import Reaction from '../../models/ReactionModel'
 import ConversationService from '../ConversationService'
 import MessageService from '../MessageService'
+import { addAiJob } from '~/app/queue/AI'
 import { sequelize } from '~/config/database'
 import { redisClient } from '~/config/redis'
 import { ioInstance } from '~/config/socket'
@@ -313,6 +314,43 @@ class SocketMessageService {
             if (!newMessage) {
                 // emit fail message status
                 return
+            }
+
+            /**
+             * if is personal conversation => check if member is penguin_ai
+             */
+
+            let isPenguinAIConversation = false
+
+            if (!conversation.is_group) {
+                const member = await ConversationMember.findOne({
+                    where: {
+                        conversation_id: conversation.get('id') as number,
+                        user_id: Number(process.env.BOT_USER_ID),
+                    },
+                })
+
+                isPenguinAIConversation = !!member
+            }
+
+            /**
+             * if message start with @penguin_ai or conversation is penguin_ai => create background job
+             *  - send message to https://aistudio.google.com/ and get response
+             *  - save response into message table directly
+             */
+
+            if (message.trim().startsWith('@penguin_ai') || isPenguinAIConversation) {
+                // remove @penguin_ai from message
+                const prompt = message.replace(/^@penguin_ai\s*/i, '')
+
+                if (prompt) {
+                    addAiJob({
+                        conversation_uuid,
+                        prompt,
+                        parentMessageId: newMessage?.dataValues?.id,
+                        currentUserId: this.currentUserId,
+                    })
+                }
             }
 
             // emit message to room

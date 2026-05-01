@@ -17,7 +17,7 @@ module.exports = {
                     `
                     SELECT id 
                     FROM users
-                    WHERE id != ${process.env.BOT_ID}
+                    WHERE id != ${process.env.BOT_USER_ID}
                 `,
                     {
                         transaction: t,
@@ -59,7 +59,7 @@ module.exports = {
                             await queryInterface.sequelize.query(
                                 `
                                 INSERT INTO conversation_members (conversation_id, user_id, nickname, joined_at)
-                                VALUES (${result.id}, ${Number(process.env.BOT_ID)}, 'Penguin AI', NOW())
+                                VALUES (${result.id}, ${Number(process.env.BOT_USER_ID)}, 'Penguin AI', NOW())
                             `,
                                 {
                                     transaction: t,

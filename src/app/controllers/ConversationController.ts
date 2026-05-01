@@ -443,7 +443,7 @@ class ConversationController {
 
             const penguinAIPenguin = await ConversationService.generalConversation({
                 currentUserId: decoded.sub,
-                targetUserId: Number(process.env.BOT_ID),
+                targetUserId: Number(process.env.BOT_USER_ID),
             })
 
             res.json({ data: penguinAIPenguin })
