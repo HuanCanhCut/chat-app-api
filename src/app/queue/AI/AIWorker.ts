@@ -3,7 +3,7 @@ import { v4 as uuidV4 } from 'uuid'
 
 import { AiData } from './AIQueue'
 import { GoogleGenAI } from '@google/genai'
-import { Message, User } from '~/app/models'
+import { ConversationMember, Message, User } from '~/app/models'
 import ConversationService from '~/app/services/ConversationService'
 import MessageService from '~/app/services/MessageService'
 import { connection } from '~/config/redis'
@@ -83,6 +83,8 @@ const aiWorker = new Worker(
                          * Initial empty message
                          */
 
+                        const conversationMember = conversation.get('members')
+
                         botMessage = await MessageService.createMessage({
                             conversationId: conversation.id,
                             senderId: botId,
@@ -91,7 +93,12 @@ const aiWorker = new Worker(
                             parent_id: parentMessageId,
                             userIds: [
                                 { id: botId, is_online: true },
-                                { id: currentUserId, is_online: true },
+                                ...conversationMember.map((m: ConversationMember) => {
+                                    return {
+                                        id: m.user_id,
+                                        is_online: true,
+                                    }
+                                }),
                             ],
                             currentUserId: botId,
                         })
