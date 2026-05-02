@@ -25,11 +25,7 @@ class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
     declare password?: string
     declare is_online?: boolean
     declare active_status?: boolean
-<<<<<<< HEAD
     declare role: 'user' | 'admin' | 'bot'
-=======
-    declare role: 'admin' | 'user' | 'bot'
->>>>>>> 5e6fcc2685943cecd45b2f3752b5bffeef356c8c
 
     /**
      * Virtual field
