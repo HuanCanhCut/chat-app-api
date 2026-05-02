@@ -25,6 +25,7 @@ class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
     declare password?: string
     declare is_online?: boolean
     declare active_status?: boolean
+    declare role: 'admin' | 'user' | 'bot'
 
     /**
      * Virtual field
@@ -113,6 +114,11 @@ User.init(
             type: DataTypes.BOOLEAN,
             allowNull: false,
             defaultValue: true,
+        },
+        role: {
+            type: DataTypes.ENUM('admin', 'user', 'bot'),
+            defaultValue: 'user',
+            allowNull: false,
         },
     },
     {

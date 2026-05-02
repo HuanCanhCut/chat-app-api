@@ -22,7 +22,7 @@ const aiWorker = new Worker(
                             ' \x1b[0m',
                     )
 
-                    const { conversation_uuid, prompt, parentMessageId } = job.data
+                    const { conversation_uuid, prompt, parentMessageId, currentUserId } = job.data
 
                     const botId = Number(process.env.BOT_USER_ID)
                     const apiKey = process.env.BOT_API_KEY
@@ -54,11 +54,12 @@ const aiWorker = new Worker(
                             email: 'penguinai@huanpenguin.com',
                             password: '', // No password for bot
                             avatar: 'https://res.cloudinary.com/dkmwrkngj/image/upload/v1759854156/dark-logo_e176mo.png',
+                            role: 'bot',
                         })
                     }
 
                     const conversation = await ConversationService.getConversationByUuid({
-                        currentUserId: 1,
+                        currentUserId,
                         uuid: conversation_uuid,
                     })
 
@@ -81,12 +82,18 @@ const aiWorker = new Worker(
                         /**
                          * Initial empty message
                          */
-                        botMessage = await Message.create({
-                            conversation_id: conversation.id,
-                            sender_id: botId,
-                            content: '',
+
+                        botMessage = await MessageService.createMessage({
+                            conversationId: conversation.id,
+                            senderId: botId,
+                            message: '',
                             type: 'text',
                             parent_id: parentMessageId,
+                            userIds: [
+                                { id: botId, is_online: true },
+                                { id: currentUserId, is_online: true },
+                            ],
+                            currentUserId: botId,
                         })
 
                         /**
@@ -130,9 +137,10 @@ const aiWorker = new Worker(
                     const flush = () => {
                         if (!buffer) return
 
-                        ioInstance.to(conversation_uuid).emit('UPDATE_MESSAGE', {
+                        ioInstance.to(conversation_uuid).emit('UPDATE_CHUNK_MESSAGE', {
                             message_id: botMessage.id,
                             chunk: buffer,
+                            conversation_uuid,
                         })
 
                         buffer = ''
@@ -171,14 +179,15 @@ const aiWorker = new Worker(
                      */
                     flush()
 
-                    console.log(finalText)
-
                     /**
                      * Update final message content in database
                      */
-                    botMessage.content = finalText
-
-                    await botMessage.save()
+                    await Message.update(
+                        {
+                            content: finalText,
+                        },
+                        { where: { id: botMessage.id } },
+                    )
 
                     break
                 }

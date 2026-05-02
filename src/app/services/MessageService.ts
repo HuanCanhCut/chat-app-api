@@ -59,6 +59,172 @@ class MessageService {
         })
     }
 
+    createMessage = async ({
+        conversationId,
+        senderId,
+        userIds,
+        message,
+        type = 'text',
+        parent_id = null,
+        media,
+        forward_type = null,
+        forward_origin_id = null,
+        currentUserId,
+    }: {
+        conversationId: number
+        senderId: number
+        userIds: { id: number; is_online: boolean }[]
+        message: string
+        type: string
+        parent_id: number | null
+        media?: Array<{
+            media_url: string
+            media_type: 'image' | 'video'
+        }>
+        forward_type?: 'Message' | 'Story' | 'Post' | null
+        forward_origin_id?: number | null
+        currentUserId: number
+    }) => {
+        const transaction = await sequelize.transaction()
+
+        if (!currentUserId) {
+            throw new BadRequestError({ message: 'Current user id is required' })
+        }
+
+        try {
+            // save message to database
+            const newMessage = await Message.create(
+                {
+                    conversation_id: conversationId,
+                    sender_id: senderId,
+                    content: message,
+                    type,
+                    parent_id: parent_id || null,
+                    forward_type: forward_type,
+                    forward_origin_id: forward_origin_id,
+                },
+                { transaction },
+            )
+
+            if (newMessage.id) {
+                type MessageStatusType = 'delivered' | 'sent' | 'read'
+
+                const bulkStatusData = userIds.map((userId) => ({
+                    message_id: newMessage.id!,
+                    receiver_id: userId.id,
+                    status: userId.is_online ? ('delivered' as MessageStatusType) : ('sent' as MessageStatusType),
+                }))
+
+                if (media) {
+                    const bulkMediaData = media.map((m) => ({
+                        message_id: newMessage.id!,
+                        media_url: m.media_url,
+                        media_type: m.media_type,
+                    }))
+
+                    await Promise.all([
+                        MessageStatus.bulkCreate(bulkStatusData, { transaction }),
+                        MessageMedia.bulkCreate(bulkMediaData, { transaction }),
+                    ])
+                } else {
+                    await MessageStatus.bulkCreate(bulkStatusData, { transaction })
+                }
+            }
+
+            await transaction.commit()
+
+            const messageResponse = await Message.findByPk<any>(newMessage.id, {
+                attributes: {
+                    exclude: ['parent_id'],
+                },
+                include: [
+                    {
+                        model: User,
+                        as: 'sender',
+                        required: true,
+                        attributes: {
+                            include: [[this.isReadLiteral(senderId), 'is_read']],
+                            exclude: ['email', 'password'],
+                        },
+                    },
+                    {
+                        model: MessageStatus,
+                        as: 'message_status',
+                        include: [
+                            {
+                                model: User,
+                                as: 'receiver',
+                                attributes: {
+                                    include: [
+                                        [
+                                            this.lastReadMessageIdLiteral(currentUserId, conversationId),
+                                            'last_read_message_id',
+                                        ],
+                                    ],
+                                    exclude: ['email', 'password'],
+                                },
+                            },
+                        ],
+                    },
+                    {
+                        model: MessageMedia,
+                        as: 'media',
+                    },
+                    {
+                        model: Message,
+                        as: 'parent',
+                        required: false,
+                        where: {
+                            // Get all messages except messages that have been revoked for-me by the current user
+                            [Op.not]: {
+                                id: {
+                                    [Op.in]: sequelize.literal(`
+                                            (
+                                                SELECT message_id
+                                                FROM message_statuses
+                                                WHERE message_statuses.revoke_type = 'for-me'
+                                                AND message_statuses.message_id = parent.id
+                                                AND message_statuses.receiver_id = ${sequelize.escape(currentUserId)}
+                                            )
+                                        `),
+                                },
+                            },
+                        },
+                        attributes: {
+                            exclude: ['content'],
+                            include: [
+                                [
+                                    sequelize.literal(`
+                                            CASE
+                                                WHEN EXISTS (
+                                                    SELECT 1 FROM message_statuses
+                                                    WHERE message_statuses.message_id = parent.id
+                                                    AND message_statuses.receiver_id = ${sequelize.escape(currentUserId)}
+                                                    AND message_statuses.is_revoked = 1
+                                                ) THEN NULL
+                                                ELSE parent.content
+                                            END
+                                        `),
+                                    'content',
+                                ],
+                            ],
+                        },
+                    },
+                ],
+            })
+
+            const isRead = messageResponse.dataValues.is_read === 1
+
+            return { ...messageResponse.dataValues, is_read: isRead }
+        } catch (error) {
+            if (transaction) {
+                await transaction.rollback()
+            }
+
+            return handleServiceError(error)
+        }
+    }
+
     lastReadMessageIdLiteral = (currentUserId: number, conversationId: number) => {
         return sequelize.literal(`
             (
@@ -856,7 +1022,6 @@ class MessageService {
                 try {
                     new URL(url)
                     return true
-                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 } catch (_) {
                     return false
                 }
@@ -1068,7 +1233,7 @@ class MessageService {
             const extractUrls = (text: string) => {
                 const urlRegex = /(https?:\/\/[^\s<>"{}|\\^`[\]]+)/gi
                 const matches = text.match(urlRegex)
-                return matches ? [...new Set(matches)] : []
+                return matches ? Array.from(new Set(matches)) : []
             }
 
             const urls = []
