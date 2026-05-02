@@ -23,6 +23,19 @@ class ConversationService {
         conversationUuid: string
         paranoid?: boolean
     }) {
+        /**
+         * Check if user is penguin ai, allow access to all conversations
+         */
+        const user = await User.findByPk(userId)
+
+        let whereCondition = {}
+
+        if (user?.get('role') !== 'bot') {
+            whereCondition = {
+                user_id: userId,
+            }
+        }
+
         // check if user is a member of the conversation
         const conversation = await Conversation.findOne({
             where: {
@@ -37,9 +50,7 @@ class ConversationService {
                         as: 'user',
                     },
                 ],
-                where: {
-                    user_id: userId,
-                },
+                where: whereCondition,
                 paranoid,
             },
         })
@@ -798,7 +809,12 @@ class ConversationService {
                 paranoid,
             })
 
-            if (!member) {
+            const user = await User.findByPk(userId)
+
+            /**
+             * Allow bot access to all conversation
+             */
+            if (!member && user?.role !== 'bot') {
                 throw new NotFoundError({ message: 'User is not a member of this conversation' })
             }
 

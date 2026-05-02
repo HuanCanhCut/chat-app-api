@@ -1,0 +1,42 @@
+services:
+    db:
+        image: mariadb:10.11
+        container_name: chat-app-mariadb
+        environment:
+            MARIADB_ROOT_PASSWORD: root_password
+            MARIADB_DATABASE: chat_app_db
+            MARIADB_USER: user
+            MARIADB_PASSWORD: password
+        ports:
+            - '3306:3306'
+        volumes:
+            - mariadb_data:/var/lib/mysql
+        command: >
+            mysqld
+            --innodb-buffer-pool-size=256M
+            --max-connections=50
+            --character-set-server=utf8mb4
+            --collation-server=utf8mb4_general_ci
+        mem_limit: 512m
+        networks:
+            - chat-app
+
+    redis:
+        image: redis:6-alpine
+        container_name: chat-app-redis
+        ports:
+            - '6379:6379'
+        volumes:
+            - redis_data:/data
+        command: redis-server --maxmemory 128mb --maxmemory-policy noeviction
+        mem_limit: 256m
+        networks:
+            - chat-app
+
+volumes:
+    mariadb_data:
+    redis_data:
+
+networks:
+    chat-app:
+        driver: bridge

@@ -156,9 +156,15 @@ class MessageService {
                 paranoid: false,
             })
 
+            const conversation = await Conversation.findOne({
+                where: {
+                    uuid: conversationUuid,
+                },
+            })
+
             const lastMessage = await Message.findOne({
                 where: {
-                    conversation_id: currentMember.conversation_id,
+                    conversation_id: conversation?.get('id'),
                     [Op.not]: {
                         id: {
                             [Op.in]: sequelize.literal(`
@@ -856,7 +862,6 @@ class MessageService {
                 try {
                     new URL(url)
                     return true
-                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 } catch (_) {
                     return false
                 }

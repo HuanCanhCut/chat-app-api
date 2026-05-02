@@ -54,6 +54,7 @@ const aiWorker = new Worker(
                             email: 'penguinai@huanpenguin.com',
                             password: '', // No password for bot
                             avatar: 'https://res.cloudinary.com/dkmwrkngj/image/upload/v1759854156/dark-logo_e176mo.png',
+                            role: 'bot',
                         })
                     }
 
@@ -170,8 +171,6 @@ const aiWorker = new Worker(
                      * Flush remaining content
                      */
                     flush()
-
-                    console.log(finalText)
 
                     /**
                      * Update final message content in database
