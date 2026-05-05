@@ -3,7 +3,7 @@ import express from 'express'
 import CommentController from '~/app/controllers/CommentController'
 import PostController from '~/app/controllers/PostController'
 import { validate } from '~/app/middlewares/validate'
-import { getPostCommentsSchema, getUserPostsSchema } from '~/app/validator/api/commentSchema'
+import { getPostCommentsSchema } from '~/app/validator/api/commentSchema'
 import { idSchema } from '~/app/validator/api/common'
 import {
     createPostSchema,
@@ -22,5 +22,6 @@ router.get('/:id', validate(idSchema), PostController.getPostById)
 router.post('/', validate(createPostSchema), PostController.createPost)
 router.post('/:id/react', validate(reactPostSchema), PostController.reactPost)
 router.delete('/:id/unreact', validate(idSchema), PostController.unreactPost)
+router.delete('/:id', validate(idSchema), PostController.deletePost)
 
 export default router

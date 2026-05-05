@@ -2,7 +2,7 @@ import { chunk } from 'lodash'
 import moment from 'moment'
 import { Op } from 'sequelize'
 
-import { NotFoundError } from '../errors/errors'
+import { ForBiddenError, NotFoundError } from '../errors/errors'
 import { PostScore, User } from '../models'
 import PostMedia from '../models/PostMedia'
 import Post from '../models/PostModel'
@@ -410,6 +410,26 @@ class PostService {
             post.setDataValue('top_reactions', topReactions)
 
             return post
+        } catch (error) {
+            return handleServiceError(error)
+        }
+    }
+
+    deletePost = async ({ postId, currentUserId }: { postId: number; currentUserId: number }) => {
+        try {
+            const hasPost = await Post.findByPk(postId)
+
+            if (!hasPost) {
+                throw new NotFoundError({ message: 'Bài viết không tồn tại' })
+            }
+
+            if (hasPost.user_id !== currentUserId) {
+                throw new ForBiddenError({ message: 'Bạn không có quyền xóa bài viết này' })
+            }
+
+            await Post.destroy({ where: { id: postId } })
+
+            return
         } catch (error) {
             return handleServiceError(error)
         }

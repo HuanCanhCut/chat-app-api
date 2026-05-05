@@ -162,6 +162,20 @@ class PostController {
             return next(error)
         }
     }
+
+    deletePost = async (req: IdRequest, res: Response, next: NextFunction) => {
+        try {
+            const { id } = req.params
+
+            const decoded = req.decoded
+
+            await PostService.deletePost({ postId: Number(id), currentUserId: decoded.sub })
+
+            res.sendStatus(204)
+        } catch (error) {
+            return next(error)
+        }
+    }
 }
 
 export default new PostController()
