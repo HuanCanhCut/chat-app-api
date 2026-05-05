@@ -12,6 +12,13 @@ const getPostCommentsSchema = z.object({
     }),
 })
 
+const getUserPostsSchema = z.object({
+    params: idSchema.shape.params,
+    query: limitSchema.shape.query.extend({
+        cursor: cursorField(lastIdSchema),
+    }),
+})
+
 const createCommentSchema = z.object({
     body: z.object({
         content: z.string(),
@@ -36,12 +43,15 @@ type CreateCommentRequest = TypedRequest<
     z.infer<typeof createCommentSchema>['body'],
     z.infer<typeof createCommentSchema>['params']
 >
+type GetUserPostsRequest = TypedRequest<any, any, z.infer<typeof getUserPostsSchema>['query']>
 
 export {
     CreateCommentRequest,
     createCommentSchema,
     GetPostCommentRequest,
     getPostCommentsSchema,
+    GetUserPostsRequest,
+    getUserPostsSchema,
     ReactCommentRequest,
     reactCommentSchema,
 }

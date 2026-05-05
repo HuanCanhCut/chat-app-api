@@ -71,14 +71,31 @@ class PostService {
         }
     }
 
-    getPosts = async ({ cursor, limit, currentUserId }: { cursor?: string; limit: number; currentUserId: number }) => {
+    getPosts = async ({
+        userId,
+        cursor,
+        limit,
+        currentUserId,
+    }: {
+        userId?: number
+        cursor?: string
+        limit: number
+        currentUserId: number
+    }) => {
         try {
             let whereCondition = {}
+
+            if (userId) {
+                whereCondition = {
+                    user_id: userId,
+                }
+            }
 
             if (cursor) {
                 const { score, last_id } = decodeCursor<GetPostCursorQuery>(cursor)
 
                 whereCondition = {
+                    ...whereCondition,
                     [Op.or]: [
                         {
                             '$post_score.score$': {

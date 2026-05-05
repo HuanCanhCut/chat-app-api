@@ -3,6 +3,7 @@ import { NextFunction, Response } from 'express'
 import { responseCursorPagination, responsePagination } from '../response/responsePagination'
 import PostService from '../services/PostService'
 import ReactionService from '../services/ReactionService'
+import { GetUserPostsRequest } from '../validator/api/commentSchema'
 import { IdRequest } from '../validator/api/common'
 import {
     CreatePostRequest,
@@ -131,6 +132,32 @@ class PostController {
             res.json({
                 data: post,
             })
+        } catch (error) {
+            return next(error)
+        }
+    }
+
+    getUserPosts = async (req: GetUserPostsRequest, res: Response, next: NextFunction) => {
+        try {
+            const { id } = req.params
+
+            const { cursor, limit = 10 } = req.query
+
+            const { posts, next_cursor } = await PostService.getPosts({
+                userId: Number(id),
+                cursor,
+                limit: Number(limit),
+                currentUserId: req.decoded.sub,
+            })
+
+            res.json(
+                responseCursorPagination({
+                    req,
+                    data: posts,
+                    limit: Number(limit),
+                    next_cursor,
+                }),
+            )
         } catch (error) {
             return next(error)
         }
