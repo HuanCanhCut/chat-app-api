@@ -310,45 +310,13 @@ class PostService {
         }
     }
 
-    updatePostScore = async (postId?: number) => {
+    updatePostScore = async () => {
         const calculateScore = (post: Post): { post_id: number; score: number } => {
             const ageInHours = post.created_at ? (Date.now() - new Date(post.created_at).getTime()) / 3600000 : 0
-            const engagement =
-                (post?.reaction_count || 0) * 1.0 + (post?.comment_count || 0) * 2.0 + (post?.share_count || 0) * 3.0
+            const engagement = (post?.get('reaction_count') || 0) * 1.0 + (post?.get('comment_count') || 0) * 2.0
             const score = engagement / Math.pow(ageInHours + 2, 1.5)
 
             return { post_id: post.id!, score }
-        }
-
-        if (postId !== undefined) {
-            const post = await Post.findByPk(postId, {
-                attributes: {
-                    include: [
-                        [
-                            sequelize.literal(`(
-                                SELECT COUNT(1)
-                                FROM reactions
-                                WHERE reactions.reactionable_id = Post.id
-                                AND reactions.reactionable_type = 'Post'
-                            )`),
-                            'reaction_count',
-                        ],
-                        [
-                            sequelize.literal(`(
-                                SELECT COUNT(1)
-                                FROM comments
-                                WHERE comments.post_id = Post.id
-                            )`),
-                            'comment_count',
-                        ],
-                    ],
-                },
-            })
-            if (!post) return
-
-            const score = calculateScore(post)
-            await PostScore.upsert(score)
-            return
         }
 
         const posts = await Post.findAll({
@@ -357,6 +325,27 @@ class PostService {
                 as: 'post_score',
                 attributes: ['updated_at'],
                 required: false,
+            },
+            attributes: {
+                include: [
+                    [
+                        sequelize.literal(`(
+                                SELECT COUNT(1)
+                                FROM reactions
+                                WHERE reactions.reactionable_id = Post.id
+                                AND reactions.reactionable_type = 'Post'
+                            )`),
+                        'reaction_count',
+                    ],
+                    [
+                        sequelize.literal(`(
+                                SELECT COUNT(1)
+                                FROM comments
+                                WHERE comments.post_id = Post.id
+                            )`),
+                        'comment_count',
+                    ],
+                ],
             },
             where: {
                 [Op.or]: [
