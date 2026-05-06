@@ -73,7 +73,7 @@ class StoryService {
                 )
 
                 await redisClient.set(`${RedisKey.FRIENDS_IDS_OF_USER}${currentUserId}`, JSON.stringify(friendIds), {
-                    EX: 60 * 4, // 4 minutes
+                    EX: 60, // 1 minutes
                 })
             }
 

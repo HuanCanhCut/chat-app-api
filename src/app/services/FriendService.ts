@@ -270,7 +270,7 @@ class FriendService {
                 await redisClient.set(
                     `${RedisKey.FRIENDS_IDS_OF_USER}${currentUserId}`,
                     JSON.stringify(currentFriendsIds),
-                    { EX: 60 * 4 }, // 4 minutes
+                    { EX: 60 }, // 1 minutes
                 )
             }
 
@@ -517,7 +517,14 @@ class FriendService {
             const { rows: friendInvitations, count } = await Friendships.findAndCountAll<any>({
                 distinct: true,
                 where: {
-                    [Op.and]: [{ status: 'pending' }, { friend_id: currentUserId }],
+                    [Op.and]: [
+                        {
+                            status: 'pending',
+                        },
+                        {
+                            friend_id: currentUserId,
+                        },
+                    ],
                 },
                 include: {
                     model: User,
