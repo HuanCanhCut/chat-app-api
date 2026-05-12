@@ -230,14 +230,18 @@ class ConversationController {
                 }),
             ])
 
-            if (currentUserMember.role !== 'admin' && currentUserMember.role !== 'leader') {
+            if (currentUserMember?.role !== 'admin' && currentUserMember?.role !== 'leader') {
                 throw new ForBiddenError({ message: 'You are not allowed to appoint a leader to this conversation' })
             }
 
-            if (userMember.role === 'leader' || userMember.role === 'admin') {
+            if (userMember?.role === 'leader' || userMember?.role === 'admin') {
                 throw new ForBiddenError({
-                    message: `That user is already a ${userMember.role} of this conversation`,
+                    message: `That user is already a ${userMember?.role} of this conversation`,
                 })
+            }
+
+            if (!userMember) {
+                throw new NotFoundError({ message: 'User not found' })
             }
 
             const updatedConversation = await ConversationService.changeLeaderRole({
@@ -279,7 +283,7 @@ class ConversationController {
                 throw new NotFoundError({ message: 'Leader not found' })
             }
 
-            if (leader.id === currentUserMember.id) {
+            if (leader.id === currentUserMember?.id) {
                 throw new ForBiddenError({ message: 'You cannot remove yourself as a leader of this conversation' })
             }
 
