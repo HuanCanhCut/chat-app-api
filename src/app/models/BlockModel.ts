@@ -9,6 +9,16 @@ class Block extends Model<InferAttributes<Block>, InferCreationAttributes<Block>
     declare blockable_id: number
     declare created_at?: Date
     declare updated_at?: Date
+
+    static associate(models: any) {
+        this.belongsTo(models.User, { foreignKey: 'user_id', as: 'blocker' })
+        this.belongsTo(models.User, { foreignKey: 'blockable_id', as: 'blocked_user', constraints: false })
+        this.belongsTo(models.Conversation, {
+            foreignKey: 'blockable_id',
+            as: 'blocked_conversation',
+            constraints: false,
+        })
+    }
 }
 
 Block.init(

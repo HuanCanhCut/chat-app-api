@@ -22,6 +22,21 @@ class Message extends Model<InferAttributes<Message>, InferCreationAttributes<Me
     declare parent?: Message | null
     declare message_status?: MessageStatus[] | null
     declare forward_origin?: string
+
+    static associate(models: any) {
+        this.belongsTo(models.Conversation, { foreignKey: 'conversation_id', as: 'conversation' })
+        this.hasMany(models.MessageStatus, { foreignKey: 'message_id', as: 'message_status' })
+        this.belongsTo(models.User, { foreignKey: 'sender_id', as: 'sender' })
+        this.hasMany(models.MessageMedia, { foreignKey: 'message_id', as: 'media' })
+        this.hasMany(models.Reaction, {
+            foreignKey: 'reactionable_id',
+            as: 'message_reactions',
+            constraints: false,
+            scope: { reactionable_type: 'Message' },
+        })
+        this.hasMany(models.Message, { foreignKey: 'parent_id', as: 'children' })
+        this.belongsTo(models.Message, { foreignKey: 'parent_id', as: 'parent' })
+    }
 }
 
 Message.init(

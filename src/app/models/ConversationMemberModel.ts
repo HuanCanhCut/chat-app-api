@@ -19,6 +19,12 @@ class ConversationMember extends Model<
     declare updated_at?: Date
     declare deleted_at?: Date
     declare deleted_type?: 'left' | 'removed'
+
+    static associate(models: any) {
+        this.belongsTo(models.Conversation, { foreignKey: 'conversation_id', as: 'conversation' })
+        this.belongsTo(models.User, { foreignKey: 'user_id', as: 'user' })
+        this.belongsTo(models.User, { foreignKey: 'added_by_id', as: 'added_by' })
+    }
 }
 
 ConversationMember.init(

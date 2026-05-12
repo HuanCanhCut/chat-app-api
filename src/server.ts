@@ -3,6 +3,7 @@ import cors from 'cors'
 import express, { Request, Response } from 'express'
 import admin from 'firebase-admin'
 import http from 'http'
+import morgan from 'morgan'
 import { PeerServer } from 'peer'
 import { Server } from 'socket.io'
 
@@ -30,7 +31,12 @@ PeerServer({
     path: '/peerjs',
 })
 
-const allowedOrigins: string[] = ['https://huancanhcut.click', 'https://chatapp.local', 'https://huanpenguin.click']
+const allowedOrigins: string[] = [
+    'https://huancanhcut.click',
+    'https://chatapp.local',
+    'https://huanpenguin.click',
+    'http://localhost:3000',
+]
 
 const corsOptions: cors.CorsOptions = {
     origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
@@ -86,7 +92,7 @@ app.use(
 
 app.use(express.json())
 app.use(cookieParser())
-
+app.use(morgan('dev'))
 app.use(setUserContextMiddleware)
 
 route(app)
@@ -102,6 +108,10 @@ app.all('*', (req: Request, res: Response) => {
 cronJobs()
 
 app.use(errorHandler)
+
+// make express trust the proxy of the load balancer (nginx)
+// so that we can get the correct protocol and host from the request
+app.set('trust proxy', true)
 
 server.listen(process.env.PORT, () => {
     console.log(`Server is running on port ${process.env.PORT}`)

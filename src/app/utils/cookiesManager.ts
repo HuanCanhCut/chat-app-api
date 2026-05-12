@@ -39,7 +39,7 @@ export const clearCookie = ({ res, cookies = [], path = '/', req }: IClearCookie
 
 interface ISetCookie {
     res: Response
-    cookies: { name: string; value: string }[]
+    cookies: { name: string; value: string; maxAge: number }[]
     path?: string
     req: Request
 }
@@ -57,6 +57,7 @@ export const setCookie = ({ res, cookies = [], path = '/', req }: ISetCookie) =>
             secure: true,
             partitioned: true,
             domain: domain,
+            maxAge: cookie.maxAge,
         })
     }
 }

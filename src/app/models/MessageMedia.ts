@@ -9,6 +9,10 @@ class MessageMedia extends Model<InferAttributes<MessageMedia>, InferCreationAtt
     declare media_type: 'image' | 'video'
     declare created_at?: Date
     declare updated_at?: Date
+
+    static associate(models: any) {
+        this.belongsTo(models.Message, { foreignKey: 'message_id', as: 'message' })
+    }
 }
 
 MessageMedia.init(

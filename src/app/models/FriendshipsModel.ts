@@ -9,6 +9,11 @@ class Friendships extends Model<InferAttributes<Friendships>, InferCreationAttri
     declare status?: string
     declare created_at?: Date
     declare updated_at?: Date
+
+    static associate(models: any) {
+        this.belongsTo(models.User, { foreignKey: 'user_id', as: 'user' })
+        this.belongsTo(models.User, { foreignKey: 'friend_id', as: 'friend' })
+    }
 }
 
 Friendships.init(

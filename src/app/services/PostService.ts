@@ -2,13 +2,14 @@ import { chunk } from 'lodash'
 import moment from 'moment'
 import { Op } from 'sequelize'
 
-import { NotFoundError } from '../errors/errors'
+import { ForBiddenError, NotFoundError } from '../errors/errors'
 import { PostScore, User } from '../models'
-import Comment from '../models/CommentModel'
 import PostMedia from '../models/PostMedia'
 import Post from '../models/PostModel'
 import Reaction from '../models/ReactionModel'
+import { decodeCursor, encodeCursor } from '../utils/cursor'
 import { handleServiceError } from '../utils/handleServiceError'
+import { GetPostCursorQuery } from '../validator/api/postSchema'
 import { sequelize } from '~/config/database'
 import { BaseReactionUnified } from '~/types/reactionType'
 
@@ -29,8 +30,6 @@ class PostService {
                 user_id,
                 caption,
                 is_public,
-                reaction_count: 0,
-                comment_count: 0,
                 share_count: 0,
             })
 
@@ -72,18 +71,31 @@ class PostService {
         }
     }
 
-    getPost = async ({ cursor, limit, currentUserId }: { cursor?: string; limit: number; currentUserId: number }) => {
+    getPosts = async ({
+        userId,
+        cursor,
+        limit,
+        currentUserId,
+    }: {
+        userId?: number
+        cursor?: string
+        limit: number
+        currentUserId: number
+    }) => {
         try {
-            const encodeCursor = (score: number, id: number) =>
-                Buffer.from(JSON.stringify({ score, id })).toString('base64')
-
-            const decodeCursor = (cursor: string) => JSON.parse(Buffer.from(cursor, 'base64').toString('utf8'))
-
             let whereCondition = {}
 
-            if (cursor) {
-                const { score, id } = decodeCursor(cursor)
+            if (userId) {
                 whereCondition = {
+                    user_id: userId,
+                }
+            }
+
+            if (cursor) {
+                const { score, last_id } = decodeCursor<GetPostCursorQuery>(cursor)
+
+                whereCondition = {
+                    ...whereCondition,
                     [Op.or]: [
                         {
                             '$post_score.score$': {
@@ -97,7 +109,7 @@ class PostService {
                                 },
                                 {
                                     id: {
-                                        [Op.lt]: id,
+                                        [Op.lt]: last_id,
                                     },
                                 },
                             ],
@@ -138,7 +150,7 @@ class PostService {
                                     WHERE
                                         comments.post_id = Post.id
                                 )`),
-                            'comments_count',
+                            'comment_count',
                         ],
                         [
                             sequelize.literal(`
@@ -151,7 +163,7 @@ class PostService {
                                         reactions.reactionable_id = Post.id AND
                                         reactions.reactionable_type = 'Post'
                                 )`),
-                            'reactions_count',
+                            'reaction_count',
                         ],
                         [
                             sequelize.literal(`
@@ -217,47 +229,18 @@ class PostService {
             const data = hasNextPage ? posts.slice(0, limit) : posts
 
             const lastPost = data[data.length - 1]
-            const nextCursor = hasNextPage && lastPost ? encodeCursor(lastPost.post_score.score, lastPost.id!) : null
+            const nextCursor =
+                hasNextPage && lastPost
+                    ? encodeCursor<GetPostCursorQuery>({
+                          score: lastPost.post_score.score,
+                          last_id: lastPost.id!,
+                      })
+                    : null
 
             return {
                 posts: data,
-                has_next_page: hasNextPage,
                 next_cursor: nextCursor,
             }
-        } catch (error) {
-            return handleServiceError(error)
-        }
-    }
-
-    getPostComment = async ({
-        post_id,
-        page,
-        per_page,
-        parent_id,
-    }: {
-        post_id: number
-        page: number
-        per_page: number
-        parent_id?: number | null
-    }) => {
-        try {
-            const { rows: comments, count: total } = await Comment.findAndCountAll({
-                distinct: true,
-                include: {
-                    model: User,
-                    as: 'user',
-                },
-                where: {
-                    post_id,
-                    parent_id: parent_id ? parent_id : { [Op.is]: null },
-                },
-                limit: per_page,
-                offset: (page - 1) * per_page,
-                order: [['id', 'DESC']],
-                logging: console.log,
-            })
-
-            return { comments, total }
         } catch (error) {
             return handleServiceError(error)
         }
@@ -297,12 +280,6 @@ class PostService {
             if (!created) {
                 reaction.react = unified
                 await reaction.save()
-            } else {
-                await Post.increment('reaction_count', {
-                    where: {
-                        id: post_id,
-                    },
-                })
             }
 
             return reaction
@@ -327,34 +304,19 @@ class PostService {
                 },
             })
 
-            await Post.decrement('reaction_count', {
-                where: {
-                    id: post_id,
-                },
-            })
-
             return
         } catch (error) {
             return handleServiceError(error)
         }
     }
 
-    updatePostScore = async (postId?: number) => {
+    updatePostScore = async () => {
         const calculateScore = (post: Post): { post_id: number; score: number } => {
             const ageInHours = post.created_at ? (Date.now() - new Date(post.created_at).getTime()) / 3600000 : 0
-            const engagement = post.reaction_count * 1.0 + post.comment_count * 2.0 + post.share_count * 3.0
+            const engagement = (post?.get('reaction_count') || 0) * 1.0 + (post?.get('comment_count') || 0) * 2.0
             const score = engagement / Math.pow(ageInHours + 2, 1.5)
 
             return { post_id: post.id!, score }
-        }
-
-        if (postId !== undefined) {
-            const post = await Post.findByPk(postId)
-            if (!post) return
-
-            const score = calculateScore(post)
-            await PostScore.upsert(score)
-            return
         }
 
         const posts = await Post.findAll({
@@ -363,6 +325,27 @@ class PostService {
                 as: 'post_score',
                 attributes: ['updated_at'],
                 required: false,
+            },
+            attributes: {
+                include: [
+                    [
+                        sequelize.literal(`(
+                                SELECT COUNT(1)
+                                FROM reactions
+                                WHERE reactions.reactionable_id = Post.id
+                                AND reactions.reactionable_type = 'Post'
+                            )`),
+                        'reaction_count',
+                    ],
+                    [
+                        sequelize.literal(`(
+                                SELECT COUNT(1)
+                                FROM comments
+                                WHERE comments.post_id = Post.id
+                            )`),
+                        'comment_count',
+                    ],
+                ],
             },
             where: {
                 [Op.or]: [
@@ -416,6 +399,26 @@ class PostService {
             post.setDataValue('top_reactions', topReactions)
 
             return post
+        } catch (error) {
+            return handleServiceError(error)
+        }
+    }
+
+    deletePost = async ({ postId, currentUserId }: { postId: number; currentUserId: number }) => {
+        try {
+            const hasPost = await Post.findByPk(postId)
+
+            if (!hasPost) {
+                throw new NotFoundError({ message: 'Bài viết không tồn tại' })
+            }
+
+            if (hasPost.user_id !== currentUserId) {
+                throw new ForBiddenError({ message: 'Bạn không có quyền xóa bài viết này' })
+            }
+
+            await Post.destroy({ where: { id: postId } })
+
+            return
         } catch (error) {
             return handleServiceError(error)
         }

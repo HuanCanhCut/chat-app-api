@@ -19,6 +19,19 @@ class Conversation extends Model<InferAttributes<Conversation>, InferCreationAtt
     declare created_at?: Date
     declare updated_at?: Date
     declare theme_id?: number
+
+    static associate(models: any) {
+        this.hasMany(models.ConversationMember, { foreignKey: 'conversation_id', as: 'members' })
+        this.hasMany(models.Message, { foreignKey: 'conversation_id', as: 'messages' })
+        this.belongsTo(models.ConversationTheme, { foreignKey: 'theme_id', as: 'theme' })
+        this.hasOne(models.Block, {
+            foreignKey: 'blockable_id',
+            as: 'block_conversation',
+            constraints: false,
+            scope: { blockable_type: 'Conversation' },
+        })
+        this.hasMany(models.DeletedConversation, { foreignKey: 'conversation_id', as: 'deleted_conversations' })
+    }
 }
 
 Conversation.init(

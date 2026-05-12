@@ -1,14 +1,14 @@
 import { NextFunction, Response } from 'express'
 
-import { responsePagination } from '../response/responsePagination'
+import { responseCursorPagination, responsePagination } from '../response/responsePagination'
 import PostService from '../services/PostService'
 import ReactionService from '../services/ReactionService'
+import { GetUserPostsRequest } from '../validator/api/commentSchema'
 import { IdRequest } from '../validator/api/common'
-import { CursorRequest } from '../validator/api/cursorSchema'
 import {
     CreatePostRequest,
-    GetPostCommentsRequest,
     GetPostReactionsRequest,
+    GetPostsRequest,
     ReactPostRequest,
 } from '../validator/api/postSchema'
 
@@ -34,25 +34,24 @@ class PostController {
         }
     }
 
-    getPosts = async (req: CursorRequest, res: Response, next: NextFunction) => {
+    getPosts = async (req: GetPostsRequest, res: Response, next: NextFunction) => {
         try {
             const { cursor, limit = 10 } = req.query
 
-            const { posts, has_next_page, next_cursor } = await PostService.getPost({
+            const { posts, next_cursor } = await PostService.getPosts({
                 cursor,
                 limit: Number(limit),
                 currentUserId: req.decoded.sub,
             })
 
-            res.json({
-                data: posts,
-                meta: {
-                    pagination: {
-                        has_next_page,
-                        next_cursor,
-                    },
-                },
-            })
+            res.json(
+                responseCursorPagination({
+                    req,
+                    data: posts,
+                    limit: Number(limit),
+                    next_cursor,
+                }),
+            )
         } catch (error) {
             return next(error)
         }
@@ -77,33 +76,6 @@ class PostController {
                     data: reactions,
                     total,
                     count: reactions.length,
-                    current_page: Number(page),
-                    per_page: Number(per_page),
-                }),
-            )
-        } catch (error) {
-            return next(error)
-        }
-    }
-
-    getPostComments = async (req: GetPostCommentsRequest, res: Response, next: NextFunction) => {
-        try {
-            const { id } = req.params
-            const { page, per_page, parent_id } = req.query
-
-            const { comments, total } = await PostService.getPostComment({
-                post_id: Number(id),
-                page: Number(page),
-                per_page: Number(per_page),
-                parent_id: Number(parent_id) || null,
-            })
-
-            res.json(
-                responsePagination({
-                    req,
-                    data: comments,
-                    total,
-                    count: comments.length,
                     current_page: Number(page),
                     per_page: Number(per_page),
                 }),
@@ -160,6 +132,46 @@ class PostController {
             res.json({
                 data: post,
             })
+        } catch (error) {
+            return next(error)
+        }
+    }
+
+    getUserPosts = async (req: GetUserPostsRequest, res: Response, next: NextFunction) => {
+        try {
+            const { id } = req.params
+
+            const { cursor, limit = 10 } = req.query
+
+            const { posts, next_cursor } = await PostService.getPosts({
+                userId: Number(id),
+                cursor,
+                limit: Number(limit),
+                currentUserId: req.decoded.sub,
+            })
+
+            res.json(
+                responseCursorPagination({
+                    req,
+                    data: posts,
+                    limit: Number(limit),
+                    next_cursor,
+                }),
+            )
+        } catch (error) {
+            return next(error)
+        }
+    }
+
+    deletePost = async (req: IdRequest, res: Response, next: NextFunction) => {
+        try {
+            const { id } = req.params
+
+            const decoded = req.decoded
+
+            await PostService.deletePost({ postId: Number(id), currentUserId: decoded.sub })
+
+            res.sendStatus(204)
         } catch (error) {
             return next(error)
         }

@@ -10,6 +10,10 @@ class ConversationTheme extends Model<InferAttributes<ConversationTheme>, InferC
     declare logo: string
     declare description: string
     declare emoji: string
+
+    static associate(models: any) {
+        this.hasMany(models.Conversation, { foreignKey: 'theme_id', as: 'conversations' })
+    }
 }
 ConversationTheme.init(
     {

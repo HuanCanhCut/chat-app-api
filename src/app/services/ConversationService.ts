@@ -23,6 +23,19 @@ class ConversationService {
         conversationUuid: string
         paranoid?: boolean
     }) {
+        /**
+         * Check if user is penguin ai, allow access to all conversations
+         */
+        const user = await User.findByPk(userId)
+
+        let whereCondition = {}
+
+        if (user?.get('role') !== 'bot') {
+            whereCondition = {
+                user_id: userId,
+            }
+        }
+
         // check if user is a member of the conversation
         const conversation = await Conversation.findOne({
             where: {
@@ -37,9 +50,7 @@ class ConversationService {
                         as: 'user',
                     },
                 ],
-                where: {
-                    user_id: userId,
-                },
+                where: whereCondition,
                 paranoid,
             },
         })
@@ -56,7 +67,7 @@ class ConversationService {
             const [conversation] = await sequelize.query(
                 `
                     SELECT
-                        c.uuid
+                        c.*
                     FROM
                         conversation_members cm1
                     JOIN conversation_members cm2 ON cm1.conversation_id = cm2.conversation_id
@@ -139,14 +150,14 @@ class ConversationService {
 
             await Promise.all(promises)
 
-            const privateConversationIds = conversations
+            const personalConversationIds = conversations
                 .filter((conversation) => !conversation.is_group)
                 .map((conversation) => conversation.id)
 
-            const privateConversationMembers = await ConversationMember.findAll({
+            const personalConversationMembers = await ConversationMember.findAll({
                 where: {
                     conversation_id: {
-                        [Op.in]: privateConversationIds,
+                        [Op.in]: personalConversationIds,
                     },
                 },
                 include: [
@@ -154,11 +165,12 @@ class ConversationService {
                         model: User,
                         as: 'user',
                         required: true,
+                        runHooks: true,
                     },
                 ],
             })
 
-            const privateConversationMembersMap = privateConversationMembers.reduce(
+            const personalConversationMembersMap = personalConversationMembers.reduce(
                 (acc, member) => {
                     if (!acc[member.conversation_id]) {
                         acc[member.conversation_id] = []
@@ -173,7 +185,7 @@ class ConversationService {
 
             conversations.forEach((conversation) => {
                 if (!conversation.is_group) {
-                    const members = privateConversationMembersMap[conversation.id]
+                    const members = personalConversationMembersMap[conversation.id]
 
                     if (members) {
                         conversation.dataValues.members = members
@@ -797,7 +809,12 @@ class ConversationService {
                 paranoid,
             })
 
-            if (!member) {
+            const user = await User.findByPk(userId)
+
+            /**
+             * Allow bot access to all conversation
+             */
+            if (!member && user?.role !== 'bot') {
                 throw new NotFoundError({ message: 'User is not a member of this conversation' })
             }
 
@@ -1326,6 +1343,28 @@ class ConversationService {
 
             await redisClient.set(`${RedisKey.TEMP_CONVERSATION}${conversation.uuid}`, JSON.stringify(conversation), {
                 EX: 60 * 10, // 10 minutes
+            })
+
+            return conversation
+        } catch (error) {
+            return handleServiceError(error)
+        }
+    }
+
+    getPenguinAIConversation = async ({ currentUserId }: { currentUserId: number }) => {
+        try {
+            const conversation = await Conversation.findOne({
+                where: {
+                    is_group: false,
+                },
+                include: [
+                    {
+                        model: ConversationMember,
+                        where: {
+                            user_id: currentUserId,
+                        },
+                    },
+                ],
             })
 
             return conversation
