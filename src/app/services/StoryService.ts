@@ -5,7 +5,9 @@ import { Friendships, User } from '../models'
 import Reaction from '../models/ReactionModel'
 import Story from '../models/StoryModel'
 import UserViewedStory from '../models/UserViewedStoryModel'
+import { decodeCursor, encodeCursor } from '../utils/cursor'
 import { handleServiceError } from '../utils/handleServiceError'
+import { LastIdCursor } from '../validator/api/common'
 import NotificationService from './NotificationService'
 import { sequelize } from '~/config/database'
 import { redisClient } from '~/config/redis'
@@ -40,15 +42,17 @@ class StoryService {
     }
 
     getStories = async ({
-        page,
-        per_page,
+        cursor,
+        limit,
         currentUserId,
     }: {
-        page: number
-        per_page: number
+        cursor?: string
+        limit: number
         currentUserId: number
     }) => {
         try {
+            const { last_id: cursorId } = decodeCursor<LastIdCursor>(cursor) ?? {}
+
             let friendIds: number[] = []
 
             const friendIdsCache = await redisClient.get(`${RedisKey.FRIENDS_IDS_OF_USER}${currentUserId}`)
@@ -69,12 +73,23 @@ class StoryService {
                 )
 
                 await redisClient.set(`${RedisKey.FRIENDS_IDS_OF_USER}${currentUserId}`, JSON.stringify(friendIds), {
-                    EX: 60 * 5, // 5 minutes
+                    EX: 60, // 1 minutes
                 })
             }
 
-            const { rows: stories, count: total } = await Story.findAndCountAll({
-                distinct: true,
+            const whereClause: Record<string, unknown> = {
+                user_id: {
+                    [Op.in]: [currentUserId, ...friendIds],
+                },
+            }
+
+            if (cursorId) {
+                whereClause.id = {
+                    [Op.lt]: cursorId,
+                }
+            }
+
+            const stories = await Story.findAll({
                 attributes: {
                     include: [
                         [
@@ -117,13 +132,8 @@ class StoryService {
                     model: User,
                     as: 'user',
                 },
-                where: {
-                    user_id: {
-                        [Op.in]: [currentUserId, ...friendIds],
-                    },
-                },
-                limit: per_page,
-                offset: (page - 1) * per_page,
+                where: whereClause,
+                limit: limit + 1,
                 order: [
                     [
                         sequelize.literal(
@@ -142,9 +152,16 @@ class StoryService {
                 group: ['Story.user_id'],
             })
 
+            const hasNext = stories.length > limit
+            const paginatedStories = hasNext ? stories.slice(0, limit) : stories
+
+            const nextCursor = hasNext
+                ? encodeCursor<LastIdCursor>({ last_id: paginatedStories[paginatedStories.length - 1].id! })
+                : null
+
             return {
-                stories,
-                total: total.length,
+                stories: paginatedStories,
+                next_cursor: nextCursor,
             }
         } catch (error) {
             return handleServiceError(error)
@@ -193,6 +210,7 @@ class StoryService {
                 where: {
                     reactionable_type: 'Story',
                     reactionable_id: story.get('id'),
+                    user_id: currentUserId,
                 },
             })
 
@@ -220,9 +238,11 @@ class StoryService {
                 if (notification && story.user_id !== currentUserId) {
                     const socketIds = await redisClient.lRange(`${RedisKey.SOCKET_ID}${Number(story.user_id)}`, 0, -1)
 
-                    ioInstance.to(socketIds).emit('NEW_NOTIFICATION', {
-                        notification,
-                    })
+                    if (socketIds.length > 0) {
+                        ioInstance.to(socketIds).emit('NEW_NOTIFICATION', {
+                            notification,
+                        })
+                    }
                 }
             } else {
                 const MAX_REACTION_COUNT = 5
@@ -257,6 +277,7 @@ class StoryService {
                 where: {
                     reactionable_type: 'Story',
                     reactionable_id: story.get('id')!,
+                    user_id: currentUserId,
                 },
             })
 
@@ -316,6 +337,10 @@ class StoryService {
                     {
                         model: Reaction,
                         as: 'reactions',
+                        where: {
+                            user_id: currentUserId,
+                        },
+                        required: false,
                     },
                 ],
                 attributes: {

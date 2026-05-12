@@ -13,6 +13,36 @@ class Reaction extends Model<InferAttributes<Reaction>, InferCreationAttributes<
     declare updated_at?: Date
 
     declare user_reaction?: UserModel
+
+    static associate(models: any) {
+        this.belongsTo(models.User, { foreignKey: 'user_id', as: 'user_reaction' })
+        this.belongsTo(models.Message, {
+            foreignKey: 'reactionable_id',
+            as: 'message_reactionable',
+            constraints: false,
+            scope: { reactionable_type: 'Message' },
+        })
+        this.belongsTo(models.Post, {
+            foreignKey: 'reactionable_id',
+            as: 'post_reactionable',
+            constraints: false,
+            scope: { reactionable_type: 'Post' },
+        })
+        this.belongsTo(models.Comment, {
+            foreignKey: 'reactionable_id',
+            as: 'comment_reactionable',
+            constraints: false,
+            scope: { reactionable_type: 'Comment' },
+        })
+        this.belongsTo(models.Story, {
+            foreignKey: 'reactionable_id',
+            as: 'story_reaction',
+            constraints: false,
+            scope: {
+                reactionable_type: 'Story',
+            },
+        })
+    }
 }
 
 Reaction.init(

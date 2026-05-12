@@ -37,8 +37,16 @@ class AuthController {
         setCookie({
             res,
             cookies: [
-                { name: 'access_token', value: token },
-                { name: 'refresh_token', value: refreshToken },
+                {
+                    name: 'access_token',
+                    value: token,
+                    maxAge: Number(process.env.EXPIRED_REFRESH_TOKEN) * 1000,
+                },
+                {
+                    name: 'refresh_token',
+                    value: refreshToken,
+                    maxAge: Number(process.env.EXPIRED_REFRESH_TOKEN) * 1000,
+                },
             ],
             req,
         })
@@ -52,7 +60,10 @@ class AuthController {
     async register(req: RegisterRequest, res: Response, next: NextFunction) {
         const { email, password } = req.body
         try {
-            const { token, refreshToken, user } = await AuthService.register({ email, password })
+            const { token, refreshToken, user } = await AuthService.register({
+                email,
+                password,
+            })
 
             this.sendToClient({ res, user, token, refreshToken, status: 201, req })
         } catch (error: any) {
@@ -65,7 +76,10 @@ class AuthController {
         try {
             const { email, password } = req.body
 
-            const { token, refreshToken, user } = await AuthService.login({ email, password })
+            const { token, refreshToken, user } = await AuthService.login({
+                email,
+                password,
+            })
 
             this.sendToClient({ res, user, token, refreshToken, req })
         } catch (error: any) {
@@ -115,8 +129,16 @@ class AuthController {
             setCookie({
                 res,
                 cookies: [
-                    { name: 'access_token', value: newAccessToken },
-                    { name: 'refresh_token', value: newRefreshToken },
+                    {
+                        name: 'access_token',
+                        value: newAccessToken,
+                        maxAge: Number(process.env.EXPIRED_REFRESH_TOKEN) * 1000,
+                    },
+                    {
+                        name: 'refresh_token',
+                        value: newRefreshToken,
+                        maxAge: Number(process.env.EXPIRED_REFRESH_TOKEN) * 1000,
+                    },
                 ],
                 req,
             })

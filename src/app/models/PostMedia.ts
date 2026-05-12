@@ -9,6 +9,10 @@ class PostMedia extends Model<InferAttributes<PostMedia>, InferCreationAttribute
     declare post_id: number
     declare created_at?: Date
     declare updated_at?: Date
+
+    static associate(models: any) {
+        this.belongsTo(models.Post, { foreignKey: 'post_id', as: 'post' })
+    }
 }
 PostMedia.init(
     {

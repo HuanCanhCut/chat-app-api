@@ -3,6 +3,9 @@ const router = express.Router()
 
 import FriendController from '../app/controllers/FriendController'
 import UserController from '../app/controllers/UserController'
+import PostController from '~/app/controllers/PostController'
+import { validate } from '~/app/middlewares/validate'
+import { getUserPostsSchema } from '~/app/validator/api/commentSchema'
 
 router.get('/friends', FriendController.getAllFriends.bind(FriendController))
 router.get('/friends/search', FriendController.searchFriend.bind(FriendController))
@@ -13,6 +16,7 @@ router.post('/:id/reject', FriendController.rejectFriendRequest.bind(FriendContr
 router.delete('/:id/unfriend', FriendController.unfriend.bind(FriendController))
 router.post('/:id/cancel', FriendController.cancelFriendRequest.bind(FriendController))
 
+router.get('/:id/posts', validate(getUserPostsSchema), PostController.getUserPosts)
 router.get('/search', UserController.searchUser.bind(UserController))
 router.get('/search-history', UserController.getSearchHistory.bind(UserController))
 router.post('/search-history', UserController.setSearchHistory.bind(UserController))

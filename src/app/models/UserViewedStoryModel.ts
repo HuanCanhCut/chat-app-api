@@ -8,6 +8,11 @@ class UserViewedStory extends Model<InferAttributes<UserViewedStory>, InferCreat
     declare story_id: number
     declare created_at?: Date
     declare updated_at?: Date
+
+    static associate(models: any) {
+        this.belongsTo(models.User, { foreignKey: 'user_id', as: 'user' })
+        this.belongsTo(models.Story, { foreignKey: 'story_id', as: 'story' })
+    }
 }
 
 UserViewedStory.init(

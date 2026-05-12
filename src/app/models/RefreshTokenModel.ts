@@ -8,6 +8,10 @@ class RefreshToken extends Model<InferAttributes<RefreshToken>, InferCreationAtt
     declare refresh_token: string
     declare created_at?: Date
     declare updated_at?: Date
+
+    static associate(models: any) {
+        this.belongsTo(models.User, { foreignKey: 'user_id' })
+    }
 }
 
 RefreshToken.init(

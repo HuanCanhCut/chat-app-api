@@ -17,6 +17,19 @@ class Story extends Model<InferAttributes<Story>, InferCreationAttributes<Story>
      * Virtual fields
      */
     declare is_viewed?: boolean
+
+    static associate(models: any) {
+        this.belongsTo(models.User, { foreignKey: 'user_id', as: 'user' })
+        this.hasMany(models.UserViewedStory, { foreignKey: 'story_id', as: 'user_viewed_stories' })
+        this.hasMany(models.Reaction, {
+            foreignKey: 'reactionable_id',
+            as: 'reactions',
+            constraints: false,
+            scope: {
+                reactionable_type: 'Story',
+            },
+        })
+    }
 }
 Story.init(
     {

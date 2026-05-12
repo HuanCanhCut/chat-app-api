@@ -8,6 +8,11 @@ class SearchHistory extends Model<InferAttributes<SearchHistory>, InferCreationA
     declare user_search_id: number
     declare created_at?: Date
     declare updated_at?: Date
+
+    static associate(models: any) {
+        this.belongsTo(models.User, { foreignKey: 'user_id', as: 'user' })
+        this.belongsTo(models.User, { foreignKey: 'user_search_id', as: 'user_search' })
+    }
 }
 
 SearchHistory.init(

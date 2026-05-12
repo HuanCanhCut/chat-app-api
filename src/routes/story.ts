@@ -3,11 +3,16 @@ import express from 'express'
 import StoryController from '~/app/controllers/StoryController'
 import { validate } from '~/app/middlewares/validate'
 import { uuidSchema } from '~/app/validator/api/common'
-import { createStorySchema, getUserViewedStorySchema, reactToStorySchema } from '~/app/validator/api/storySchema'
+import {
+    createStorySchema,
+    getStoriesSchema,
+    getUserViewedStorySchema,
+    reactToStorySchema,
+} from '~/app/validator/api/storySchema'
 
 const router = express.Router()
 
-router.get('/', StoryController.getStories)
+router.get('/', validate(getStoriesSchema), StoryController.getStories)
 router.get('/:uuid/viewed', validate(getUserViewedStorySchema), StoryController.getUserViewedStories)
 router.get('/:uuid', validate(uuidSchema), StoryController.getUserStories)
 router.post('/', validate(createStorySchema), StoryController.createStory)

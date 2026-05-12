@@ -6,6 +6,7 @@ import { Block, Conversation, ConversationMember, Message, MessageMedia, Message
 import Reaction from '../../models/ReactionModel'
 import ConversationService from '../ConversationService'
 import MessageService from '../MessageService'
+import { addAiJob } from '~/app/queue/AI'
 import { sequelize } from '~/config/database'
 import { redisClient } from '~/config/redis'
 import { ioInstance } from '~/config/socket'
@@ -20,169 +21,6 @@ class SocketMessageService {
     constructor(socket?: Socket, currentUserId?: number) {
         this.socket = socket
         this.currentUserId = currentUserId || socket?.data.decoded.sub
-    }
-
-    saveMessageToDatabase = async ({
-        conversationId,
-        senderId,
-        userIds,
-        message,
-        type = 'text',
-        parent_id = null,
-        media,
-        forward_type = null,
-        forward_origin_id = null,
-    }: {
-        conversationId: number
-        senderId: number
-        userIds: { id: number; is_online: boolean }[]
-        message: string
-        type: string
-        parent_id: number | null
-        media?: Array<{
-            media_url: string
-            media_type: 'image' | 'video'
-        }>
-        forward_type?: 'Message' | 'Story' | 'Post' | null
-        forward_origin_id?: number | null
-    }) => {
-        const transaction = await sequelize.transaction()
-
-        if (!this.currentUserId) {
-            throw new InternalServerError({ message: 'Current user id is required' })
-        }
-
-        try {
-            // save message to database
-            const newMessage = await Message.create(
-                {
-                    conversation_id: conversationId,
-                    sender_id: senderId,
-                    content: message,
-                    type,
-                    parent_id: parent_id || null,
-                    forward_type: forward_type,
-                    forward_origin_id: forward_origin_id,
-                },
-                { transaction },
-            )
-
-            if (newMessage.id) {
-                type MessageStatusType = 'delivered' | 'sent' | 'read'
-
-                const bulkStatusData = userIds.map((userId) => ({
-                    message_id: newMessage.id!,
-                    receiver_id: userId.id,
-                    status: userId.is_online ? ('delivered' as MessageStatusType) : ('sent' as MessageStatusType),
-                }))
-
-                if (media) {
-                    const bulkMediaData = media.map((m) => ({
-                        message_id: newMessage.id!,
-                        media_url: m.media_url,
-                        media_type: m.media_type,
-                    }))
-
-                    await Promise.all([
-                        MessageStatus.bulkCreate(bulkStatusData, { transaction }),
-                        MessageMedia.bulkCreate(bulkMediaData, { transaction }),
-                    ])
-                } else {
-                    await MessageStatus.bulkCreate(bulkStatusData, { transaction })
-                }
-            }
-
-            await transaction.commit()
-
-            const messageResponse = await Message.findByPk<any>(newMessage.id, {
-                attributes: {
-                    exclude: ['parent_id'],
-                },
-                include: [
-                    {
-                        model: User,
-                        as: 'sender',
-                        required: true,
-                        attributes: {
-                            include: [[MessageService.isReadLiteral(senderId), 'is_read']],
-                            exclude: ['email', 'password'],
-                        },
-                    },
-                    {
-                        model: MessageStatus,
-                        as: 'message_status',
-                        include: [
-                            {
-                                model: User,
-                                as: 'receiver',
-                                attributes: {
-                                    include: [
-                                        [
-                                            MessageService.lastReadMessageIdLiteral(this.currentUserId, conversationId),
-                                            'last_read_message_id',
-                                        ],
-                                    ],
-                                    exclude: ['email', 'password'],
-                                },
-                            },
-                        ],
-                    },
-                    {
-                        model: MessageMedia,
-                        as: 'media',
-                    },
-                    {
-                        model: Message,
-                        as: 'parent',
-                        required: false,
-                        where: {
-                            // Get all messages except messages that have been revoked for-me by the current user
-                            [Op.not]: {
-                                id: {
-                                    [Op.in]: sequelize.literal(`
-                                        (
-                                            SELECT message_id
-                                            FROM message_statuses
-                                            WHERE message_statuses.revoke_type = 'for-me'
-                                            AND message_statuses.message_id = parent.id
-                                            AND message_statuses.receiver_id = ${sequelize.escape(this.currentUserId)}
-                                        )
-                                    `),
-                                },
-                            },
-                        },
-                        attributes: {
-                            exclude: ['content'],
-                            include: [
-                                [
-                                    sequelize.literal(`
-                                        CASE
-                                            WHEN EXISTS (
-                                                SELECT 1 FROM message_statuses
-                                                WHERE message_statuses.message_id = parent.id
-                                                AND message_statuses.receiver_id = ${sequelize.escape(this.currentUserId)}
-                                                AND message_statuses.is_revoked = 1
-                                            ) THEN NULL
-                                            ELSE parent.content
-                                        END
-                                    `),
-                                    'content',
-                                ],
-                            ],
-                        },
-                    },
-                ],
-            })
-
-            const isRead = messageResponse.dataValues.is_read === 1
-
-            return { ...messageResponse.dataValues, is_read: isRead }
-        } catch (error) {
-            if (transaction) {
-                await transaction.rollback()
-            }
-            logger.error('SAVE_MESSAGE_TO_DATABASE', error)
-        }
     }
 
     getUsersOnlineStatus = async (conversationUuid: string) => {
@@ -298,7 +136,7 @@ class SocketMessageService {
                 return
             }
 
-            const newMessage = await this.saveMessageToDatabase({
+            const newMessage = await MessageService.createMessage({
                 conversationId: conversation.dataValues.id,
                 senderId: this.currentUserId,
                 userIds,
@@ -308,11 +146,49 @@ class SocketMessageService {
                 media,
                 forward_type,
                 forward_origin_id,
+                currentUserId: this.currentUserId,
             })
 
             if (!newMessage) {
                 // emit fail message status
                 return
+            }
+
+            /**
+             * if is personal conversation => check if member is penguin_ai
+             */
+
+            let isPenguinAIConversation = false
+
+            if (!conversation.is_group) {
+                const member = await ConversationMember.findOne({
+                    where: {
+                        conversation_id: conversation.get('id') as number,
+                        user_id: Number(process.env.BOT_USER_ID),
+                    },
+                })
+
+                isPenguinAIConversation = !!member
+            }
+
+            /**
+             * if message start with @penguin_ai or conversation is penguin_ai => create background job
+             *  - send message to https://aistudio.google.com/ and get response
+             *  - save response into message table directly
+             */
+
+            if (message.trim().startsWith('@penguin_ai') || isPenguinAIConversation) {
+                // remove @penguin_ai from message
+                const prompt = message.replace(/^@penguin_ai\s*/i, '')
+
+                if (prompt) {
+                    addAiJob({
+                        conversation_uuid,
+                        prompt,
+                        parentMessageId: newMessage?.dataValues?.id,
+                        currentUserId: this.currentUserId,
+                    })
+                }
             }
 
             // emit message to room
@@ -339,8 +215,7 @@ class SocketMessageService {
                             `${RedisKey.CONVERSATION_UUID}${conversation_uuid}`,
                             JSON.stringify(conversation),
                             {
-                                // 1 hour
-                                EX: 60 * 60,
+                                EX: 60 * 5, // 5 minutes
                             },
                         )
                     }
@@ -373,7 +248,7 @@ class SocketMessageService {
                                     `${RedisKey.CONVERSATION_UUID}${conversation_uuid}`,
                                     JSON.stringify(conversation),
                                     {
-                                        EX: 60 * 60, // 1 hour
+                                        EX: 60 * 5, // 5 minutes
                                     },
                                 )
 

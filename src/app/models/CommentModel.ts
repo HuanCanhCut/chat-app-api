@@ -1,6 +1,7 @@
 import { DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize'
 
 import { sequelize } from '../../config/database'
+import Reaction from './ReactionModel'
 
 class Comment extends Model<InferAttributes<Comment>, InferCreationAttributes<Comment>> {
     declare id?: number
@@ -11,6 +12,21 @@ class Comment extends Model<InferAttributes<Comment>, InferCreationAttributes<Co
     declare deleted_at?: Date
     declare created_at?: Date
     declare updated_at?: Date
+
+    /**
+     * Virtual field
+     */
+    declare top_reactions?: Reaction[]
+
+    static associate(models: any) {
+        this.hasMany(models.Reaction, {
+            foreignKey: 'reactionable_id',
+            as: 'comment_reactions',
+            constraints: false,
+            scope: { reactionable_type: 'Comment' },
+        })
+        this.belongsTo(models.User, { foreignKey: 'user_id', as: 'user' })
+    }
 }
 Comment.init(
     {

@@ -16,6 +16,10 @@ class Notification extends Model<InferAttributes<Notification>, InferCreationAtt
     declare target_id: number
     declare created_at?: Date
     declare updated_at?: Date
+
+    static associate(models: any) {
+        this.belongsTo(models.User, { foreignKey: 'actor_id', as: 'actor' })
+    }
 }
 
 Notification.init(
