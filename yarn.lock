@@ -378,10 +378,10 @@
     teeny-request "^9.0.0"
     uuid "^8.0.0"
 
-"@google/genai@^1.51.0":
-  version "1.51.0"
-  resolved "https://registry.yarnpkg.com/@google/genai/-/genai-1.51.0.tgz#5830dbbef23a290d088231c7b31ecd8668cfbc13"
-  integrity sha512-vTZZF3CSimN7cn2zsLpW2p5WF0eZa5Gz69ITMPCNHpPrDlAstOfGifSfi0p/s9Z9400f7xJRkgvkQNrcM7pJ6w==
+"@google/genai@^2.4.0":
+  version "2.4.0"
+  resolved "https://registry.yarnpkg.com/@google/genai/-/genai-2.4.0.tgz#87bd245b8137d32e9f1bab46a86865b0c8e73847"
+  integrity sha512-q5q26X/yNKjbzrRdVVDIM9KEmN4dhezmhyliCDIn8mPGT0AlfzOqQfZ5iNCGRCEHSPd86oUdhpNpuzAkEZ5LQg==
   dependencies:
     google-auth-library "^10.3.0"
     p-retry "^4.6.2"

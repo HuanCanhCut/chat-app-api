@@ -109,28 +109,32 @@ const aiWorker = new Worker(
                         if (botMessage) {
                             job.updateData({ ...job.data, botMessageId: botMessage.id })
                         }
+
+                        /**
+                         * Emit new message to conversation
+                         */
+
+                        const lastMessage = await MessageService.getLastMessage({
+                            conversationUuid: conversation_uuid,
+                            currentUserId: botId,
+                        })
+
+                        ioInstance.to(conversation_uuid).emit('NEW_MESSAGE', {
+                            conversation: {
+                                ...conversation.dataValues,
+                                last_message: lastMessage,
+                            },
+                        })
                     }
-
-                    /**
-                     * Emit new message to conversation
-                     */
-
-                    const lastMessage = await MessageService.getLastMessage({
-                        conversationUuid: conversation_uuid,
-                        currentUserId: botId,
-                    })
-
-                    ioInstance.to(conversation_uuid).emit('NEW_MESSAGE', {
-                        conversation: {
-                            ...conversation.dataValues,
-                            last_message: lastMessage,
-                        },
-                    })
 
                     const ai = new GoogleGenAI({ apiKey })
 
+                    // const listModel = await ai.models.list()
+
+                    // console.log(listModel)
+
                     const stream = await ai.models.generateContentStream({
-                        model: 'gemma-3-27b-it',
+                        model: 'gemma-4-26b-a4b-it',
                         contents: prompt,
                     })
 
@@ -231,12 +235,20 @@ aiWorker.on('failed', async (job: Job<AiData> | undefined, error: Error) => {
                 )
 
                 if (job.data.botMessageId) {
+                    const failedMessage = 'Error when generate response'
+
                     await Message.update(
                         {
-                            content: 'Error when generate response',
+                            content: failedMessage,
                         },
                         { where: { id: job.data.botMessageId } },
                     )
+
+                    ioInstance.to(job.data.conversation_uuid).emit('UPDATE_CHUNK_MESSAGE', {
+                        message_id: job.data.botMessageId,
+                        chunk: failedMessage,
+                        conversation_uuid: job.data.conversation_uuid,
+                    })
                 }
             }
         }
