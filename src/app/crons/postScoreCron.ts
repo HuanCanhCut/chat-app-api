@@ -15,7 +15,7 @@ export const updateScores = async () => {
 }
 
 export const postScoreCron = () => {
-    cron.schedule('*/1 * * * *', async () => {
+    cron.schedule('*/5 * * * *', async () => {
         await updateScores().catch(console.error)
     })
 }
