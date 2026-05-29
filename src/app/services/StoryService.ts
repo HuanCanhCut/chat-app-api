@@ -81,6 +81,9 @@ class StoryService {
                 user_id: {
                     [Op.in]: [currentUserId, ...friendIds],
                 },
+                created_at: {
+                    [Op.gte]: new Date(Date.now() - 24 * 60 * 60 * 1000),
+                },
             }
 
             if (cursorId) {
